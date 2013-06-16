@@ -10,5 +10,5 @@ type PathTracer struct{}
 func (pt *PathTracer) SampleSensorPath(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
 	sensorSample Sample, WeLiDivPdf *Spectrum) {
-	*WeLiDivPdf = Spectrum{}
+	*WeLiDivPdf = MakeConstantSpectrum(0.5)
 }
