@@ -11,6 +11,10 @@ type SamplerRenderer struct {
 	sensor            Sensor
 }
 
+func MakeSamplerRenderer() *SamplerRenderer {
+	return &SamplerRenderer{MakeSampler(), nil, nil}
+}
+
 func (sr *SamplerRenderer) Render(rng *rand.Rand, scene *Scene) {
 	var Li Spectrum
 	numBlocks := sr.sampler.GetNumBlocks()

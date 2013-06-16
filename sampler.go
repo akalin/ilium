@@ -2,9 +2,10 @@ package main
 
 import "math/rand"
 
-// TODO(akalin): Implement SensorSample.
-
-type SensorSample struct{}
+type SensorSample struct {
+	U, V   int
+	Du, Dv float32
+}
 
 type Sample struct {
 	SensorSample SensorSample
@@ -28,4 +29,8 @@ type Sampler interface {
 	// block. Returns a sub-slice with the generated samples.
 	GenerateSamples(
 		i int, sampleStorage []Sample, rng *rand.Rand) []Sample
+}
+
+func MakeSampler() Sampler {
+	return MakeIndependentSampler()
 }

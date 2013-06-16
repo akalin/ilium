@@ -10,6 +10,5 @@ type Renderer interface {
 }
 
 func MakeRenderer() Renderer {
-	// TODO(akalin): Initialize the SamplerRenderer properly.
-	return &SamplerRenderer{}
+	return MakeSamplerRenderer()
 }
