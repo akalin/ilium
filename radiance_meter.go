@@ -3,17 +3,21 @@ package main
 import "fmt"
 
 type RadianceMeter struct {
+	ray  Ray
 	n    int
 	mean Spectrum
 	m2   Spectrum
 }
 
 func MakeRadianceMeter() *RadianceMeter {
-	return &RadianceMeter{}
+	ray := Ray{Point3{}, Vector3{0, 0, 1}}
+	return &RadianceMeter{ray: ray}
 }
 
 func (rm *RadianceMeter) SampleRay(x, y int, u1, u2 float32) (
 	ray Ray, WeDivPdf Spectrum) {
+	ray = rm.ray
+	WeDivPdf = MakeConstantSpectrum(1)
 	return
 }
 
