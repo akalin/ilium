@@ -13,3 +13,7 @@ type SurfaceIntegrator interface {
 		rng *rand.Rand, scene *Scene, ray Ray,
 		sample Sample, Li *Spectrum)
 }
+
+func MakeSurfaceIntegrator() SurfaceIntegrator {
+	return MakePathTracer()
+}

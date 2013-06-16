@@ -12,7 +12,10 @@ type SamplerRenderer struct {
 }
 
 func MakeSamplerRenderer() *SamplerRenderer {
-	return &SamplerRenderer{MakeSampler(), nil, MakeSensor()}
+	sampler := MakeSampler()
+	surfaceIntegrator := MakeSurfaceIntegrator()
+	sensor := MakeSensor()
+	return &SamplerRenderer{sampler, surfaceIntegrator, sensor}
 }
 
 func (sr *SamplerRenderer) Render(rng *rand.Rand, scene *Scene) {
