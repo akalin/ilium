@@ -9,6 +9,10 @@ func absFloat32(x float32) float32 {
 	return float32(math.Abs(float64(x)))
 }
 
+func infFloat32(sign int) float32 {
+	return float32(math.Inf(sign))
+}
+
 func isFiniteFloat32(f float32) bool {
 	return !math.IsNaN(float64(f)) && !math.IsInf(float64(f), 0)
 }

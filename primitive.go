@@ -7,6 +7,7 @@ type Intersection struct {
 	P        Point3
 	PEpsilon float32
 	N        Normal3
+	t        float32
 }
 
 func (i *Intersection) SampleF(rng *rand.Rand, wo Vector3) (

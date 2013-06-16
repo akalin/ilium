@@ -5,6 +5,7 @@ import "time"
 
 func main() {
 	var scene Scene
+	scene.Aggregate = &PrimitiveList{}
 	renderer := MakeRenderer()
 	seed := time.Now().UTC().UnixNano()
 	rand := rand.New(rand.NewSource(seed))

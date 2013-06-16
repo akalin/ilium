@@ -1,6 +1,7 @@
 package main
 
 type Ray struct {
-	O Point3
-	D Vector3
+	O    Point3
+	D    Vector3
+	MaxT float32
 }

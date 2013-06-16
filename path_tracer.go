@@ -45,6 +45,6 @@ func (pt *PathTracer) ComputeLi(
 		var fScaled Spectrum
 		fScaled.Scale(&f, absCosTh/pdf)
 		We.Mul(&We, &fScaled)
-		ray = Ray{intersection.P, wi}
+		ray = Ray{intersection.P, wi, infFloat32(+1)}
 	}
 }
