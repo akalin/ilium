@@ -1,7 +1,5 @@
 package main
 
-import "math"
-
 type Spectrum struct {
 	r, g, b float32
 }
@@ -38,10 +36,6 @@ func (out *Spectrum) ScaleInv(s *Spectrum, k float32) {
 	out.Scale(s, 1/k)
 }
 
-func sqrtFloat32(f float32) float32 {
-	return float32(math.Sqrt(float64(f)))
-}
-
 func (out *Spectrum) Sqrt(s *Spectrum) {
 	out.r = sqrtFloat32(s.r)
 	out.g = sqrtFloat32(s.g)
@@ -51,10 +45,6 @@ func (out *Spectrum) Sqrt(s *Spectrum) {
 // Returns whether the Spectrum is zeroed out.
 func (s *Spectrum) IsBlack() bool {
 	return s.r == 0 && s.g == 0 && s.b == 0
-}
-
-func isFiniteFloat32(f float32) bool {
-	return !math.IsNaN(float64(f)) && !math.IsInf(float64(f), 0)
 }
 
 // Returns whether the Spectrum contains only valid numbers.

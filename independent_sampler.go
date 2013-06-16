@@ -23,15 +23,6 @@ func (is *IndependentSampler) GetMaximumBlockSize() int {
 	return is.samplesPerUV
 }
 
-// Avoid math.rand.Rand.Float32() since it's buggy; see
-// https://code.google.com/p/go/issues/detail?id=6721 .
-func randFloat32(rng *rand.Rand) float32 {
-	x := rng.Int63()
-	// Use the top 24 bits of x for f's significand.
-	f := float32(x>>39) / float32(1<<24)
-	return f
-}
-
 func (is *IndependentSampler) GenerateSamples(
 	i int, sampleStorage []Sample, rng *rand.Rand) []Sample {
 	samples := sampleStorage[0:is.samplesPerUV]
