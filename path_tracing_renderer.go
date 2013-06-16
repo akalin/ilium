@@ -14,7 +14,7 @@ type PathTracingRenderer struct {
 func MakePathTracingRenderer() *PathTracingRenderer {
 	return &PathTracingRenderer{
 		sampler: MakeSampler(),
-		sensor:  nil,
+		sensor:  MakeSensor(),
 	}
 }
 

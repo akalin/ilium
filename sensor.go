@@ -17,3 +17,7 @@ type Sensor interface {
 	// (e.g., write it to a file).
 	EmitSignal()
 }
+
+func MakeSensor() Sensor {
+	return MakeRadianceMeter()
+}
