@@ -11,6 +11,13 @@ type PathTracingRenderer struct {
 	sensor     Sensor
 }
 
+func MakePathTracingRenderer() *PathTracingRenderer {
+	return &PathTracingRenderer{
+		sampler: MakeSampler(),
+		sensor:  nil,
+	}
+}
+
 func (ptr *PathTracingRenderer) processPixel(
 	rng *rand.Rand, scene *Scene,
 	sensorSamples []Sample, x, y, i, numBlocks int) {
