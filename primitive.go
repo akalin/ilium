@@ -5,6 +5,7 @@ type Intersection struct {
 	P        Point3
 	PEpsilon float32
 	N        Normal3
+	t        float32
 }
 
 func (i *Intersection) SampleWi(u1, u2 float32, wo Vector3) (
