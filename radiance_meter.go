@@ -3,17 +3,19 @@ package main
 import "fmt"
 
 type RadianceMeter struct {
+	ray    Ray
 	n      int
 	_LMean Spectrum
 	_LM2   Spectrum
 }
 
 func MakeRadianceMeter() *RadianceMeter {
-	return &RadianceMeter{}
+	ray := Ray{Point3{}, Vector3{0, 0, 1}}
+	return &RadianceMeter{ray: ray}
 }
 
 func (rm *RadianceMeter) GenerateRay(sensorSample SensorSample) Ray {
-	return Ray{}
+	return rm.ray
 }
 
 func (rm *RadianceMeter) RecordSample(sensorSample SensorSample, Li Spectrum) {

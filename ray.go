@@ -1,5 +1,6 @@
 package main
 
-// TODO(akalin): Implement Ray.
-
-type Ray struct{}
+type Ray struct {
+	O Point3
+	D Vector3
+}
