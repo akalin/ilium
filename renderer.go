@@ -10,6 +10,5 @@ type Renderer interface {
 }
 
 func MakeRenderer() Renderer {
-	// TODO(akalin): Initialize the PathTracingRenderer properly.
-	return &PathTracingRenderer{}
+	return MakePathTracingRenderer()
 }
