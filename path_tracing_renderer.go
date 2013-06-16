@@ -12,10 +12,12 @@ type PathTracingRenderer struct {
 }
 
 func MakePathTracingRenderer() *PathTracingRenderer {
-	return &PathTracingRenderer{
+	ptr := &PathTracingRenderer{
 		sampler: MakeSampler(),
 		sensor:  MakeSensor(),
 	}
+	ptr.pathTracer.InitializePathTracer()
+	return ptr
 }
 
 func (ptr *PathTracingRenderer) processPixel(

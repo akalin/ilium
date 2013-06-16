@@ -1,5 +1,5 @@
 package main
 
-// TODO(akalin): Implement Scene.
-
-type Scene struct{}
+type Scene struct {
+	Aggregate Primitive
+}
