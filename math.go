@@ -17,6 +17,17 @@ func isFiniteFloat32(f float32) bool {
 	return !math.IsNaN(float64(f)) && !math.IsInf(float64(f), 0)
 }
 
+func maxFloat32(x, y float32) float32 {
+	return float32(math.Max(float64(x), float64(y)))
+}
+
+func sincosFloat32(x float32) (sin, cos float32) {
+	sinFloat64, cosFloat64 := math.Sincos(float64(x))
+	sin = float32(sinFloat64)
+	cos = float32(cosFloat64)
+	return
+}
+
 func sqrtFloat32(x float32) float32 {
 	return float32(math.Sqrt(float64(x)))
 }
