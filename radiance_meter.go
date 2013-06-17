@@ -10,7 +10,12 @@ type RadianceMeter struct {
 }
 
 func MakeRadianceMeter() *RadianceMeter {
-	ray := Ray{Point3{}, Vector3{0, 0, 1}, 0, infFloat32(+1)}
+	ray := Ray{
+		Point3{0, -0.5, 0},
+		Vector3{0, 1, 0},
+		0,
+		infFloat32(+1),
+	}
 	return &RadianceMeter{ray: ray}
 }
 

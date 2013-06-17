@@ -41,6 +41,7 @@ func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
 		intersection.T = t1
 	}
 	intersection.P = ray.Evaluate(intersection.T)
+	intersection.PEpsilon = 5e-4 * intersection.T
 	((*Vector3)(&intersection.N)).GetOffset(&s.center, &intersection.P)
 	intersection.N.Normalize(&intersection.N)
 	if s.flipNormal {

@@ -8,6 +8,10 @@ func MakeConstantSpectrum(k float32) Spectrum {
 	return Spectrum{k, k, k}
 }
 
+func MakeRGBSpectrum(r, g, b float32) Spectrum {
+	return Spectrum{r, g, b}
+}
+
 func (out *Spectrum) Add(s1, s2 *Spectrum) {
 	out.r = s1.r + s2.r
 	out.g = s1.g + s2.g
