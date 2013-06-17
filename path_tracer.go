@@ -83,7 +83,10 @@ func (pt *PathTracer) SampleSensorPath(
 			break
 		}
 
-		ray = Ray{intersection.P, wi, infFloat32(+1)}
+		ray = Ray{
+			intersection.P, wi,
+			intersection.PEpsilon, infFloat32(+1),
+		}
 		alpha.Mul(&alpha, &fDivPdf)
 	}
 
