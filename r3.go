@@ -4,6 +4,12 @@ type R3 struct {
 	X, Y, Z float32
 }
 
+func (out *R3) Add(r, s *R3) {
+	out.X = r.X + s.X
+	out.Y = r.Y + s.Y
+	out.Z = r.Z + s.Z
+}
+
 func (out *R3) Sub(r, s *R3) {
 	out.X = r.X - s.X
 	out.Y = r.Y - s.Y
