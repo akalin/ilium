@@ -8,5 +8,9 @@ type Ray struct {
 }
 
 func (r *Ray) Evaluate(t float32) Point3 {
-	return Point3{}
+	var Dt Vector3
+	Dt.Scale(&r.D, t)
+	var p Point3
+	p.Shift(&r.O, &Dt)
+	return p
 }
