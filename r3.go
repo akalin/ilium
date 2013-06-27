@@ -36,6 +36,12 @@ func (r *R3) Dot(s *R3) float32 {
 	return r.X*s.X + r.Y*s.Y + r.Z*s.Z
 }
 
+func (out *R3) CrossNoAlias(r, s *R3) {
+	out.X = r.Y*s.Z - r.Z*s.Y
+	out.Y = r.Z*s.X - r.X*s.Z
+	out.Z = r.X*s.Y - r.Y*s.X
+}
+
 func (r *R3) NormSq() float32 {
 	return r.X*r.X + r.Y*r.Y + r.Z*r.Z
 }
@@ -46,4 +52,15 @@ func (r *R3) Norm() float32 {
 
 func (out *R3) Normalize(r *R3) {
 	out.ScaleInv(r, r.Norm())
+}
+
+// Assumes i is already normalized.
+func MakeCoordinateSystemNoAlias(i, j, k *R3) {
+	if absFloat32(i.X) > absFloat32(i.Y) {
+		*j = R3{-i.Z, 0, i.X}
+	} else {
+		*j = R3{0, i.Z, -i.Y}
+	}
+	j.Normalize(j)
+	k.CrossNoAlias(i, j)
 }
