@@ -1,0 +1,54 @@
+{
+  "_comment": [
+    "The scene is a radiance meter inside a hollow sphere that both ",
+    "emits and reflects light.",
+
+    "The radiance along any ray inside the sphere should converge to Le ",
+    "/ (1 - rho), which in this case is (0.5, 0.5, 0.5).",
+
+    "For an eye path with k bounces, the pixel values will be Le (1 - ",
+    "rho^k) / (1 - rho).  Thus, the absolute error is Le rho^k / (1 - ",
+    "rho), and the relative error is rho^k.  To get the absolute error ",
+    "less than eps, you need more than (lg eps + lg (1 - rho) - lg Le) / ",
+    "lg rho bounces, and to get the relative error less than eps, you ",
+    "need more than lg eps / lg rho bounces."
+  ],
+
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_comment": "Hollow sphere.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [0, 0.5, 0],
+            "radius": 10,
+            "flipNormal": true
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "emission": { "type": "rgb", "r": 0.1, "g": 0.2, "b": 0.4 },
+            "rho":      { "type": "rgb", "r": 0.8, "g": 0.6, "b": 0.2 }
+          }
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "russianRouletteStartIndex": 10,
+    "maxEdgeCount": 10,
+    "sampler": {
+      "type": "IndependentSampler"
+    },
+    "sensor": {
+      "type": "RadianceMeter",
+      "position": [0, -0.5, 0],
+      "target":   [0, 1,    0]
+    }
+  }
+}
