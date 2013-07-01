@@ -15,6 +15,24 @@ type Diffuse struct {
 	rho            Spectrum
 }
 
+func MakeDiffuse(config map[string]interface{}) *Diffuse {
+	var samplingMethod DiffuseSamplingMethod
+	samplingMethodConfig := config["samplingMethod"].(string)
+	switch samplingMethodConfig {
+	case "uniform":
+		samplingMethod = DIFFUSE_UNIFORM_SAMPLING
+	case "cosine":
+		samplingMethod = DIFFUSE_COSINE_SAMPLING
+	default:
+		panic("unknown sampling method " + samplingMethodConfig)
+	}
+	emissionConfig := config["emission"].(map[string]interface{})
+	emission := MakeSpectrumFromConfig(emissionConfig)
+	rhoConfig := config["rho"].(map[string]interface{})
+	rho := MakeSpectrumFromConfig(rhoConfig)
+	return &Diffuse{samplingMethod, emission, rho}
+}
+
 func uniformSampleDisk(u1, u2 float32) (x, y float32) {
 	// This has a slight bias towards the center.
 	r := sqrtFloat32(u1)
