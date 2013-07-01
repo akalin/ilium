@@ -15,3 +15,13 @@ func (pl *PrimitiveList) Intersect(ray *Ray, intersection *Intersection) bool {
 	}
 	return found
 }
+
+func MakePrimitiveList(config map[string]interface{}) *PrimitiveList {
+	primitiveConfigs := config["primitives"].([]interface{})
+	primitives := make([]Primitive, len(primitiveConfigs))
+	for i, primitiveConfig := range primitiveConfigs {
+		primitives[i] =
+			MakePrimitive(primitiveConfig.(map[string]interface{}))
+	}
+	return &PrimitiveList{primitives}
+}

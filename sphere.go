@@ -6,6 +6,17 @@ type Sphere struct {
 	flipNormal bool
 }
 
+func MakeSphere(config map[string]interface{}) *Sphere {
+	centerConfig := config["center"].([]interface{})
+	center := MakePoint3FromConfig(centerConfig)
+	radius := float32(config["radius"].(float64))
+	flipNormal := false
+	if config["flipNormal"] != nil {
+		flipNormal = config["flipNormal"].(bool)
+	}
+	return &Sphere{center, radius, flipNormal}
+}
+
 func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
 	var co Vector3
 	co.GetOffset(&s.center, &ray.O)

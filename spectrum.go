@@ -12,6 +12,19 @@ func MakeRGBSpectrum(r, g, b float32) Spectrum {
 	return Spectrum{r, g, b}
 }
 
+func MakeSpectrumFromConfig(config map[string]interface{}) Spectrum {
+	spectrumType := config["type"].(string)
+	switch spectrumType {
+	case "rgb":
+		r := float32(config["r"].(float64))
+		g := float32(config["g"].(float64))
+		b := float32(config["b"].(float64))
+		return MakeRGBSpectrum(r, g, b)
+	default:
+		panic("unknown spectrum type " + spectrumType)
+	}
+}
+
 func (out *Spectrum) Add(s1, s2 *Spectrum) {
 	out.r = s1.r + s2.r
 	out.g = s1.g + s2.g
