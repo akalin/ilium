@@ -31,6 +31,12 @@ type Sampler interface {
 		i int, sampleStorage []Sample, rng *rand.Rand) []Sample
 }
 
-func MakeSampler() Sampler {
-	return MakeIndependentSampler()
+func MakeSampler(config map[string]interface{}) Sampler {
+	samplerType := config["type"].(string)
+	switch samplerType {
+	case "IndependentSampler":
+		return MakeIndependentSampler(config)
+	default:
+		panic("unknown sampler type " + samplerType)
+	}
 }

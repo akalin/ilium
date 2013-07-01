@@ -9,14 +9,15 @@ type RadianceMeter struct {
 	_LM2   Spectrum
 }
 
-func MakeRadianceMeter() *RadianceMeter {
-	ray := Ray{
-		Point3{0, -0.5, 0},
-		Vector3{0, 1, 0},
-		0,
-		infFloat32(+1),
+func MakeRadianceMeter(config map[string]interface{}) *RadianceMeter {
+	origin := MakePoint3FromConfig(config["origin"])
+	target := MakePoint3FromConfig(config["target"])
+	var direction Vector3
+	direction.GetOffset(&origin, &target)
+	direction.Normalize(&direction)
+	return &RadianceMeter{
+		ray: Ray{origin, direction, 0, infFloat32(+1)},
 	}
-	return &RadianceMeter{ray: ray}
 }
 
 func (rm *RadianceMeter) GenerateRay(sensorSample SensorSample) Ray {

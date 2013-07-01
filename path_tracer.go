@@ -7,8 +7,15 @@ type PathTracer struct {
 	maxPathLength             int
 }
 
-func MakePathTracer() *PathTracer {
-	return &PathTracer{10, 10}
+func MakePathTracer(config map[string]interface{}) *PathTracer {
+	russianRoulettePathLength :=
+		int(config["russianRoulettePathLength"].(float64))
+	maxPathLength :=
+		int(config["maxPathLength"].(float64))
+	return &PathTracer{
+		russianRoulettePathLength: russianRoulettePathLength,
+		maxPathLength:             maxPathLength,
+	}
 }
 
 func (pt *PathTracer) ComputeLi(

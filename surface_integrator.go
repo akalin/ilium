@@ -14,6 +14,13 @@ type SurfaceIntegrator interface {
 		sample Sample, Li *Spectrum)
 }
 
-func MakeSurfaceIntegrator() SurfaceIntegrator {
-	return MakePathTracer()
+func MakeSurfaceIntegrator(config map[string]interface{}) SurfaceIntegrator {
+	surfaceIntegratorType := config["type"].(string)
+	switch surfaceIntegratorType {
+	case "PathTracer":
+		return MakePathTracer(config)
+	default:
+		panic("unknown surface integrator type " +
+			surfaceIntegratorType)
+	}
 }

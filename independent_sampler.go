@@ -10,9 +10,15 @@ type IndependentSampler struct {
 	samplesPerUV int
 }
 
-func MakeIndependentSampler() *IndependentSampler {
-	samplesPerUV := 32
-	return &IndependentSampler{0, 1, 0, 1, samplesPerUV}
+func MakeIndependentSampler(config map[string]interface{}) *IndependentSampler {
+	samplesPerUV := int(config["samplesPerUV"].(float64))
+	return &IndependentSampler{
+		uStart:       0,
+		uEnd:         1,
+		vStart:       0,
+		vEnd:         1,
+		samplesPerUV: samplesPerUV,
+	}
 }
 
 func (is *IndependentSampler) GetNumBlocks() int {

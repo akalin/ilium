@@ -9,6 +9,12 @@ type Renderer interface {
 	Render(rng *rand.Rand, scene *Scene)
 }
 
-func MakeRenderer() Renderer {
-	return MakeSamplerRenderer()
+func MakeRenderer(config map[string]interface{}) Renderer {
+	rendererType := config["type"].(string)
+	switch rendererType {
+	case "SamplerRenderer":
+		return MakeSamplerRenderer(config)
+	default:
+		panic("unknown renderer type " + rendererType)
+	}
 }

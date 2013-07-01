@@ -13,7 +13,32 @@ func main() {
 	primitives := []Primitive{&spherePrimitive}
 	primitiveList := PrimitiveList{primitives}
 	scene := Scene{&primitiveList}
-	renderer := MakeRenderer()
+	rendererConfig := map[string]interface{}{
+		"type": "SamplerRenderer",
+		"sampler": map[string]interface{}{
+			"type":         "IndependentSampler",
+			"samplesPerUV": float64(32),
+		},
+		"surfaceIntegrator": map[string]interface{}{
+			"type": "PathTracer",
+			"russianRoulettePathLength": float64(10),
+			"maxPathLength":             float64(10),
+		},
+		"sensor": map[string]interface{}{
+			"type": "RadianceMeter",
+			"origin": []interface{}{
+				float64(0),
+				float64(-0.5),
+				float64(0),
+			},
+			"target": []interface{}{
+				float64(0),
+				float64(1),
+				float64(0),
+			},
+		},
+	}
+	renderer := MakeRenderer(rendererConfig)
 	seed := time.Now().UTC().UnixNano()
 	rand := rand.New(rand.NewSource(seed))
 	renderer.Render(rand, &scene)
