@@ -9,14 +9,15 @@ type RadianceMeter struct {
 	m2   Spectrum
 }
 
-func MakeRadianceMeter() *RadianceMeter {
-	ray := Ray{
-		Point3{0, -0.5, 0},
-		Vector3{0, 1, 0},
-		5e-4,
-		infFloat32(+1),
+func MakeRadianceMeter(config map[string]interface{}) *RadianceMeter {
+	position := MakePoint3FromConfig(config["position"])
+	target := MakePoint3FromConfig(config["target"])
+	var direction Vector3
+	direction.GetOffset(&position, &target)
+	direction.Normalize(&direction)
+	return &RadianceMeter{
+		ray: Ray{position, direction, 5e-4, infFloat32(+1)},
 	}
-	return &RadianceMeter{ray: ray}
 }
 
 func (rm *RadianceMeter) SampleRay(x, y int, u1, u2 float32) (
