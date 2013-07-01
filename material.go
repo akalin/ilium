@@ -5,3 +5,13 @@ type Material interface {
 		wi Vector3, fDivPdf Spectrum)
 	ComputeLe(pSurface Point3, nSurface Normal3, wo Vector3) Spectrum
 }
+
+func MakeMaterial(config map[string]interface{}) Material {
+	materialType := config["type"].(string)
+	switch materialType {
+	case "Diffuse":
+		return MakeDiffuse(config)
+	default:
+		panic("unknown material type " + materialType)
+	}
+}
