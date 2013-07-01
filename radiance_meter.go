@@ -3,21 +3,28 @@ package main
 import "fmt"
 
 type RadianceMeter struct {
-	ray  Ray
-	n    int
-	mean Spectrum
-	m2   Spectrum
+	ray         Ray
+	sampleCount int
+	n           int
+	mean        Spectrum
+	m2          Spectrum
 }
 
 func MakeRadianceMeter(config map[string]interface{}) *RadianceMeter {
 	position := MakePoint3FromConfig(config["position"])
 	target := MakePoint3FromConfig(config["target"])
+	sampleCount := int(config["sampleCount"].(float64))
 	var direction Vector3
 	direction.GetOffset(&position, &target)
 	direction.Normalize(&direction)
 	return &RadianceMeter{
-		ray: Ray{position, direction, 5e-4, infFloat32(+1)},
+		ray:         Ray{position, direction, 5e-4, infFloat32(+1)},
+		sampleCount: sampleCount,
 	}
+}
+
+func (rm *RadianceMeter) GetExtent() SensorExtent {
+	return SensorExtent{0, 1, 0, 1, rm.sampleCount}
 }
 
 func (rm *RadianceMeter) SampleRay(x, y int, u1, u2 float32) (
