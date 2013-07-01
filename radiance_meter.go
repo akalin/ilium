@@ -20,6 +20,10 @@ func MakeRadianceMeter(config map[string]interface{}) *RadianceMeter {
 	}
 }
 
+func (rm *RadianceMeter) GetSampleRange() SensorSampleRange {
+	return SensorSampleRange{0, 1, 0, 1}
+}
+
 func (rm *RadianceMeter) GenerateRay(sensorSample SensorSample) Ray {
 	return rm.ray
 }

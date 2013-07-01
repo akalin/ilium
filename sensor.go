@@ -4,6 +4,10 @@ package main
 // radiometric quantities and convert them to a signal (e.g.,
 // cameras).
 type Sensor interface {
+	// Returns the range in (u, v)-space over which samples should
+	// be taken.
+	GetSampleRange() SensorSampleRange
+
 	// Returns a ray over which to measure radiometric quantities.
 	GenerateRay(sensorSample SensorSample) Ray
 

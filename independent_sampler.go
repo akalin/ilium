@@ -5,24 +5,24 @@ import "math/rand"
 // An IndependentSampler is a Sampler which generates samples which
 // are mutually independent.
 type IndependentSampler struct {
-	uStart, uEnd int
-	vStart, vEnd int
-	samplesPerUV int
+	sensorSampleRange SensorSampleRange
+	samplesPerUV      int
 }
 
-func MakeIndependentSampler(config map[string]interface{}) *IndependentSampler {
+func MakeIndependentSampler(
+	sensorSampleRange SensorSampleRange,
+	config map[string]interface{}) *IndependentSampler {
 	samplesPerUV := int(config["samplesPerUV"].(float64))
 	return &IndependentSampler{
-		uStart:       0,
-		uEnd:         1,
-		vStart:       0,
-		vEnd:         1,
-		samplesPerUV: samplesPerUV,
+		sensorSampleRange: sensorSampleRange,
+		samplesPerUV:      samplesPerUV,
 	}
 }
 
 func (is *IndependentSampler) GetNumBlocks() int {
-	return (is.uEnd - is.uStart) * (is.vEnd - is.vStart)
+	uCount := is.sensorSampleRange.GetUCount()
+	vCount := is.sensorSampleRange.GetVCount()
+	return uCount * vCount
 }
 
 func (is *IndependentSampler) GetMaximumBlockSize() int {
@@ -32,9 +32,9 @@ func (is *IndependentSampler) GetMaximumBlockSize() int {
 func (is *IndependentSampler) GenerateSamples(
 	i int, sampleStorage []Sample, rng *rand.Rand) []Sample {
 	samples := sampleStorage[0:is.samplesPerUV]
-	uCount := is.uEnd - is.uStart
-	u := is.uStart + i%uCount
-	v := is.vStart + i/uCount
+	uCount := is.sensorSampleRange.GetUCount()
+	u := is.sensorSampleRange.uStart + i%uCount
+	v := is.sensorSampleRange.vStart + i/uCount
 	for j := 0; j < len(samples); j++ {
 		samples[j].SensorSample.U = u
 		samples[j].SensorSample.V = v

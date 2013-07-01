@@ -2,6 +2,18 @@ package main
 
 import "math/rand"
 
+type SensorSampleRange struct {
+	uStart, uEnd, vStart, vEnd int
+}
+
+func (sss *SensorSampleRange) GetUCount() int {
+	return sss.uEnd - sss.uStart
+}
+
+func (sss *SensorSampleRange) GetVCount() int {
+	return sss.vEnd - sss.vStart
+}
+
 type SensorSample struct {
 	U, V   int
 	Du, Dv float32
@@ -31,11 +43,13 @@ type Sampler interface {
 		i int, sampleStorage []Sample, rng *rand.Rand) []Sample
 }
 
-func MakeSampler(config map[string]interface{}) Sampler {
+func MakeSampler(
+	sensorSampleRange SensorSampleRange,
+	config map[string]interface{}) Sampler {
 	samplerType := config["type"].(string)
 	switch samplerType {
 	case "IndependentSampler":
-		return MakeIndependentSampler(config)
+		return MakeIndependentSampler(sensorSampleRange, config)
 	default:
 		panic("unknown sampler type " + samplerType)
 	}

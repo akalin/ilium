@@ -13,12 +13,12 @@ type SamplerRenderer struct {
 
 func MakeSamplerRenderer(config map[string]interface{}) *SamplerRenderer {
 	samplerConfig := config["sampler"].(map[string]interface{})
-	sampler := MakeSampler(samplerConfig)
+	sensorConfig := config["sensor"].(map[string]interface{})
+	sensor := MakeSensor(sensorConfig)
+	sampler := MakeSampler(sensor.GetSampleRange(), samplerConfig)
 	surfaceIntegratorConfig :=
 		config["surfaceIntegrator"].(map[string]interface{})
 	surfaceIntegrator := MakeSurfaceIntegrator(surfaceIntegratorConfig)
-	sensorConfig := config["sensor"].(map[string]interface{})
-	sensor := MakeSensor(sensorConfig)
 	return &SamplerRenderer{sampler, surfaceIntegrator, sensor}
 }
 
