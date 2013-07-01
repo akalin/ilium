@@ -47,16 +47,12 @@ func (ptr *PathTracingRenderer) processPixel(
 }
 
 func (ptr *PathTracingRenderer) Render(rng *rand.Rand, scene *Scene) {
-	xStart := 0
-	xEnd := 1
-	yStart := 0
-	yEnd := 1
-	samplesPerXY := 32
-	numBlocks := (yEnd - yStart) * (xEnd - xStart)
-	sensorSamples := make([]Sample, samplesPerXY)
+	sensorExtent := ptr.sensor.GetExtent()
+	numBlocks := sensorExtent.GetPixelCount()
+	sensorSamples := make([]Sample, sensorExtent.SamplesPerXY)
 	i := 0
-	for x := xStart; x < xEnd; x++ {
-		for y := yStart; y < yEnd; y++ {
+	for x := sensorExtent.XStart; x < sensorExtent.XEnd; x++ {
+		for y := sensorExtent.YStart; y < sensorExtent.YEnd; y++ {
 			ptr.processPixel(
 				rng, scene, sensorSamples, x, y, i, numBlocks)
 			i++

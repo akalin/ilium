@@ -1,9 +1,20 @@
 package main
 
+type SensorExtent struct {
+	XStart, XEnd, YStart, YEnd, SamplesPerXY int
+}
+
+func (se *SensorExtent) GetPixelCount() int {
+	return (se.XEnd - se.XStart) * (se.YEnd - se.YStart)
+}
+
 // Sensor is the interface for objects that can record measured
 // radiometric quantities and convert them to a signal (e.g.,
 // cameras).
 type Sensor interface {
+	// Returns this sensor's extent in pixel coordinates.
+	GetExtent() SensorExtent
+
 	// Returns a sampled ray for the given pixel coordinates over
 	// which to measure radiometric quantities, and its associated
 	// pdf-weighted importance.
