@@ -8,9 +8,10 @@ type PathTracer struct {
 	maxEdgeCount              int
 }
 
-func (pt *PathTracer) InitializePathTracer() {
-	pt.russianRouletteStartIndex = 10
-	pt.maxEdgeCount = 10
+func (pt *PathTracer) InitializePathTracer(
+	russianRouletteStartIndex, maxEdgeCount int) {
+	pt.russianRouletteStartIndex = russianRouletteStartIndex
+	pt.maxEdgeCount = maxEdgeCount
 }
 
 // Samples a path starting from the given pixel coordinates on the

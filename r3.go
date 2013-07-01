@@ -4,6 +4,15 @@ type R3 struct {
 	X, Y, Z float32
 }
 
+func MakeR3FromConfig(config interface{}) R3 {
+	arrayConfig := config.([]interface{})
+	return R3{
+		float32(arrayConfig[0].(float64)),
+		float32(arrayConfig[1].(float64)),
+		float32(arrayConfig[2].(float64)),
+	}
+}
+
 func (out *R3) Add(r, s *R3) {
 	out.X = r.X + s.X
 	out.Y = r.Y + s.Y

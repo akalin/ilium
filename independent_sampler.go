@@ -6,7 +6,7 @@ import "math/rand"
 // mutually independent.
 type IndependentSampler struct{}
 
-func MakeIndependentSampler() *IndependentSampler {
+func MakeIndependentSampler(config map[string]interface{}) *IndependentSampler {
 	return &IndependentSampler{}
 }
 

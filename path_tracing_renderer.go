@@ -11,12 +11,24 @@ type PathTracingRenderer struct {
 	sensor     Sensor
 }
 
-func MakePathTracingRenderer() *PathTracingRenderer {
+func MakePathTracingRenderer(
+	config map[string]interface{}) *PathTracingRenderer {
+	russianRouletteStartIndex :=
+		int(config["russianRouletteStartIndex"].(float64))
+	maxEdgeCount := int(config["maxEdgeCount"].(float64))
+
+	samplerConfig := config["sampler"].(map[string]interface{})
+	sampler := MakeSampler(samplerConfig)
+
+	sensorConfig := config["sensor"].(map[string]interface{})
+	sensor := MakeSensor(sensorConfig)
+
 	ptr := &PathTracingRenderer{
-		sampler: MakeSampler(),
-		sensor:  MakeSensor(),
+		sampler: sampler,
+		sensor:  sensor,
 	}
-	ptr.pathTracer.InitializePathTracer()
+	ptr.pathTracer.InitializePathTracer(
+		russianRouletteStartIndex, maxEdgeCount)
 	return ptr
 }
 
