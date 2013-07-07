@@ -1,0 +1,100 @@
+{
+  "_comment" : [
+    "Let:",
+    "  - R (r) be the radius of the hollow sphere (center light),",
+    "  - alpha be r/R,",
+    "  - L_e^R (L_e^r) be the corresponding emission,",
+    "  - rho_R (rho_r) be the corresponding reflectance,",
+    "  - and L_R (L_r) be the corresponding limit color.",
+
+    "Then",
+
+    "  L_R = (L_e^R + L_e^r rho_R alpha^2) /",
+    "        ((1 - rho_R) + (1 - rho_r) rho_R alpha^2)",
+
+    "and",
+
+    "  L_r = L_e^r + L_R rho_r.",
+
+    "Let C_R (C_r) be the convergence points of each sphere in isolation ",
+    "(i.e., C_R = L_e^R / (1 - rho_R) and similarly for C_r).",
+
+    "  - If C_R = C_r = C, then L_R = L_r = C.",
+    "  - If L_e^R = 0 and rho_R = 1, then L_R = L_r = C_r.",
+    "  - If L_e^r = 0 and rho_r = 1, then L_R = L_r = C_R.",
+    "  - If L_R = C_r, then L_r = L_R = C_r.",
+
+    "In this case, C_R = C_r = 0.5 for all wavelengths, so L_R = L_r = ",
+    "0.5."
+  ],
+
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_comment": "Hollow sphere.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, -0.5, 0.0 ],
+            "radius": 10,
+            "flipNormal": true
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.9,  "g": 0.7,  "b": 0.4 },
+            "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 }
+          }
+        },
+        {
+          "_comment": "Center light.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, 2.5, 0.0 ],
+            "radius": 1
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.5,  "g": 0.3,  "b": 0.1  },
+            "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 }
+          }
+        },
+        {
+          "_comment": "Radiance meters.",
+          "type": "PointPrimitive",
+          "location": [0, -0.5, 0],
+          "sensors": [
+            {
+              "_comment": "Towards center light.",
+              "type": "RadianceMeter",
+              "origin": [0, -0.5, 0],
+              "target": [0, 1,    0]
+            },
+            {
+              "_comment": "Towards hollow sphere.",
+              "type": "RadianceMeter",
+              "origin": [0, -0.5, 0],
+              "target": [0, -1,   0]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "renderer": {
+    "type": "SamplerRenderer",
+    "sampler": {
+      "type": "IndependentSampler",
+      "samplesPerUV": 32
+    },
+    "surfaceIntegrator": {
+      "type": "PathTracer",
+      "russianRoulettePathLength": 10,
+      "maxPathLength":             10
+    }
+  }
+}
