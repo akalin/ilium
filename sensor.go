@@ -4,8 +4,16 @@ type SensorExtent struct {
 	XStart, XEnd, YStart, YEnd, SamplesPerXY int
 }
 
+func (se *SensorExtent) GetXCount() int {
+	return se.XEnd - se.XStart
+}
+
+func (se *SensorExtent) GetYCount() int {
+	return se.YEnd - se.YStart
+}
+
 func (se *SensorExtent) GetPixelCount() int {
-	return (se.XEnd - se.XStart) * (se.YEnd - se.YStart)
+	return se.GetXCount() * se.GetYCount()
 }
 
 // Sensor is the interface for objects that can record measured

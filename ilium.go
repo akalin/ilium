@@ -6,8 +6,12 @@ import "io/ioutil"
 import "math/rand"
 import "time"
 import "os"
+import "runtime"
 
 func main() {
+	numRenderJobs := runtime.NumCPU()
+	runtime.GOMAXPROCS(numRenderJobs)
+
 	seed := time.Now().UTC().UnixNano()
 	rng := rand.New(rand.NewSource(seed))
 
@@ -30,6 +34,6 @@ func main() {
 		scene := MakeScene(sceneConfig)
 		rendererConfig := config["renderer"].(map[string]interface{})
 		renderer := MakeRenderer(rendererConfig)
-		renderer.Render(rng, &scene)
+		renderer.Render(numRenderJobs, rng, &scene)
 	}
 }
