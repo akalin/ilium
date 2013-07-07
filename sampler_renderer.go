@@ -18,36 +18,86 @@ func MakeSamplerRenderer(config map[string]interface{}) *SamplerRenderer {
 	return &SamplerRenderer{samplerConfig, surfaceIntegrator}
 }
 
-func (sr *SamplerRenderer) renderWithSensor(
-	rng *rand.Rand, scene *Scene, sensor Sensor) {
-	sampler := MakeSampler(sensor.GetSampleRange(), sr.samplerConfig)
-	var Li Spectrum
-	numBlocks := sampler.GetNumBlocks()
+type processedSample struct {
+	sensorSample SensorSample
+	_Li          Spectrum
+}
+
+func processSamples(
+	rng *rand.Rand, sampler Sampler, scene *Scene, sensor Sensor,
+	surfaceIntegrator SurfaceIntegrator,
+	inputCh chan int, outputCh chan []processedSample) {
+	var ray Ray
 	sampleStorage := make([]Sample, sampler.GetMaximumBlockSize())
-	for i := 0; i < numBlocks; i++ {
+	for i := range inputCh {
 		samples := sampler.GenerateSamples(i, sampleStorage, rng)
-		fmt.Printf("Processing block %d/%d\n", i+1, numBlocks)
-		for _, sample := range samples {
-			ray := sensor.GenerateRay(sample.SensorSample)
-			Li = Spectrum{}
-			sr.surfaceIntegrator.ComputeLi(
-				rng, scene, ray, sample, &Li)
-			if !Li.IsValid() {
+		processedSamples := make([]processedSample, len(samples))
+		for i, sample := range samples {
+			processedSamples[i].sensorSample =
+				sample.SensorSample
+			ray = sensor.GenerateRay(sample.SensorSample)
+			surfaceIntegrator.ComputeLi(
+				rng, scene, ray, sample,
+				&processedSamples[i]._Li)
+			if !processedSamples[i]._Li.IsValid() {
 				fmt.Printf(
 					"Invalid Li %v computed for "+
 						"sample %v and ray %v\n",
-					Li, sample, ray)
-				Li = Spectrum{}
+					processedSamples[i]._Li, sample, ray)
+				processedSamples[i]._Li = Spectrum{}
 			}
-			sensor.RecordSample(sample.SensorSample, Li)
+		}
+		outputCh <- processedSamples
+	}
+}
+
+func (sr *SamplerRenderer) renderWithSensor(
+	numRenderJobs int, globalRng *rand.Rand, scene *Scene, sensor Sensor) {
+	sampler := MakeSampler(sensor.GetSampleRange(), sr.samplerConfig)
+	blockCh := make(chan int, numRenderJobs)
+	defer close(blockCh)
+	processedSampleCh := make(chan []processedSample, numRenderJobs)
+	for i := 0; i < numRenderJobs; i++ {
+		workerRng := rand.New(rand.NewSource(globalRng.Int63()))
+		go processSamples(
+			workerRng, sampler, scene, sensor,
+			sr.surfaceIntegrator, blockCh, processedSampleCh)
+	}
+
+	recordSamples := func(processedSamples []processedSample) {
+		for _, ps := range processedSamples {
+			sensor.RecordSample(ps.sensorSample, ps._Li)
 		}
 	}
+
+	outstanding := 0
+	numBlocks := sampler.GetNumBlocks()
+	for i := 0; i < numBlocks; {
+		select {
+		case processedSamples := <-processedSampleCh:
+			outstanding--
+			recordSamples(processedSamples)
+		default:
+			fmt.Printf("Processing block %d/%d\n", i+1, numBlocks)
+			outstanding++
+			blockCh <- i
+			i++
+		}
+	}
+
+	for outstanding > 0 {
+		processedSamples := <-processedSampleCh
+		outstanding--
+		recordSamples(processedSamples)
+	}
+
 	sensor.EmitSignal()
 }
 
-func (sr *SamplerRenderer) Render(rng *rand.Rand, scene *Scene) {
+func (sr *SamplerRenderer) Render(
+	numRenderJobs int, rng *rand.Rand, scene *Scene) {
 	sensors := scene.Aggregate.GetSensors()
 	for _, sensor := range sensors {
-		sr.renderWithSensor(rng, scene, sensor)
+		sr.renderWithSensor(numRenderJobs, rng, scene, sensor)
 	}
 }

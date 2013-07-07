@@ -5,8 +5,12 @@ import "io/ioutil"
 import "math/rand"
 import "time"
 import "os"
+import "runtime"
 
 func main() {
+	numRenderJobs := runtime.NumCPU()
+	runtime.GOMAXPROCS(numRenderJobs)
+
 	configBytes, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
 		panic(err)
@@ -22,5 +26,5 @@ func main() {
 	renderer := MakeRenderer(rendererConfig)
 	seed := time.Now().UTC().UnixNano()
 	rand := rand.New(rand.NewSource(seed))
-	renderer.Render(rand, &scene)
+	renderer.Render(numRenderJobs, rand, &scene)
 }
