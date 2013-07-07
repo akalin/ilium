@@ -27,6 +27,13 @@ func MakeSpectrumFromConfig(config map[string]interface{}) Spectrum {
 	}
 }
 
+func (s *Spectrum) ToRGB() (r, g, b float32) {
+	r = s.r
+	g = s.g
+	b = s.b
+	return
+}
+
 func (out *Spectrum) Add(s1, s2 *Spectrum) {
 	out.r = s1.r + s2.r
 	out.g = s1.g + s2.g

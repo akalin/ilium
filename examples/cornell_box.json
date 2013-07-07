@@ -94,16 +94,21 @@
           }
         },
         {
-          "_comment": "Radiance meters.",
+          "_comment": "Sensors.",
           "type": "PointPrimitive",
           "position": [0, -0.5, 0],
           "sensors": [
             {
               "_comment": "Towards back wall.",
-              "type": "RadianceMeter",
+              "type": "PinholeCamera",
+              "outputPath": "/tmp/cornell_box.png",
               "position": [0, -0.5, 0],
               "target":   [0, 1,    0],
-              "sampleCount": 32
+              "up":       [0, 0,    1],
+              "fov": 82,
+              "width": 320,
+              "height": 240,
+              "samplesPerPixel": 32
             }
           ]
         }

@@ -3,6 +3,20 @@ package main
 import "math"
 import "math/rand"
 
+func maxInt(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
+func minInt(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
 // float32 equivalents of math functions.
 
 func absFloat32(x float32) float32 {
@@ -30,6 +44,10 @@ func sincosFloat32(x float32) (sin, cos float32) {
 
 func sqrtFloat32(x float32) float32 {
 	return float32(math.Sqrt(float64(x)))
+}
+
+func tanFloat32(x float32) float32 {
+	return float32(math.Tan(float64(x)))
 }
 
 // Avoid math.rand.Rand.Float32() since it's buggy; see
