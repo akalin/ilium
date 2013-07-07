@@ -1,0 +1,122 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_comment": "Top light.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, 0.0, 1000 ],
+            "radius": 997.5
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.0, "g": 0.0,  "b": 0.0  },
+            "emission": { "type": "rgb", "r": 1.6, "g": 1.47, "b": 1.29 }
+          }
+        },
+        {
+          "_comment": "Back wall.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, 1000, 0.0 ],
+            "radius": 995.5
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
+            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          }
+        },
+        {
+          "_comment": "Left wall.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ -1000, 3.5, 0.0 ],
+            "radius": 998.1
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.9, "g": 0.5, "b": 0.5 },
+            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          }
+        },
+        {
+          "_comment": "Right wall.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 1000, 3.5, 0.0 ],
+            "radius": 998.1
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.9 },
+            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          }
+        },
+        {
+          "_comment": "Floor.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, 3.5, -1000 ],
+            "radius": 999.5
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
+            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          }
+        },
+        {
+          "_comment": "Front wall.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, -1000, 0.0 ],
+            "radius": 997.5
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
+            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          }
+        },
+        {
+          "_comment": "Radiance meters.",
+          "type": "PointPrimitive",
+          "position": [0, -0.5, 0],
+          "sensors": [
+            {
+              "_comment": "Towards back wall.",
+              "type": "RadianceMeter",
+              "position": [0, -0.5, 0],
+              "target":   [0, 1,    0],
+              "sampleCount": 32
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "russianRouletteStartIndex": 10,
+    "maxEdgeCount": 10,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
