@@ -94,15 +94,20 @@
           }
         },
         {
-          "_comment": "Radiance meters.",
+          "_comment": "Sensors.",
           "type": "PointPrimitive",
           "location": [0, -0.5, 0],
           "sensors": [
             {
               "_comment": "Towards back wall.",
-              "type": "RadianceMeter",
+              "type": "PerspectiveCamera",
+              "outputPath": "/tmp/cornell_box.png",
               "origin": [0, -0.5, 0],
-              "target": [0, 1,    0]
+              "topLeft":    [ -1.3, 1.0,  1.0 ],
+              "topRight":   [  1.3, 1.0,  1.0 ],
+              "bottomLeft": [ -1.3, 1.0, -1.0 ],
+              "width": 320,
+              "height": 240
             }
           ]
         }

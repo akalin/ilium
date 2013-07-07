@@ -24,6 +24,8 @@ func MakeSensor(config map[string]interface{}) Sensor {
 	switch sensorType {
 	case "RadianceMeter":
 		return MakeRadianceMeter(config)
+	case "PerspectiveCamera":
+		return MakePerspectiveCamera(config)
 	default:
 		panic("unknown sensor type " + sensorType)
 	}
