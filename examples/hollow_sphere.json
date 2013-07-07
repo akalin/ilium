@@ -33,6 +33,20 @@
             "emission": { "type": "rgb", "r": 0.1, "g": 0.2, "b": 0.4 },
             "color":    { "type": "rgb", "r": 0.8, "g": 0.6, "b": 0.2 }
           }
+        },
+        {
+          "_comment": "Radiance meters.",
+          "type": "PointPrimitive",
+          "position": [0, -0.5, 0],
+          "sensors": [
+            {
+              "_comment": "Towards hollow sphere.",
+              "type": "RadianceMeter",
+              "position": [0, -0.5, 0],
+              "target":   [0, 1,    0],
+              "sampleCount": 32
+            }
+          ]
         }
       ]
     }
@@ -44,12 +58,6 @@
     "maxEdgeCount": 10,
     "sampler": {
       "type": "IndependentSampler"
-    },
-    "sensor": {
-      "type": "RadianceMeter",
-      "position": [0, -0.5, 0],
-      "target":   [0, 1,    0],
-      "sampleCount": 32
     }
   }
 }
