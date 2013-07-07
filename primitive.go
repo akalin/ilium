@@ -20,6 +20,7 @@ func (i *Intersection) ComputeLe(wo Vector3) Spectrum {
 type Primitive interface {
 	// intersection can be nil.
 	Intersect(ray *Ray, intersection *Intersection) bool
+	GetSensors() []Sensor
 }
 
 func MakePrimitive(config map[string]interface{}) Primitive {
@@ -29,6 +30,8 @@ func MakePrimitive(config map[string]interface{}) Primitive {
 		return MakePrimitiveList(config)
 	case "GeometricPrimitive":
 		return MakeGeometricPrimitive(config)
+	case "PointPrimitive":
+		return MakePointPrimitive(config)
 	default:
 		panic("unknown primitive type " + primitiveType)
 	}

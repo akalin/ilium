@@ -20,6 +20,8 @@ func MakeSpectrumFromConfig(config map[string]interface{}) Spectrum {
 		g := float32(config["g"].(float64))
 		b := float32(config["b"].(float64))
 		return MakeRGBSpectrum(r, g, b)
+	case "black":
+		return Spectrum{}
 	default:
 		panic("unknown spectrum type " + spectrumType)
 	}
