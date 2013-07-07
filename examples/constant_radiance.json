@@ -1,0 +1,77 @@
+{
+  "_comment" : [
+    "To get a closed scene with constant radiance, it suffices to set ",
+    "the reflectance of all surfaces to 1 - L_e(x, v) / L (with ",
+    "0 < L_e(x, v) <= L). In this case, we set L to be 0.5 and L_e ",
+    "to be constant, so the reflectance is also constant."
+  ],
+
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_comment": "Hollow sphere.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, -0.5, 0.0 ],
+            "radius": 10,
+            "flipNormal": true
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 },
+            "rho":      { "type": "rgb", "r": 0.9,  "g": 0.7,  "b": 0.4 }
+          }
+        },
+        {
+          "_comment": "Off-center light.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "center": [ 0.0, 2.5, 0.0 ],
+            "radius": 1
+          },
+          "material": {
+            "type": "Diffuse",
+            "samplingMethod": "cosine",
+            "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 },
+            "rho":      { "type": "rgb", "r": 0.5,  "g": 0.3,  "b": 0.1  }
+          }
+        },
+        {
+          "_comment": "Radiance meters.",
+          "type": "PointPrimitive",
+          "position": [0, -0.5, 0],
+          "sensors": [
+            {
+              "_comment": "Towards off-center light.",
+              "type": "RadianceMeter",
+              "position": [0, -0.5, 0],
+              "target":   [0, 1,    0],
+              "sampleCount": 32
+            },
+            {
+              "_comment": "Towards hollow sphere.",
+              "type": "RadianceMeter",
+              "position": [0, -0.5, 0],
+              "target":   [0, -1,   0],
+              "sampleCount": 32
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "russianRouletteStartIndex": 10,
+    "maxEdgeCount": 10,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
