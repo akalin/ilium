@@ -6,31 +6,29 @@ import "math/rand"
 // A SamplerRenderer uses samples from its sampler with its surface
 // integrator to record incident radiance on its sensor.
 type SamplerRenderer struct {
-	sampler           Sampler
+	samplerConfig     map[string]interface{}
 	surfaceIntegrator SurfaceIntegrator
-	sensor            Sensor
 }
 
 func MakeSamplerRenderer(config map[string]interface{}) *SamplerRenderer {
 	samplerConfig := config["sampler"].(map[string]interface{})
-	sensorConfig := config["sensor"].(map[string]interface{})
-	sensor := MakeSensor(sensorConfig)
-	sampler := MakeSampler(sensor.GetSampleRange(), samplerConfig)
 	surfaceIntegratorConfig :=
 		config["surfaceIntegrator"].(map[string]interface{})
 	surfaceIntegrator := MakeSurfaceIntegrator(surfaceIntegratorConfig)
-	return &SamplerRenderer{sampler, surfaceIntegrator, sensor}
+	return &SamplerRenderer{samplerConfig, surfaceIntegrator}
 }
 
-func (sr *SamplerRenderer) Render(rng *rand.Rand, scene *Scene) {
+func (sr *SamplerRenderer) renderWithSensor(
+	rng *rand.Rand, scene *Scene, sensor Sensor) {
+	sampler := MakeSampler(sensor.GetSampleRange(), sr.samplerConfig)
 	var Li Spectrum
-	numBlocks := sr.sampler.GetNumBlocks()
-	sampleStorage := make([]Sample, sr.sampler.GetMaximumBlockSize())
+	numBlocks := sampler.GetNumBlocks()
+	sampleStorage := make([]Sample, sampler.GetMaximumBlockSize())
 	for i := 0; i < numBlocks; i++ {
-		samples := sr.sampler.GenerateSamples(i, sampleStorage, rng)
+		samples := sampler.GenerateSamples(i, sampleStorage, rng)
 		fmt.Printf("Processing block %d/%d\n", i+1, numBlocks)
 		for _, sample := range samples {
-			ray := sr.sensor.GenerateRay(sample.SensorSample)
+			ray := sensor.GenerateRay(sample.SensorSample)
 			Li = Spectrum{}
 			sr.surfaceIntegrator.ComputeLi(
 				rng, scene, ray, sample, &Li)
@@ -41,8 +39,15 @@ func (sr *SamplerRenderer) Render(rng *rand.Rand, scene *Scene) {
 					Li, sample, ray)
 				Li = Spectrum{}
 			}
-			sr.sensor.RecordSample(sample.SensorSample, Li)
+			sensor.RecordSample(sample.SensorSample, Li)
 		}
 	}
-	sr.sensor.EmitSignal()
+	sensor.EmitSignal()
+}
+
+func (sr *SamplerRenderer) Render(rng *rand.Rand, scene *Scene) {
+	sensors := scene.Aggregate.GetSensors()
+	for _, sensor := range sensors {
+		sr.renderWithSensor(rng, scene, sensor)
+	}
 }

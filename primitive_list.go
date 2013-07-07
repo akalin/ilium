@@ -16,6 +16,14 @@ func (pl *PrimitiveList) Intersect(ray *Ray, intersection *Intersection) bool {
 	return found
 }
 
+func (pl *PrimitiveList) GetSensors() []Sensor {
+	sensors := []Sensor{}
+	for _, primitive := range pl.primitives {
+		sensors = append(sensors, primitive.GetSensors()...)
+	}
+	return sensors
+}
+
 func MakePrimitiveList(config map[string]interface{}) *PrimitiveList {
 	primitiveConfigs := config["primitives"].([]interface{})
 	primitives := make([]Primitive, len(primitiveConfigs))
