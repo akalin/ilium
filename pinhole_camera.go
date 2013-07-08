@@ -65,11 +65,31 @@ func MakePinholeCamera(config map[string]interface{}) *PinholeCamera {
 	backFocalLength := 0.5 * maxDimension / tanFloat32(0.5*fovRadians)
 
 	samplesPerPixel := int(config["samplesPerPixel"].(float64))
-	xStart := 0
-	xEnd := width
+	var xStart int
+	if xStartConfig, ok := config["xStart"].(float64); ok {
+		xStart = int(xStartConfig)
+	} else {
+		xStart = 0
+	}
+	var xEnd int
+	if xEndConfig, ok := config["xEnd"].(float64); ok {
+		xEnd = int(xEndConfig)
+	} else {
+		xEnd = width
+	}
 	xCount := xEnd - xStart
-	yStart := 0
-	yEnd := height
+	var yStart int
+	if yStartConfig, ok := config["yStart"].(float64); ok {
+		yStart = int(yStartConfig)
+	} else {
+		yStart = 0
+	}
+	var yEnd int
+	if yEndConfig, ok := config["yEnd"].(float64); ok {
+		yEnd = int(yEndConfig)
+	} else {
+		yEnd = height
+	}
 	yCount := yEnd - yStart
 	pixels := make([]pixel, xCount*yCount)
 	return &PinholeCamera{
