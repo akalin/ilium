@@ -8,12 +8,26 @@ import "math/rand"
 import "time"
 import "os"
 import "runtime"
+import "runtime/pprof"
 
 func main() {
 	numRenderJobs := flag.Int(
 		"j", runtime.NumCPU(), "how many render jobs to spawn")
 
+	profilePath := flag.String(
+		"p", "", "if non-empty, path to write the cpu profile to")
+
 	flag.Parse()
+
+	if len(*profilePath) > 0 {
+		f, err := os.Create(*profilePath)
+		if err != nil {
+			panic(err)
+		}
+
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	runtime.GOMAXPROCS(*numRenderJobs)
 
