@@ -39,11 +39,31 @@ func MakePerspectiveCamera(config map[string]interface{}) *PerspectiveCamera {
 	yHat.GetOffset(&topLeft, &bottomLeft)
 	width := int(config["width"].(float64))
 	height := int(config["height"].(float64))
-	xStart := 0
-	xEnd := width
+	var xStart int
+	if xStartConfig, ok := config["xStart"].(float64); ok {
+		xStart = int(xStartConfig)
+	} else {
+		xStart = 0
+	}
+	var xEnd int
+	if xEndConfig, ok := config["xEnd"].(float64); ok {
+		xEnd = int(xEndConfig)
+	} else {
+		xEnd = width
+	}
 	xCount := xEnd - xStart
-	yStart := 0
-	yEnd := height
+	var yStart int
+	if yStartConfig, ok := config["yStart"].(float64); ok {
+		yStart = int(yStartConfig)
+	} else {
+		yStart = 0
+	}
+	var yEnd int
+	if yEndConfig, ok := config["yEnd"].(float64); ok {
+		yEnd = int(yEndConfig)
+	} else {
+		yEnd = height
+	}
 	yCount := yEnd - yStart
 	weightedLi := make([]weightedLi, xCount*yCount)
 	image := image.NewNRGBA(image.Rect(0, 0, width, height))
