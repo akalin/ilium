@@ -9,6 +9,8 @@ func MakeShape(config map[string]interface{}) Shape {
 	switch shapeType {
 	case "Sphere":
 		return MakeSphere(config)
+	case "Rect":
+		return MakeRect(config)
 	default:
 		panic("unknown shape type " + shapeType)
 	}
