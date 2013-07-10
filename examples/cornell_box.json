@@ -70,9 +70,15 @@
           "_comment": "Right wall.",
           "type": "GeometricPrimitive",
           "shape": {
-            "type": "Sphere",
-            "center": [ 1000, 3.5, 0.0 ],
-            "radius": 998.1
+            "type": "Rect",
+            "origin": [ 1.9, -2.5, -0.5 ],
+            "xHat": [ 0, 1, 0 ],
+            "yHat": [ 0, 0, 1 ],
+            "zHat": [ -1, 0, 0 ],
+            "xMin": 0.0,
+            "yMin": 0.0,
+            "xMax": 7.0,
+            "yMax": 3.0
           },
           "material": {
             "type": "Diffuse",
