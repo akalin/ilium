@@ -79,9 +79,15 @@
           "_comment": "Floor.",
           "type": "GeometricPrimitive",
           "shape": {
-            "type": "Sphere",
-            "center": [ 0.0, 3.5, -1000 ],
-            "radius": 999.5
+            "type": "Rect",
+            "origin": [ -1.9, 4.5, -0.5 ],
+            "xHat": [ 1,  0, 0 ],
+            "yHat": [ 0, -1, 0 ],
+            "zHat": [ 0,  0, 1 ],
+            "xMin": 0.0,
+            "yMin": 0.0,
+            "xMax": 3.8,
+            "yMax": 7.0
           },
           "material": {
             "type": "Diffuse",
