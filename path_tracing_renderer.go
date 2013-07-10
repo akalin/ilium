@@ -29,28 +29,52 @@ func MakePathTracingRenderer(
 
 type pathTracingBlock struct {
 	blockNumber int
+	blockExtent SensorExtent
+}
+
+type pathRecord struct {
 	x, y        int
+	_WeLiDivPdf Spectrum
 }
 
 type processedPathTracingBlock struct {
-	block        pathTracingBlock
-	_WeLiDivPdfs []Spectrum
+	block       pathTracingBlock
+	pathRecords []pathRecord
+}
+
+func (ptr *PathTracingRenderer) processPixel(
+	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
+	samples []Sample, pathRecords []pathRecord) {
+	ptr.sampler.GenerateSamples(samples, rng)
+	for i := 0; i < len(samples); i++ {
+		ptr.pathTracer.SampleSensorPath(
+			rng, scene, sensor, x, y,
+			samples[i], &pathRecords[i]._WeLiDivPdf)
+	}
 }
 
 func (ptr *PathTracingRenderer) processBlocks(
-	rng *rand.Rand, scene *Scene, sensor Sensor,
+	rng *rand.Rand, scene *Scene, sensor Sensor, maxSampleCount int,
 	inputCh chan pathTracingBlock,
 	outputCh chan processedPathTracingBlock) {
-	sensorSamples := make([]Sample, sensor.GetExtent().SamplesPerXY)
+	sensorSampleStorage := make([]Sample, maxSampleCount)
 	for block := range inputCh {
-		ptr.sampler.GenerateSamples(sensorSamples, rng)
-		WeLiDivPdfs := make([]Spectrum, len(sensorSamples))
-		for i := 0; i < len(sensorSamples); i++ {
-			ptr.pathTracer.SampleSensorPath(
-				rng, scene, sensor, block.x, block.y,
-				sensorSamples[i], &WeLiDivPdfs[i])
+		extent := block.blockExtent
+		sensorSamples := sensorSampleStorage[:extent.SamplesPerXY]
+		pathRecords := make([]pathRecord, extent.GetSampleCount())
+		i := 0
+		for x := extent.XStart; x < extent.XEnd; x++ {
+			for y := extent.YStart; y < extent.YEnd; y++ {
+				start := i * extent.SamplesPerXY
+				end := (i + 1) * extent.SamplesPerXY
+				pixelRecords := pathRecords[start:end]
+				ptr.processPixel(
+					rng, scene, sensor, x, y,
+					sensorSamples, pixelRecords)
+				i++
+			}
 		}
-		outputCh <- processedPathTracingBlock{block, WeLiDivPdfs}
+		outputCh <- processedPathTracingBlock{block, pathRecords}
 	}
 }
 
@@ -59,46 +83,47 @@ func (ptr *PathTracingRenderer) processSensor(
 	blockCh := make(chan pathTracingBlock, numRenderJobs)
 	defer close(blockCh)
 	processedBlockCh := make(chan processedPathTracingBlock, numRenderJobs)
+	xBlockSize := 32
+	yBlockSize := 32
+	sBlockSize := 32
+	sensorExtent := sensor.GetExtent()
+	blocks := sensorExtent.Split(xBlockSize, yBlockSize, sBlockSize)
 	for i := 0; i < numRenderJobs; i++ {
 		workerRng := rand.New(rand.NewSource(rng.Int63()))
 		go ptr.processBlocks(
-			workerRng, scene, sensor, blockCh, processedBlockCh)
+			workerRng, scene, sensor, sBlockSize,
+			blockCh, processedBlockCh)
 	}
 
-	sensorExtent := sensor.GetExtent()
-	numBlocks := sensorExtent.GetPixelCount()
-	recordWeLiDivPdfSamples := func(
-		processedBlock processedPathTracingBlock) {
+	numBlocks := len(blocks)
+	recordBlockSamples := func(processedBlock processedPathTracingBlock) {
 		block := processedBlock.block
 		fmt.Printf("Finished block %d/%d\n",
 			block.blockNumber+1, numBlocks)
-		for i := 0; i < len(processedBlock._WeLiDivPdfs); i++ {
+		pathRecords := processedBlock.pathRecords
+		for i := 0; i < len(pathRecords); i++ {
 			sensor.RecordContribution(
-				block.x, block.y,
-				processedBlock._WeLiDivPdfs[i])
+				pathRecords[i].x, pathRecords[i].y,
+				pathRecords[i]._WeLiDivPdf)
 		}
 	}
 
 	processed := 0
-	xCount := sensorExtent.GetXCount()
-	for blockNumber := 0; blockNumber < numBlocks; {
+	for i := 0; i < len(blocks); {
 		select {
 		case processedBlock := <-processedBlockCh:
-			recordWeLiDivPdfSamples(processedBlock)
+			recordBlockSamples(processedBlock)
 			processed++
 		default:
-			fmt.Printf("Queueing block %d/%d\n",
-				blockNumber+1, numBlocks)
-			x := sensorExtent.XStart + blockNumber%xCount
-			y := sensorExtent.YStart + blockNumber/xCount
-			blockCh <- pathTracingBlock{blockNumber, x, y}
-			blockNumber++
+			fmt.Printf("Queueing block %d/%d\n", i+1, numBlocks)
+			blockCh <- pathTracingBlock{i, blocks[i]}
+			i++
 		}
 	}
 
 	for processed < numBlocks {
 		processedBlock := <-processedBlockCh
-		recordWeLiDivPdfSamples(processedBlock)
+		recordBlockSamples(processedBlock)
 		processed++
 	}
 

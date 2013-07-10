@@ -16,6 +16,49 @@ func (se *SensorExtent) GetPixelCount() int {
 	return se.GetXCount() * se.GetYCount()
 }
 
+func (se *SensorExtent) GetSampleCount() int {
+	return se.GetPixelCount() * se.SamplesPerXY
+}
+
+func (se *SensorExtent) Split(
+	xBlockSize, yBlockSize, sBlockSize int) []SensorExtent {
+	xStart := se.XStart
+	xEnd := se.XEnd
+	yStart := se.YStart
+	yEnd := se.YEnd
+	sStart := 0
+	sEnd := se.SamplesPerXY
+
+	xCount := xEnd - xStart
+	yCount := yEnd - yStart
+	sCount := sEnd - sStart
+
+	xBlockCount := (xCount + xBlockSize - 1) / xBlockSize
+	yBlockCount := (yCount + yBlockSize - 1) / yBlockSize
+	sBlockCount := (sCount + sBlockSize - 1) / sBlockSize
+
+	blocks := make([]SensorExtent, xBlockCount*yBlockCount*sBlockCount)
+
+	i := 0
+	for y := yStart; y < yEnd; y += yBlockSize {
+		blockYEnd := minInt(yEnd, y+yBlockSize)
+		for x := xStart; x < xEnd; x += xBlockSize {
+			blockXEnd := minInt(xEnd, x+xBlockSize)
+			for s := sStart; s < sEnd; s += sBlockSize {
+				blockSCount := minInt(sBlockSize, sEnd-s)
+				blocks[i] = SensorExtent{
+					x, blockXEnd,
+					y, blockYEnd,
+					blockSCount,
+				}
+				i++
+			}
+		}
+	}
+
+	return blocks
+}
+
 // Sensor is the interface for objects that can record measured
 // radiometric quantities and convert them to a signal (e.g.,
 // cameras).
