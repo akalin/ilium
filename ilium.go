@@ -1,6 +1,7 @@
 package main
 
 import "encoding/json"
+import "flag"
 import "fmt"
 import "io/ioutil"
 import "math/rand"
@@ -9,18 +10,29 @@ import "os"
 import "runtime"
 
 func main() {
-	numRenderJobs := runtime.NumCPU()
-	runtime.GOMAXPROCS(numRenderJobs)
+	numRenderJobs := flag.Int(
+		"j", runtime.NumCPU(), "how many render jobs to spawn")
+
+	flag.Parse()
+
+	runtime.GOMAXPROCS(*numRenderJobs)
 
 	seed := time.Now().UTC().UnixNano()
 	rng := rand.New(rand.NewSource(seed))
 
-	nArgs := len(os.Args)
-	for i := 1; i < nArgs; i++ {
-		inputPath := os.Args[i]
+	if flag.NArg() < 1 {
+		fmt.Fprintf(
+			os.Stderr, "%s [options] [scene.json...]\n",
+			os.Args[0])
+		flag.PrintDefaults()
+		os.Exit(-1)
+	}
+
+	for i := 0; i < flag.NArg(); i++ {
+		inputPath := flag.Arg(i)
 		fmt.Printf(
 			"Processing %s (%d/%d)...\n",
-			inputPath, i, nArgs-1)
+			inputPath, i+1, flag.NArg())
 		configBytes, err := ioutil.ReadFile(inputPath)
 		if err != nil {
 			panic(err)
@@ -34,6 +46,6 @@ func main() {
 		scene := MakeScene(sceneConfig)
 		rendererConfig := config["renderer"].(map[string]interface{})
 		renderer := MakeRenderer(rendererConfig)
-		renderer.Render(numRenderJobs, rng, &scene)
+		renderer.Render(*numRenderJobs, rng, &scene)
 	}
 }
