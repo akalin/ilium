@@ -1,5 +1,6 @@
 package main
 
+import "encoding/binary"
 import "errors"
 import "image"
 import "image/color"
@@ -49,6 +50,8 @@ func (im *Image) WriteToFile(outputPath string) error {
 	switch extension {
 	case ".png":
 		return im.writeToPng(outputPath)
+	case ".bin":
+		return im.writeToBin(outputPath)
 	default:
 		return errors.New("Unknown extension: " + extension)
 	}
@@ -94,6 +97,36 @@ func (im *Image) writeToPng(outputPath string) error {
 		return err
 	}
 	if err = png.Encode(f, image); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (im *Image) writeToBin(outputPath string) error {
+	f, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	order := binary.LittleEndian
+	if err = binary.Write(f, order, int64(im.Width)); err != nil {
+		return err
+	}
+	if err = binary.Write(f, order, int64(im.Height)); err != nil {
+		return err
+	}
+	if err = binary.Write(f, order, int64(im.XStart)); err != nil {
+		return err
+	}
+	if err = binary.Write(f, order, int64(im.XCount)); err != nil {
+		return err
+	}
+	if err = binary.Write(f, order, int64(im.YStart)); err != nil {
+		return err
+	}
+	if err = binary.Write(f, order, int64(im.YCount)); err != nil {
+		return err
+	}
+	if err = binary.Write(f, order, im.weightedLi); err != nil {
 		return err
 	}
 	return nil
