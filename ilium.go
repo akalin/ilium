@@ -28,12 +28,35 @@ func processSceneFile(rng *rand.Rand, scenePath string, numRenderJobs int) {
 	renderer.Render(numRenderJobs, rng, &scene)
 }
 
+func processBinFile(binPath, outputPath string) {
+	image, err := ReadImageFromBin(binPath)
+	if err != nil {
+		panic(err)
+	}
+	if err = image.WriteToFile(outputPath); err != nil {
+		panic(err)
+	}
+}
+
+func onArgError() {
+	fmt.Fprintf(
+		os.Stderr, "%s [options] [scene.json...]\n", os.Args[0])
+	fmt.Fprintf(
+		os.Stderr, "%s -o output.ext [image.bin...]\n", os.Args[0])
+	flag.PrintDefaults()
+	os.Exit(-1)
+}
+
 func main() {
 	numRenderJobs := flag.Int(
 		"j", runtime.NumCPU(), "how many render jobs to spawn")
 
 	profilePath := flag.String(
 		"p", "", "if non-empty, path to write the cpu profile to")
+
+	outputPath := flag.String(
+		"o", "", "if non-empty, path to write the output to "+
+			"(only applies when processing a .bin file)")
 
 	flag.Parse()
 
@@ -58,24 +81,33 @@ func main() {
 	rng := rand.New(rand.NewSource(seed))
 
 	if flag.NArg() < 1 {
-		fmt.Fprintf(
-			os.Stderr, "%s [options] [scene.json...]\n",
-			os.Args[0])
-		flag.PrintDefaults()
-		os.Exit(-1)
+		onArgError()
 	}
 
-	for i := 0; i < flag.NArg(); i++ {
-		inputPath := flag.Arg(i)
-		fmt.Printf(
-			"Processing %s (%d/%d)...\n",
-			inputPath, i+1, flag.NArg())
-		extension := filepath.Ext(inputPath)
-		switch extension {
-		case ".json":
+	firstInputPath := flag.Arg(0)
+	extension := filepath.Ext(firstInputPath)
+
+	switch extension {
+	case ".json":
+		for i := 0; i < flag.NArg(); i++ {
+			inputPath := flag.Arg(i)
+			fmt.Printf(
+				"Processing %s (%d/%d)...\n",
+				inputPath, i+1, flag.NArg())
 			processSceneFile(rng, inputPath, *numRenderJobs)
-		default:
-			panic("Unknown extension: " + extension)
 		}
+	case ".bin":
+		if len(*outputPath) == 0 {
+			onArgError()
+		}
+		for i := 0; i < flag.NArg(); i++ {
+			inputPath := flag.Arg(i)
+			fmt.Printf(
+				"Processing %s (%d/%d)...\n",
+				inputPath, i+1, flag.NArg())
+			processBinFile(inputPath, *outputPath)
+		}
+	default:
+		panic("Unknown extension: " + extension)
 	}
 }
