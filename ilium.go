@@ -7,8 +7,28 @@ import "io/ioutil"
 import "math/rand"
 import "time"
 import "os"
+import "path/filepath"
 import "runtime"
 import "runtime/pprof"
+
+func processSceneFile(scenePath string, numRenderJobs int) {
+	configBytes, err := ioutil.ReadFile(scenePath)
+	if err != nil {
+		panic(err)
+	}
+	var config map[string]interface{}
+	err = json.Unmarshal(configBytes, &config)
+	if err != nil {
+		panic(err)
+	}
+	sceneConfig := config["scene"].(map[string]interface{})
+	scene := MakeScene(sceneConfig)
+	rendererConfig := config["renderer"].(map[string]interface{})
+	renderer := MakeRenderer(rendererConfig)
+	seed := time.Now().UTC().UnixNano()
+	rand := rand.New(rand.NewSource(seed))
+	renderer.Render(numRenderJobs, rand, &scene)
+}
 
 func main() {
 	numRenderJobs := flag.Int(
@@ -38,20 +58,12 @@ func main() {
 		os.Exit(-1)
 	}
 
-	configBytes, err := ioutil.ReadFile(flag.Arg(0))
-	if err != nil {
-		panic(err)
+	inputPath := flag.Arg(0)
+	extension := filepath.Ext(inputPath)
+	switch extension {
+	case ".json":
+		processSceneFile(inputPath, *numRenderJobs)
+	default:
+		panic("Unknown extension: " + extension)
 	}
-	var config map[string]interface{}
-	err = json.Unmarshal(configBytes, &config)
-	if err != nil {
-		panic(err)
-	}
-	sceneConfig := config["scene"].(map[string]interface{})
-	scene := MakeScene(sceneConfig)
-	rendererConfig := config["renderer"].(map[string]interface{})
-	renderer := MakeRenderer(rendererConfig)
-	seed := time.Now().UTC().UnixNano()
-	rand := rand.New(rand.NewSource(seed))
-	renderer.Render(*numRenderJobs, rand, &scene)
 }
