@@ -6,6 +6,7 @@ import "fmt"
 import "image"
 import "image/color"
 import "image/png"
+import "io"
 import "os"
 import "path/filepath"
 
@@ -14,6 +15,17 @@ type pixel struct {
 	// Keep n as an int to avoid floating point issues when we
 	// increment it.
 	n uint32
+}
+
+func (p *pixel) BinaryRead(r io.Reader) error {
+	if err := p.sum.BinaryRead(r); err != nil {
+		return err
+	}
+	var order = binary.LittleEndian
+	if err := binary.Read(r, order, &p.n); err != nil {
+		return err
+	}
+	return nil
 }
 
 type Image struct {
@@ -37,6 +49,49 @@ func MakeImage(width, height, xStart, xCount, yStart, yCount int) Image {
 		YCount: yCount,
 		pixels: pixels,
 	}
+}
+
+func ReadImageFromBin(inputPath string) (*Image, error) {
+	var order = binary.LittleEndian
+	f, err := os.Open(inputPath)
+	if err != nil {
+		return nil, err
+	}
+	var width, height, xStart, xCount, yStart, yCount int64
+	if err = binary.Read(f, order, &width); err != nil {
+		return nil, err
+	}
+	if err = binary.Read(f, order, &height); err != nil {
+		return nil, err
+	}
+	if err = binary.Read(f, order, &xStart); err != nil {
+		return nil, err
+	}
+	if err = binary.Read(f, order, &xCount); err != nil {
+		return nil, err
+	}
+	if err = binary.Read(f, order, &yStart); err != nil {
+		return nil, err
+	}
+	if err = binary.Read(f, order, &yCount); err != nil {
+		return nil, err
+	}
+	count := xCount * yCount
+	pixels := make([]pixel, count)
+	for i := int64(0); i < count; i++ {
+		if err = pixels[i].BinaryRead(f); err != nil {
+			return nil, err
+		}
+	}
+	return &Image{
+		Width:  int(width),
+		Height: int(height),
+		XStart: int(xStart),
+		XCount: int(xCount),
+		YStart: int(yStart),
+		YCount: int(yCount),
+		pixels: pixels,
+	}, nil
 }
 
 func (im *Image) getPixel(x, y int) *pixel {

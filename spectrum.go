@@ -1,7 +1,24 @@
 package main
 
+import "encoding/binary"
+import "io"
+
 type Spectrum struct {
 	r, g, b float32
+}
+
+func (s *Spectrum) BinaryRead(r io.Reader) error {
+	var order = binary.LittleEndian
+	if err := binary.Read(r, order, &s.r); err != nil {
+		return err
+	}
+	if err := binary.Read(r, order, &s.g); err != nil {
+		return err
+	}
+	if err := binary.Read(r, order, &s.b); err != nil {
+		return err
+	}
+	return nil
 }
 
 func MakeConstantSpectrum(k float32) Spectrum {
