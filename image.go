@@ -1,9 +1,11 @@
 package main
 
+import "errors"
 import "image"
 import "image/color"
 import "image/png"
 import "os"
+import "path/filepath"
 
 type weightedLi struct {
 	_Li    Spectrum
@@ -42,6 +44,16 @@ func (im *Image) RecordSample(x, y int, Li Spectrum) {
 	wl.weight += 1
 }
 
+func (im *Image) WriteToFile(outputPath string) error {
+	extension := filepath.Ext(outputPath)
+	switch extension {
+	case ".png":
+		return im.writeToPng(outputPath)
+	default:
+		return errors.New("Unknown extension: " + extension)
+	}
+}
+
 func scaleRGB(x float32) uint8 {
 	xScaled := int(x * 255)
 	if xScaled < 0 {
@@ -53,7 +65,7 @@ func scaleRGB(x float32) uint8 {
 	return uint8(xScaled)
 }
 
-func (im *Image) WriteToPng(outputPath string) error {
+func (im *Image) writeToPng(outputPath string) error {
 	image := image.NewNRGBA(image.Rect(0, 0, im.Width, im.Height))
 	for k, wl := range im.weightedLi {
 		i := k % im.XCount

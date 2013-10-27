@@ -94,7 +94,7 @@ func (pc *PerspectiveCamera) RecordSample(
 }
 
 func (pc *PerspectiveCamera) EmitSignal() {
-	if err := pc.image.WriteToPng(pc.outputPath); err != nil {
+	if err := pc.image.WriteToFile(pc.outputPath); err != nil {
 		panic(err)
 	}
 }
