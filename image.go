@@ -1,10 +1,12 @@
 package main
 
+import "errors"
 import "fmt"
 import "image"
 import "image/color"
 import "image/png"
 import "os"
+import "path/filepath"
 
 type pixel struct {
 	sum Spectrum
@@ -52,6 +54,16 @@ func (im *Image) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
 	p.n++
 }
 
+func (im *Image) WriteToFile(outputPath string) error {
+	extension := filepath.Ext(outputPath)
+	switch extension {
+	case ".png":
+		return im.writeToPng(outputPath)
+	default:
+		return errors.New("Unknown extension: " + extension)
+	}
+}
+
 func scaleRGB(x float32) uint8 {
 	xScaled := int(x * 255)
 	if xScaled < 0 {
@@ -63,7 +75,7 @@ func scaleRGB(x float32) uint8 {
 	return uint8(xScaled)
 }
 
-func (im *Image) WriteToPng(outputPath string) (err error) {
+func (im *Image) writeToPng(outputPath string) (err error) {
 	image := image.NewNRGBA(image.Rect(0, 0, im.Width, im.Height))
 	xStart := maxInt(im.XStart, 0)
 	xEnd := minInt(im.XStart+im.XCount, im.Width)

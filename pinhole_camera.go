@@ -135,7 +135,7 @@ func (pc *PinholeCamera) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
 
 func (pc *PinholeCamera) EmitSignal() {
 	fmt.Printf("Writing to %s\n", pc.outputPath)
-	if err := pc.image.WriteToPng(pc.outputPath); err != nil {
+	if err := pc.image.WriteToFile(pc.outputPath); err != nil {
 		panic(err)
 	}
 }
