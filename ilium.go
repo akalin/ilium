@@ -28,12 +28,22 @@ func processSceneFile(rng *rand.Rand, scenePath string, numRenderJobs int) {
 	renderer.Render(numRenderJobs, rng, &scene)
 }
 
-func processBinFile(binPath, outputPath string) {
-	image, err := ReadImageFromBin(binPath)
+func processBinFiles(binPaths []string, outputPath string) {
+	firstImage, err := ReadImageFromBin(binPaths[0])
 	if err != nil {
 		panic(err)
 	}
-	if err = image.WriteToFile(outputPath); err != nil {
+	for i, binPath := range binPaths {
+		fmt.Printf(
+			"Processing %s (%d/%d)...\n",
+			binPath, i+1, len(binPaths))
+		image, err := ReadImageFromBin(binPath)
+		if err != nil {
+			panic(err)
+		}
+		firstImage.Merge(image)
+	}
+	if err = firstImage.WriteToFile(outputPath); err != nil {
 		panic(err)
 	}
 }
@@ -100,13 +110,7 @@ func main() {
 		if len(*outputPath) == 0 {
 			onArgError()
 		}
-		for i := 0; i < flag.NArg(); i++ {
-			inputPath := flag.Arg(i)
-			fmt.Printf(
-				"Processing %s (%d/%d)...\n",
-				inputPath, i+1, flag.NArg())
-			processBinFile(inputPath, *outputPath)
-		}
+		processBinFiles(flag.Args(), *outputPath)
 	default:
 		panic("Unknown extension: " + extension)
 	}

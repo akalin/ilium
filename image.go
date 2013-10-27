@@ -28,6 +28,11 @@ func (p *pixel) BinaryRead(r io.Reader) error {
 	return nil
 }
 
+func (p *pixel) Merge(other *pixel) {
+	p.sum.Add(&p.sum, &other.sum)
+	p.n += other.n
+}
+
 type Image struct {
 	Width  int
 	Height int
@@ -108,6 +113,32 @@ func (im *Image) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
 	p := im.getPixel(x, y)
 	p.sum.Add(&p.sum, &WeLiDivPdf)
 	p.n++
+}
+
+func (im *Image) Merge(other *Image) error {
+	if im.Width != other.Width {
+		return errors.New("Width mismatch")
+	}
+	if im.Height != other.Height {
+		return errors.New("Height mismatch")
+	}
+	// TODO(akalin): Handle different crop windows.
+	if im.XStart != other.XStart {
+		return errors.New("XStart mismatch")
+	}
+	if im.XCount != other.XCount {
+		return errors.New("XCount mismatch")
+	}
+	if im.YStart != other.YStart {
+		return errors.New("YStart mismatch")
+	}
+	if im.YCount != other.YCount {
+		return errors.New("YCount mismatch")
+	}
+	for i := 0; i < len(im.pixels); i++ {
+		im.pixels[i].Merge(&other.pixels[i])
+	}
+	return nil
 }
 
 func (im *Image) WriteToFile(outputPath string) error {
