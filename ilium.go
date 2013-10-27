@@ -10,6 +10,7 @@ import "os"
 import "path/filepath"
 import "runtime"
 import "runtime/pprof"
+import "strings"
 
 func processSceneFile(rng *rand.Rand, scenePath string, numRenderJobs int) {
 	configBytes, err := ioutil.ReadFile(scenePath)
@@ -97,8 +98,8 @@ func main() {
 	firstInputPath := flag.Arg(0)
 	extension := filepath.Ext(firstInputPath)
 
-	switch extension {
-	case ".json":
+	switch {
+	case extension == ".json":
 		for i := 0; i < flag.NArg(); i++ {
 			inputPath := flag.Arg(i)
 			fmt.Printf(
@@ -106,7 +107,7 @@ func main() {
 				inputPath, i+1, flag.NArg())
 			processSceneFile(rng, inputPath, *numRenderJobs)
 		}
-	case ".bin":
+	case strings.Contains(firstInputPath, ".bin"):
 		if len(*outputPath) == 0 {
 			onArgError()
 		}
