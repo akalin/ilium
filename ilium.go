@@ -30,12 +30,35 @@ func processSceneFile(scenePath string, numRenderJobs int) {
 	renderer.Render(numRenderJobs, rand, &scene)
 }
 
+func processBinFile(binPath, outputPath string) {
+	image, err := ReadImageFromBin(binPath)
+	if err != nil {
+		panic(err)
+	}
+	if err = image.WriteToFile(outputPath); err != nil {
+		panic(err)
+	}
+}
+
+func onArgError() {
+	fmt.Fprintf(
+		os.Stderr, "%s [options] [scene.json]\n", os.Args[0])
+	fmt.Fprintf(
+		os.Stderr, "%s -o output.ext [image.bin]\n", os.Args[0])
+	flag.PrintDefaults()
+	os.Exit(-1)
+}
+
 func main() {
 	numRenderJobs := flag.Int(
 		"j", runtime.NumCPU(), "how many render jobs to spawn")
 
 	profilePath := flag.String(
 		"p", "", "if non-empty, path to write the cpu profile to")
+
+	outputPath := flag.String(
+		"o", "", "if non-empty, path to write the output to "+
+			"(only applies when processing a .bin file)")
 
 	flag.Parse()
 
@@ -52,10 +75,7 @@ func main() {
 	runtime.GOMAXPROCS(*numRenderJobs)
 
 	if flag.NArg() < 1 {
-		fmt.Fprintf(
-			os.Stderr, "%s [options] [scene.json]\n", os.Args[0])
-		flag.PrintDefaults()
-		os.Exit(-1)
+		onArgError()
 	}
 
 	inputPath := flag.Arg(0)
@@ -63,6 +83,11 @@ func main() {
 	switch extension {
 	case ".json":
 		processSceneFile(inputPath, *numRenderJobs)
+	case ".bin":
+		if len(*outputPath) == 0 {
+			onArgError()
+		}
+		processBinFile(inputPath, *outputPath)
 	default:
 		panic("Unknown extension: " + extension)
 	}
