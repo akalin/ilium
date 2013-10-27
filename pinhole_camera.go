@@ -1,18 +1,7 @@
 package main
 
 import "fmt"
-import "image"
-import "image/color"
-import "image/png"
 import "math"
-import "os"
-
-type pixel struct {
-	sum Spectrum
-	// Keep n as an int to avoid floating point issues when we
-	// increment it.
-	n uint32
-}
 
 type PinholeCamera struct {
 	outputPath      string
@@ -21,14 +10,8 @@ type PinholeCamera struct {
 	leftHat         Vector3
 	upHat           Vector3
 	backFocalLength float32
-	width           int
-	height          int
 	samplesPerPixel int
-	xStart          int
-	xCount          int
-	yStart          int
-	yCount          int
-	pixels          []pixel
+	image           Image
 }
 
 func MakePinholeCamera(config map[string]interface{}) *PinholeCamera {
@@ -91,7 +74,7 @@ func MakePinholeCamera(config map[string]interface{}) *PinholeCamera {
 		yEnd = height
 	}
 	yCount := yEnd - yStart
-	pixels := make([]pixel, xCount*yCount)
+	image := MakeImage(width, height, xStart, xCount, yStart, yCount)
 	return &PinholeCamera{
 		outputPath:      outputPath,
 		position:        position,
@@ -99,23 +82,17 @@ func MakePinholeCamera(config map[string]interface{}) *PinholeCamera {
 		leftHat:         leftHat,
 		upHat:           upHat,
 		backFocalLength: backFocalLength,
-		width:           width,
-		height:          height,
 		samplesPerPixel: samplesPerPixel,
-		xStart:          xStart,
-		xCount:          xCount,
-		yStart:          yStart,
-		yCount:          yCount,
-		pixels:          pixels,
+		image:           image,
 	}
 }
 
 func (pc *PinholeCamera) GetExtent() SensorExtent {
 	return SensorExtent{
-		pc.xStart,
-		pc.xStart + pc.xCount,
-		pc.yStart,
-		pc.yStart + pc.yCount,
+		pc.image.XStart,
+		pc.image.XStart + pc.image.XCount,
+		pc.image.YStart,
+		pc.image.YStart + pc.image.YCount,
 		pc.samplesPerPixel,
 	}
 }
@@ -131,8 +108,8 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum) {
 	xC := float32(x) + sampleBundle.Samples2D[0][0].U1
 	yC := float32(y) + sampleBundle.Samples2D[0][0].U2
-	leftLength := 0.5*float32(pc.width) - xC
-	upLength := 0.5*float32(pc.height) - yC
+	leftLength := 0.5*float32(pc.image.Width) - xC
+	upLength := 0.5*float32(pc.image.Height) - yC
 
 	// Reflect the vector {backFocalLength, leftLength, upLength}
 	// to the imaginary image plane across the pinhole.
@@ -152,67 +129,13 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
-func (pc *PinholeCamera) getPixel(x, y int) *pixel {
-	i := x - pc.xStart
-	j := y - pc.yStart
-	k := j*pc.xCount + i
-	return &pc.pixels[k]
-}
-
 func (pc *PinholeCamera) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
-	if !WeLiDivPdf.IsValid() {
-		panic(fmt.Sprintf("Invalid WeLiDivPdf %v", WeLiDivPdf))
-	}
-	p := pc.getPixel(x, y)
-	p.sum.Add(&p.sum, &WeLiDivPdf)
-	p.n++
-}
-
-func scaleRGB(x float32) uint8 {
-	xScaled := int(x * 255)
-	if xScaled < 0 {
-		return 0
-	}
-	if xScaled > 255 {
-		return 255
-	}
-	return uint8(xScaled)
+	pc.image.RecordContribution(x, y, WeLiDivPdf)
 }
 
 func (pc *PinholeCamera) EmitSignal() {
 	fmt.Printf("Writing to %s\n", pc.outputPath)
-	image := image.NewNRGBA(image.Rect(0, 0, pc.width, pc.height))
-	xStart := maxInt(pc.xStart, 0)
-	xEnd := minInt(pc.xStart+pc.xCount, pc.width)
-	yStart := maxInt(pc.yStart, 0)
-	yEnd := minInt(pc.yStart+pc.yCount, pc.height)
-	for y := yStart; y < yEnd; y++ {
-		for x := xStart; x < xEnd; x++ {
-			p := pc.getPixel(x, y)
-			var L Spectrum
-			if p.n > 0 {
-				L.ScaleInv(&p.sum, float32(p.n))
-			}
-			r, g, b := L.ToRGB()
-			c := color.NRGBA{
-				R: scaleRGB(r),
-				G: scaleRGB(g),
-				B: scaleRGB(b),
-				A: 255,
-			}
-			image.SetNRGBA(x, y, c)
-		}
-	}
-	f, err := os.Create(pc.outputPath)
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			panic(err)
-		}
-	}()
-	if err = png.Encode(f, image); err != nil {
+	if err := pc.image.WriteToPng(pc.outputPath); err != nil {
 		panic(err)
 	}
 }
