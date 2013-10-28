@@ -1,4 +1,4 @@
-package main
+package ilium
 
 import "encoding/binary"
 import "errors"

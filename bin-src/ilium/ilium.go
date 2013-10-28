@@ -1,5 +1,6 @@
 package main
 
+import "github.com/akalin/ilium/ilium"
 import "encoding/json"
 import "flag"
 import "fmt"
@@ -23,21 +24,21 @@ func processSceneFile(scenePath string, numRenderJobs int) {
 		panic(err)
 	}
 	sceneConfig := config["scene"].(map[string]interface{})
-	scene := MakeScene(sceneConfig)
+	scene := ilium.MakeScene(sceneConfig)
 	rendererConfig := config["renderer"].(map[string]interface{})
-	renderer := MakeRenderer(rendererConfig)
+	renderer := ilium.MakeRenderer(rendererConfig)
 	seed := time.Now().UTC().UnixNano()
 	rand := rand.New(rand.NewSource(seed))
 	renderer.Render(numRenderJobs, rand, &scene)
 }
 
 func processBinFile(binPaths []string, outputPath string) {
-	firstImage, err := ReadImageFromBin(binPaths[0])
+	firstImage, err := ilium.ReadImageFromBin(binPaths[0])
 	if err != nil {
 		panic(err)
 	}
 	for _, binPath := range binPaths {
-		image, err := ReadImageFromBin(binPath)
+		image, err := ilium.ReadImageFromBin(binPath)
 		if err != nil {
 			panic(err)
 		}

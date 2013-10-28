@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type PrimitiveList struct {
 	primitives []Primitive

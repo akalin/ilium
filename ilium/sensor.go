@@ -1,4 +1,4 @@
-package main
+package ilium
 
 // Sensor is the interface for objects that can record measured
 // radiometric quantities and convert them to a signal (e.g.,
