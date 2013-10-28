@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type Shape interface {
 	Intersect(ray *Ray, intersection *Intersection) bool

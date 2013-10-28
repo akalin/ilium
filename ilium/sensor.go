@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type SensorExtent struct {
 	XStart, XEnd, YStart, YEnd, SamplesPerXY int

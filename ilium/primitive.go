@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type Intersection struct {
 	T        float32

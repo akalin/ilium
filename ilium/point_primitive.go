@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type PointPrimitive struct {
 	position Point3
