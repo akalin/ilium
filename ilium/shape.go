@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type Shape interface {
 	// Returns whether or not the given ray intersects this

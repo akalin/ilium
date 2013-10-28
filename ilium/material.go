@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type Material interface {
 	SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
