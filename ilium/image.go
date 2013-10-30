@@ -20,7 +20,7 @@ type pixel struct {
 }
 
 func (p *pixel) SetFromBytes(bytes []byte, order binary.ByteOrder) {
-	p.sum.SetFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
+	p.sum = MakeSpectrumFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
 	nBytes := bytes[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
 	p.n = order.Uint32(nBytes)
 }

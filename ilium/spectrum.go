@@ -32,10 +32,11 @@ func MakeSpectrumFromConfig(config map[string]interface{}) Spectrum {
 	}
 }
 
-func (s *Spectrum) SetFromBytes(bytes []byte, order binary.ByteOrder) {
-	s.r = math.Float32frombits(order.Uint32(bytes[0:4]))
-	s.g = math.Float32frombits(order.Uint32(bytes[4:8]))
-	s.b = math.Float32frombits(order.Uint32(bytes[8:12]))
+func MakeSpectrumFromBytes(bytes []byte, order binary.ByteOrder) Spectrum {
+	r := math.Float32frombits(order.Uint32(bytes[0:4]))
+	g := math.Float32frombits(order.Uint32(bytes[4:8]))
+	b := math.Float32frombits(order.Uint32(bytes[8:12]))
+	return MakeRGBSpectrum(r, g, b)
 }
 
 func (s *Spectrum) ToRGB() (r, g, b float32) {
