@@ -14,11 +14,10 @@ type weightedLi struct {
 	weight float32
 }
 
-func (wl *weightedLi) BinaryRead(r io.Reader) error {
-	if err := wl._Li.BinaryRead(r); err != nil {
+func (wl *weightedLi) BinaryRead(r io.Reader, order binary.ByteOrder) error {
+	if err := wl._Li.BinaryRead(r, order); err != nil {
 		return err
 	}
-	var order = binary.LittleEndian
 	if err := binary.Read(r, order, &wl.weight); err != nil {
 		return err
 	}
@@ -81,7 +80,7 @@ func ReadImageFromBin(inputPath string) (*Image, error) {
 	count := xCount * yCount
 	weightedLi := make([]weightedLi, count)
 	for i := int64(0); i < count; i++ {
-		if err = weightedLi[i].BinaryRead(f); err != nil {
+		if err = weightedLi[i].BinaryRead(f, order); err != nil {
 			return nil, err
 		}
 	}
