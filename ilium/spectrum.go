@@ -2,22 +2,20 @@ package ilium
 
 import "encoding/binary"
 import "io"
+import "math"
 
 type Spectrum struct {
 	r, g, b float32
 }
 
-func (s *Spectrum) BinaryRead(r io.Reader) error {
-	var order = binary.LittleEndian
-	if err := binary.Read(r, order, &s.r); err != nil {
+func (s *Spectrum) BinaryRead(r io.Reader, order binary.ByteOrder) error {
+	var buf [12]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return err
 	}
-	if err := binary.Read(r, order, &s.g); err != nil {
-		return err
-	}
-	if err := binary.Read(r, order, &s.b); err != nil {
-		return err
-	}
+	s.r = math.Float32frombits(order.Uint32(buf[0:4]))
+	s.g = math.Float32frombits(order.Uint32(buf[4:8]))
+	s.b = math.Float32frombits(order.Uint32(buf[8:12]))
 	return nil
 }
 

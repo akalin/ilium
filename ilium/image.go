@@ -17,11 +17,10 @@ type pixel struct {
 	n uint32
 }
 
-func (p *pixel) BinaryRead(r io.Reader) error {
-	if err := p.sum.BinaryRead(r); err != nil {
+func (p *pixel) BinaryRead(r io.Reader, order binary.ByteOrder) error {
+	if err := p.sum.BinaryRead(r, order); err != nil {
 		return err
 	}
-	var order = binary.LittleEndian
 	if err := binary.Read(r, order, &p.n); err != nil {
 		return err
 	}
@@ -84,7 +83,7 @@ func ReadImageFromBin(inputPath string) (*Image, error) {
 	count := xCount * yCount
 	pixels := make([]pixel, count)
 	for i := int64(0); i < count; i++ {
-		if err = pixels[i].BinaryRead(f); err != nil {
+		if err = pixels[i].BinaryRead(f, order); err != nil {
 			return nil, err
 		}
 	}
