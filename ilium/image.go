@@ -6,6 +6,7 @@ import "image"
 import "image/color"
 import "image/png"
 import "io"
+import "math"
 import "os"
 import "path/filepath"
 
@@ -15,12 +16,13 @@ type weightedLi struct {
 }
 
 func (wl *weightedLi) BinaryRead(r io.Reader, order binary.ByteOrder) error {
-	if err := wl._Li.BinaryRead(r, order); err != nil {
+	var buf [SPECTRUM_BYTE_SIZE + 4]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return err
 	}
-	if err := binary.Read(r, order, &wl.weight); err != nil {
-		return err
-	}
+	wl._Li.SetFromBytes(buf[0:SPECTRUM_BYTE_SIZE], order)
+	weightBytes := buf[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
+	wl.weight = math.Float32frombits(order.Uint32(weightBytes))
 	return nil
 }
 
