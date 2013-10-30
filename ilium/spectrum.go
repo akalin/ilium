@@ -1,22 +1,12 @@
 package ilium
 
 import "encoding/binary"
-import "io"
 import "math"
+
+const SPECTRUM_BYTE_SIZE = 12
 
 type Spectrum struct {
 	r, g, b float32
-}
-
-func (s *Spectrum) BinaryRead(r io.Reader, order binary.ByteOrder) error {
-	var buf [12]byte
-	if _, err := io.ReadFull(r, buf[:]); err != nil {
-		return err
-	}
-	s.r = math.Float32frombits(order.Uint32(buf[0:4]))
-	s.g = math.Float32frombits(order.Uint32(buf[4:8]))
-	s.b = math.Float32frombits(order.Uint32(buf[8:12]))
-	return nil
 }
 
 func MakeConstantSpectrum(k float32) Spectrum {
@@ -40,6 +30,12 @@ func MakeSpectrumFromConfig(config map[string]interface{}) Spectrum {
 	default:
 		panic("unknown spectrum type " + spectrumType)
 	}
+}
+
+func (s *Spectrum) SetFromBytes(bytes []byte, order binary.ByteOrder) {
+	s.r = math.Float32frombits(order.Uint32(bytes[0:4]))
+	s.g = math.Float32frombits(order.Uint32(bytes[4:8]))
+	s.b = math.Float32frombits(order.Uint32(bytes[8:12]))
 }
 
 func (s *Spectrum) ToRGB() (r, g, b float32) {
