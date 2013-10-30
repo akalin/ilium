@@ -10,20 +10,17 @@ import "math"
 import "os"
 import "path/filepath"
 
+const _WEIGHTED_LI_BYTE_SIZE = SPECTRUM_BYTE_SIZE + 4
+
 type weightedLi struct {
 	_Li    Spectrum
 	weight float32
 }
 
-func (wl *weightedLi) BinaryRead(r io.Reader, order binary.ByteOrder) error {
-	var buf [SPECTRUM_BYTE_SIZE + 4]byte
-	if _, err := io.ReadFull(r, buf[:]); err != nil {
-		return err
-	}
-	wl._Li.SetFromBytes(buf[0:SPECTRUM_BYTE_SIZE], order)
-	weightBytes := buf[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
+func (wl *weightedLi) SetFromBytes(bytes []byte, order binary.ByteOrder) {
+	wl._Li.SetFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
+	weightBytes := bytes[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
 	wl.weight = math.Float32frombits(order.Uint32(weightBytes))
-	return nil
 }
 
 func (wl *weightedLi) Merge(other *weightedLi) {
@@ -81,10 +78,15 @@ func ReadImageFromBin(inputPath string) (*Image, error) {
 	}
 	count := xCount * yCount
 	weightedLi := make([]weightedLi, count)
+	buf := make([]byte, count*_WEIGHTED_LI_BYTE_SIZE)
+	if _, err := io.ReadFull(f, buf[:]); err != nil {
+		return nil, err
+	}
 	for i := int64(0); i < count; i++ {
-		if err = weightedLi[i].BinaryRead(f, order); err != nil {
-			return nil, err
-		}
+		byteOffset := i * _WEIGHTED_LI_BYTE_SIZE
+		weightedLi[i].SetFromBytes(
+			buf[byteOffset:byteOffset+_WEIGHTED_LI_BYTE_SIZE],
+			order)
 	}
 	return &Image{
 		Width:      int(width),
