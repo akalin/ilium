@@ -18,12 +18,13 @@ type pixel struct {
 }
 
 func (p *pixel) BinaryRead(r io.Reader, order binary.ByteOrder) error {
-	if err := p.sum.BinaryRead(r, order); err != nil {
+	var buf [SPECTRUM_BYTE_SIZE + 4]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return err
 	}
-	if err := binary.Read(r, order, &p.n); err != nil {
-		return err
-	}
+	p.sum.SetFromBytes(buf[0:SPECTRUM_BYTE_SIZE], order)
+	nBytes := buf[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
+	p.n = order.Uint32(nBytes)
 	return nil
 }
 
