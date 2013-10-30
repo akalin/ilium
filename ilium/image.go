@@ -10,6 +10,8 @@ import "io"
 import "os"
 import "path/filepath"
 
+const _PIXEL_BYTE_SIZE = SPECTRUM_BYTE_SIZE + 4
+
 type pixel struct {
 	sum Spectrum
 	// Keep n as an int to avoid floating point issues when we
@@ -17,15 +19,10 @@ type pixel struct {
 	n uint32
 }
 
-func (p *pixel) BinaryRead(r io.Reader, order binary.ByteOrder) error {
-	var buf [SPECTRUM_BYTE_SIZE + 4]byte
-	if _, err := io.ReadFull(r, buf[:]); err != nil {
-		return err
-	}
-	p.sum.SetFromBytes(buf[0:SPECTRUM_BYTE_SIZE], order)
-	nBytes := buf[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
+func (p *pixel) SetFromBytes(bytes []byte, order binary.ByteOrder) {
+	p.sum.SetFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
+	nBytes := bytes[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
 	p.n = order.Uint32(nBytes)
-	return nil
 }
 
 func (p *pixel) Merge(other *pixel) {
@@ -83,10 +80,15 @@ func ReadImageFromBin(inputPath string) (*Image, error) {
 	}
 	count := xCount * yCount
 	pixels := make([]pixel, count)
+	buf := make([]byte, count*_PIXEL_BYTE_SIZE)
+	if _, err := io.ReadFull(f, buf[:]); err != nil {
+		return nil, err
+	}
 	for i := int64(0); i < count; i++ {
-		if err = pixels[i].BinaryRead(f, order); err != nil {
-			return nil, err
-		}
+		byteOffset := i * _PIXEL_BYTE_SIZE
+		pixels[i].SetFromBytes(
+			buf[byteOffset:byteOffset+_PIXEL_BYTE_SIZE],
+			order)
 	}
 	return &Image{
 		Width:  int(width),
