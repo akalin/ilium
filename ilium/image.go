@@ -18,7 +18,7 @@ type weightedLi struct {
 }
 
 func (wl *weightedLi) SetFromBytes(bytes []byte, order binary.ByteOrder) {
-	wl._Li.SetFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
+	wl._Li = MakeSpectrumFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
 	weightBytes := bytes[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
 	wl.weight = math.Float32frombits(order.Uint32(weightBytes))
 }
