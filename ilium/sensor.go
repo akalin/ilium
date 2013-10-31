@@ -110,8 +110,10 @@ type Sensor interface {
 	RecordContribution(x, y int, WeLiDivPdf Spectrum)
 
 	// Converts the recorded samples to a signal and emit it
-	// (e.g., write it to a file).
-	EmitSignal()
+	// (e.g., write it to a file). outputDir, if non-empty, is the
+	// path to prepend to relative output paths. outputExt, if
+	// non-empty, is the extension to add to output paths.
+	EmitSignal(outputDir, outputExt string)
 }
 
 func MakeSensor(config map[string]interface{}) Sensor {

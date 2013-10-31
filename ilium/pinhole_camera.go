@@ -2,6 +2,8 @@ package ilium
 
 import "fmt"
 import "math"
+import "path/filepath"
+import "strings"
 
 type PinholeCamera struct {
 	outputPath      string
@@ -133,9 +135,18 @@ func (pc *PinholeCamera) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
 	pc.image.RecordContribution(x, y, WeLiDivPdf)
 }
 
-func (pc *PinholeCamera) EmitSignal() {
-	fmt.Printf("Writing to %s\n", pc.outputPath)
-	if err := pc.image.WriteToFile(pc.outputPath); err != nil {
+func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {
+	outputPath := pc.outputPath
+	if len(outputDir) > 0 && !filepath.IsAbs(outputPath) {
+		outputPath = filepath.Join(outputDir, outputPath)
+	}
+	if len(outputExt) > 0 {
+		realExt := filepath.Ext(outputPath)
+		outputPath = strings.TrimSuffix(outputPath, realExt)
+		outputPath += "." + outputExt + realExt
+	}
+	fmt.Printf("Writing to %s\n", outputPath)
+	if err := pc.image.WriteToFile(outputPath); err != nil {
 		panic(err)
 	}
 }

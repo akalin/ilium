@@ -57,8 +57,7 @@ func (rm *RadianceMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
 	rm.m2.Add(&rm.m2, &t)
 }
 
-func (rm *RadianceMeter) EmitSignal() {
-	// variance = M2/(n - 1)
+func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {
 	var variance Spectrum
 	variance.ScaleInv(&rm.m2, float32(rm.n-1))
 	var stdDev Spectrum
