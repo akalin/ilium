@@ -8,7 +8,7 @@ import "image/color"
 import "image/png"
 import "io"
 import "os"
-import "path/filepath"
+import "strings"
 
 const _PIXEL_BYTE_SIZE = SPECTRUM_BYTE_SIZE + 4
 
@@ -144,14 +144,13 @@ func (im *Image) Merge(other *Image) error {
 }
 
 func (im *Image) WriteToFile(outputPath string) error {
-	extension := filepath.Ext(outputPath)
-	switch extension {
-	case ".png":
+	switch {
+	case strings.Contains(outputPath, ".png"):
 		return im.writeToPng(outputPath)
-	case ".bin":
+	case strings.Contains(outputPath, ".bin"):
 		return im.writeToBin(outputPath)
 	default:
-		return errors.New("Unknown extension: " + extension)
+		return errors.New("Unknown file type: " + outputPath)
 	}
 }
 

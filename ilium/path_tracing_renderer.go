@@ -140,7 +140,8 @@ func (ptr *PathTracingRenderer) processBlocks(
 }
 
 func (ptr *PathTracingRenderer) processSensor(
-	numRenderJobs int, rng *rand.Rand, scene *Scene, sensor Sensor) {
+	numRenderJobs int, rng *rand.Rand, scene *Scene, sensor Sensor,
+	outputDir, outputSuffix string) {
 	blockCh := make(chan pathTracingBlock, numRenderJobs)
 	defer close(blockCh)
 	processedBlockCh := make(chan processedPathTracingBlock, numRenderJobs)
@@ -181,7 +182,7 @@ func (ptr *PathTracingRenderer) processSensor(
 		if (processed == len(blocks)) ||
 			(ptr.emitInterval > 0 &&
 				processed%ptr.emitInterval == 0) {
-			sensor.EmitSignal()
+			sensor.EmitSignal(outputDir, outputSuffix)
 		}
 	}
 
@@ -207,9 +208,12 @@ func (ptr *PathTracingRenderer) processSensor(
 }
 
 func (ptr *PathTracingRenderer) Render(
-	numRenderJobs int, rng *rand.Rand, scene *Scene) {
+	numRenderJobs int, rng *rand.Rand, scene *Scene,
+	outputDir, outputExt string) {
 	sensors := scene.Aggregate.GetSensors()
 	for _, sensor := range sensors {
-		ptr.processSensor(numRenderJobs, rng, scene, sensor)
+		ptr.processSensor(
+			numRenderJobs, rng, scene, sensor,
+			outputDir, outputExt)
 	}
 }

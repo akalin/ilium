@@ -137,7 +137,7 @@
             {
               "_comment": "Towards back wall.",
               "type": "PinholeCamera",
-              "outputPath": "/tmp/cornell_box.png",
+              "outputPath": "cornell_box.png",
               "position": [0, -0.5, 0],
               "target":   [0, 1,    0],
               "up":       [0, 0,    1],
