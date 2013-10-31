@@ -1,5 +1,7 @@
 package ilium
 
+import "path/filepath"
+
 type PerspectiveCamera struct {
 	outputPath string
 	origin     Point3
@@ -93,8 +95,15 @@ func (pc *PerspectiveCamera) RecordSample(
 	pc.image.RecordSample(sensorSample.U, sensorSample.V, Li)
 }
 
-func (pc *PerspectiveCamera) EmitSignal() {
-	if err := pc.image.WriteToFile(pc.outputPath); err != nil {
+func (pc *PerspectiveCamera) EmitSignal(outputDir, outputExt string) {
+	outputPath := pc.outputPath
+	if len(outputDir) > 0 && !filepath.IsAbs(outputPath) {
+		outputPath = filepath.Join(outputDir, outputPath)
+	}
+	if len(outputExt) > 0 {
+		outputPath += "." + outputExt
+	}
+	if err := pc.image.WriteToFile(outputPath); err != nil {
 		panic(err)
 	}
 }

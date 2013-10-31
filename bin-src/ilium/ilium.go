@@ -18,6 +18,14 @@ func main() {
 	profilePath := flag.String(
 		"p", "", "if non-empty, path to write the cpu profile to")
 
+	outputDir := flag.String(
+		"d", "", "if non-empty, directory to prepend to relative "+
+			"output paths")
+
+	outputExt := flag.String(
+		"x", "", "if non-empty, the extension to append to "+
+			"output paths")
+
 	flag.Parse()
 
 	if len(*profilePath) > 0 {
@@ -54,5 +62,5 @@ func main() {
 	renderer := ilium.MakeRenderer(rendererConfig)
 	seed := time.Now().UTC().UnixNano()
 	rand := rand.New(rand.NewSource(seed))
-	renderer.Render(*numRenderJobs, rand, &scene)
+	renderer.Render(*numRenderJobs, rand, &scene, *outputDir, *outputExt)
 }

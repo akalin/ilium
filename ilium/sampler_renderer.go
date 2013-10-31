@@ -52,7 +52,8 @@ func processSamples(
 }
 
 func (sr *SamplerRenderer) renderWithSensor(
-	numRenderJobs int, globalRng *rand.Rand, scene *Scene, sensor Sensor) {
+	numRenderJobs int, globalRng *rand.Rand,
+	scene *Scene, sensor Sensor, outputPath, outputSuffix string) {
 	sampler := MakeSampler(sensor.GetSampleRange(), sr.samplerConfig)
 	blockCh := make(chan int, numRenderJobs)
 	defer close(blockCh)
@@ -91,13 +92,15 @@ func (sr *SamplerRenderer) renderWithSensor(
 		recordSamples(processedSamples)
 	}
 
-	sensor.EmitSignal()
+	sensor.EmitSignal(outputPath, outputSuffix)
 }
 
 func (sr *SamplerRenderer) Render(
-	numRenderJobs int, rng *rand.Rand, scene *Scene) {
+	numRenderJobs int, rng *rand.Rand, scene *Scene,
+	outputDir, outputExt string) {
 	sensors := scene.Aggregate.GetSensors()
 	for _, sensor := range sensors {
-		sr.renderWithSensor(numRenderJobs, rng, scene, sensor)
+		sr.renderWithSensor(
+			numRenderJobs, rng, scene, sensor, outputDir, outputExt)
 	}
 }

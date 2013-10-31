@@ -44,8 +44,7 @@ func (rm *RadianceMeter) RecordSample(sensorSample SensorSample, Li Spectrum) {
 	rm._LM2.Add(&rm._LM2, &t)
 }
 
-func (rm *RadianceMeter) EmitSignal() {
-	// variance = M2/(n - 1)
+func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {
 	var variance Spectrum
 	variance.ScaleInv(&rm._LM2, float32(rm.n-1))
 	var stdDev Spectrum

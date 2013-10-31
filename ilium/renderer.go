@@ -6,7 +6,8 @@ import "math/rand"
 // quantities (e.g., images) of scenes.
 type Renderer interface {
 	// Computes radiometric quantities of the given scene.
-	Render(numRenderJobs int, rng *rand.Rand, scene *Scene)
+	Render(numRenderJobs int, rng *rand.Rand, scene *Scene,
+		outputDir, outputExt string)
 }
 
 func MakeRenderer(config map[string]interface{}) Renderer {
