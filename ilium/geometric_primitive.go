@@ -1,9 +1,13 @@
 package ilium
 
-type GeometricPrimitive struct {
-	shape    Shape
+type geometricPrimitiveShared struct {
 	material Material
 	sensors  []Sensor
+}
+
+type GeometricPrimitive struct {
+	shape  Shape
+	shared *geometricPrimitiveShared
 }
 
 func (gp *GeometricPrimitive) Intersect(
@@ -12,13 +16,13 @@ func (gp *GeometricPrimitive) Intersect(
 		return false
 	}
 	if intersection != nil {
-		intersection.material = gp.material
+		intersection.material = gp.shared.material
 	}
 	return true
 }
 
 func (gp *GeometricPrimitive) GetSensors() []Sensor {
-	return gp.sensors
+	return gp.shared.sensors
 }
 
 func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
@@ -33,11 +37,11 @@ func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 			sensors = append(sensors, sensor)
 		}
 	}
+	shared := geometricPrimitiveShared{material, sensors}
 	primitives := []Primitive{}
 	if len(shapes) > 0 {
 		for i := 0; i < len(shapes); i++ {
-			primitive := &GeometricPrimitive{
-				shapes[i], material, sensors}
+			primitive := &GeometricPrimitive{shapes[i], &shared}
 			primitives = append(primitives, primitive)
 		}
 	}
