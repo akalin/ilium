@@ -21,10 +21,9 @@ func (gp *GeometricPrimitive) GetSensors() []Sensor {
 	return gp.sensors
 }
 
-func MakeGeometricPrimitive(
-	config map[string]interface{}) *GeometricPrimitive {
+func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 	shapeConfig := config["shape"].(map[string]interface{})
-	shape := MakeShape(shapeConfig)
+	shapes := MakeShapes(shapeConfig)
 	materialConfig := config["material"].(map[string]interface{})
 	material := MakeMaterial(materialConfig)
 	sensors := []Sensor{}
@@ -34,5 +33,17 @@ func MakeGeometricPrimitive(
 			sensors = append(sensors, sensor)
 		}
 	}
-	return &GeometricPrimitive{shape, material, sensors}
+	primitives := []Primitive{}
+	if len(shapes) > 0 {
+		// Bind the sensors to the first primitive.
+		firstPrimitive := &GeometricPrimitive{
+			shapes[0], material, sensors}
+		primitives = append(primitives, firstPrimitive)
+		for i := 1; i < len(shapes); i++ {
+			primitive := &GeometricPrimitive{
+				shapes[i], material, []Sensor{}}
+			primitives = append(primitives, primitive)
+		}
+	}
+	return primitives
 }
