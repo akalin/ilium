@@ -39,5 +39,43 @@ func MakeTriangleMesh(config map[string]interface{}) []Shape {
 }
 
 func (tr *Triangle) Intersect(ray *Ray, intersection *Intersection) bool {
-	return false
+	p1 := &tr.mesh.vertices[tr.mesh.indices[tr.i][0]]
+	p2 := &tr.mesh.vertices[tr.mesh.indices[tr.i][1]]
+	p3 := &tr.mesh.vertices[tr.mesh.indices[tr.i][2]]
+	var e1, e2 Vector3
+	e1.GetOffset(p1, p2)
+	e2.GetOffset(p1, p3)
+	var s1 Vector3
+	s1.CrossNoAlias(&ray.D, &e2)
+	divisor := s1.Dot(&e1)
+	if divisor == 0.0 {
+		return false
+	}
+	invDivisor := 1.0 / divisor
+
+	var d Vector3
+	d.GetOffset(p1, &ray.O)
+	b1 := d.Dot(&s1) * invDivisor
+	if b1 < 0.0 || b1 > 1.0 {
+		return false
+	}
+
+	var s2 Vector3
+	s2.CrossNoAlias(&d, &e1)
+	b2 := ray.D.Dot(&s2) * invDivisor
+	if b2 < 0.0 || (b1+b2) > 1.0 {
+		return false
+	}
+
+	t := e2.Dot(&s2) * invDivisor
+	if t < ray.MinT || t > ray.MaxT {
+		return false
+	}
+
+	intersection.T = t
+	intersection.P = ray.Evaluate(intersection.T)
+	intersection.PEpsilon = 1e-3 * intersection.T
+	intersection.N.CrossVectorNoAlias(&e1, &e2)
+	intersection.N.Normalize(&intersection.N)
+	return true
 }

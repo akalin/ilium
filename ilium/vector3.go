@@ -26,6 +26,10 @@ func (v *Vector3) DotNormal(n *Normal3) float32 {
 	return ((*R3)(v)).Dot((*R3)(n))
 }
 
+func (out *Vector3) CrossNoAlias(v, w *Vector3) {
+	((*R3)(out)).CrossNoAlias((*R3)(v), (*R3)(w))
+}
+
 func (out *Vector3) Normalize(v *Vector3) {
 	((*R3)(out)).Normalize((*R3)(v))
 }
