@@ -12,6 +12,8 @@ func MakeShapes(config map[string]interface{}) []Shape {
 	switch shapeType {
 	case "Sphere":
 		return []Shape{MakeSphere(config)}
+	case "TriangleMesh":
+		return MakeTriangleMesh(config)
 	case "Rect":
 		return []Shape{MakeRect(config)}
 	default:
