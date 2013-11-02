@@ -20,7 +20,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
             "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
@@ -46,7 +46,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.0,  "g": 0.0,  "b": 0.0  },
             "emission": { "type": "rgb", "r": 16.0, "g": 14.7, "b": 12.9 }
@@ -69,7 +69,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
             "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
@@ -92,7 +92,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.9, "g": 0.5, "b": 0.5 },
             "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
@@ -115,7 +115,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.9 },
             "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
@@ -138,7 +138,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
             "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
@@ -161,7 +161,7 @@
             ]
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
             "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
