@@ -23,15 +23,15 @@ type Primitive interface {
 	GetSensors() []Sensor
 }
 
-func MakePrimitive(config map[string]interface{}) Primitive {
+func MakePrimitives(config map[string]interface{}) []Primitive {
 	primitiveType := config["type"].(string)
 	switch primitiveType {
 	case "PrimitiveList":
-		return MakePrimitiveList(config)
+		return []Primitive{MakePrimitiveList(config)}
 	case "GeometricPrimitive":
-		return MakeGeometricPrimitive(config)
+		return MakeGeometricPrimitives(config)
 	case "PointPrimitive":
-		return MakePointPrimitive(config)
+		return []Primitive{MakePointPrimitive(config)}
 	default:
 		panic("unknown primitive type " + primitiveType)
 	}
