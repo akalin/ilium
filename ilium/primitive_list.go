@@ -26,10 +26,12 @@ func (pl *PrimitiveList) GetSensors() []Sensor {
 
 func MakePrimitiveList(config map[string]interface{}) *PrimitiveList {
 	primitiveConfigs := config["primitives"].([]interface{})
-	primitives := make([]Primitive, len(primitiveConfigs))
-	for i, primitiveConfig := range primitiveConfigs {
-		primitives[i] =
-			MakePrimitive(primitiveConfig.(map[string]interface{}))
+	primitives := []Primitive{}
+	for _, primitiveConfig := range primitiveConfigs {
+		primitives = append(
+			primitives,
+			MakePrimitives(
+				primitiveConfig.(map[string]interface{}))...)
 	}
 	return &PrimitiveList{primitives}
 }
