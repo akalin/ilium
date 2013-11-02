@@ -35,13 +35,9 @@ func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 	}
 	primitives := []Primitive{}
 	if len(shapes) > 0 {
-		// Bind the sensors to the first primitive.
-		firstPrimitive := &GeometricPrimitive{
-			shapes[0], material, sensors}
-		primitives = append(primitives, firstPrimitive)
-		for i := 1; i < len(shapes); i++ {
+		for i := 0; i < len(shapes); i++ {
 			primitive := &GeometricPrimitive{
-				shapes[i], material, []Sensor{}}
+				shapes[i], material, sensors}
 			primitives = append(primitives, primitive)
 		}
 	}

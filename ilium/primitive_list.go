@@ -26,9 +26,15 @@ func (pl *PrimitiveList) Intersect(ray *Ray, intersection *Intersection) bool {
 }
 
 func (pl *PrimitiveList) GetSensors() []Sensor {
-	sensors := []Sensor{}
+	sensorMap := make(map[Sensor]bool)
 	for _, primitive := range pl.primitives {
-		sensors = append(sensors, primitive.GetSensors()...)
+		for _, sensor := range primitive.GetSensors() {
+			sensorMap[sensor] = true
+		}
+	}
+	sensors := []Sensor{}
+	for sensor, _ := range sensorMap {
+		sensors = append(sensors, sensor)
 	}
 	return sensors
 }
