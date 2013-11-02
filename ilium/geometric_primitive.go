@@ -2,6 +2,7 @@ package ilium
 
 type geometricPrimitiveShared struct {
 	material Material
+	light    Light
 	sensors  []Sensor
 }
 
@@ -17,6 +18,7 @@ func (gp *GeometricPrimitive) Intersect(
 	}
 	if intersection != nil {
 		intersection.material = gp.shared.material
+		intersection.light = gp.shared.light
 	}
 	return true
 }
@@ -30,6 +32,10 @@ func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 	shapes := MakeShapes(shapeConfig)
 	materialConfig := config["material"].(map[string]interface{})
 	material := MakeMaterial(materialConfig)
+	var light Light
+	if lightConfig, ok := config["light"].(map[string]interface{}); ok {
+		light = MakeLight(lightConfig, shapes)
+	}
 	sensors := []Sensor{}
 	if sensorsConfig, ok := config["sensors"].([]interface{}); ok {
 		for _, o := range sensorsConfig {
@@ -37,7 +43,7 @@ func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 			sensors = append(sensors, sensor)
 		}
 	}
-	shared := geometricPrimitiveShared{material, sensors}
+	shared := geometricPrimitiveShared{material, light, sensors}
 	primitives := []Primitive{}
 	if len(shapes) > 0 {
 		for i := 0; i < len(shapes); i++ {
