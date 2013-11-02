@@ -20,7 +20,7 @@
             "flipNormal": true
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 },
             "rho":      { "type": "rgb", "r": 0.9,  "g": 0.7,  "b": 0.4 }
@@ -35,7 +35,7 @@
             "radius": 1
           },
           "material": {
-            "type": "Diffuse",
+            "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
             "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 },
             "rho":      { "type": "rgb", "r": 0.5,  "g": 0.3,  "b": 0.1  }

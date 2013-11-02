@@ -9,8 +9,8 @@ type Material interface {
 func MakeMaterial(config map[string]interface{}) Material {
 	materialType := config["type"].(string)
 	switch materialType {
-	case "Diffuse":
-		return MakeDiffuse(config)
+	case "DiffuseMaterial":
+		return MakeDiffuseMaterial(config)
 	default:
 		panic("unknown material type " + materialType)
 	}

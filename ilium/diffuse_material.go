@@ -2,27 +2,27 @@ package ilium
 
 import "math"
 
-type DiffuseSamplingMethod int
+type DiffuseMaterialSamplingMethod int
 
 const (
-	DIFFUSE_UNIFORM_SAMPLING DiffuseSamplingMethod = iota
-	DIFFUSE_COSINE_SAMPLING  DiffuseSamplingMethod = iota
+	DIFFUSE_MATERIAL_UNIFORM_SAMPLING DiffuseMaterialSamplingMethod = iota
+	DIFFUSE_MATERIAL_COSINE_SAMPLING  DiffuseMaterialSamplingMethod = iota
 )
 
-type Diffuse struct {
-	samplingMethod DiffuseSamplingMethod
+type DiffuseMaterial struct {
+	samplingMethod DiffuseMaterialSamplingMethod
 	emission       Spectrum
 	rho            Spectrum
 }
 
-func MakeDiffuse(config map[string]interface{}) *Diffuse {
-	var samplingMethod DiffuseSamplingMethod
+func MakeDiffuseMaterial(config map[string]interface{}) *DiffuseMaterial {
+	var samplingMethod DiffuseMaterialSamplingMethod
 	samplingMethodConfig := config["samplingMethod"].(string)
 	switch samplingMethodConfig {
 	case "uniform":
-		samplingMethod = DIFFUSE_UNIFORM_SAMPLING
+		samplingMethod = DIFFUSE_MATERIAL_UNIFORM_SAMPLING
 	case "cosine":
-		samplingMethod = DIFFUSE_COSINE_SAMPLING
+		samplingMethod = DIFFUSE_MATERIAL_COSINE_SAMPLING
 	default:
 		panic("unknown sampling method " + samplingMethodConfig)
 	}
@@ -30,7 +30,7 @@ func MakeDiffuse(config map[string]interface{}) *Diffuse {
 	emission := MakeSpectrumFromConfig(emissionConfig)
 	rhoConfig := config["rho"].(map[string]interface{})
 	rho := MakeSpectrumFromConfig(rhoConfig)
-	return &Diffuse{samplingMethod, emission, rho}
+	return &DiffuseMaterial{samplingMethod, emission, rho}
 }
 
 func uniformSampleDisk(u1, u2 float32) (x, y float32) {
@@ -63,14 +63,13 @@ func cosineSampleHemisphere(u1, u2 float32) R3 {
 	return R3{x, y, z}
 }
 
-func (d *Diffuse) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
+func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum) {
 	if wo.DotNormal(&n) < 0 {
 		return
 	}
-	wi = Vector3(uniformSampleSphere(u1, u2))
 	switch d.samplingMethod {
-	case DIFFUSE_UNIFORM_SAMPLING:
+	case DIFFUSE_MATERIAL_UNIFORM_SAMPLING:
 		wi = Vector3(uniformSampleSphere(u1, u2))
 		// Make wi lie in the same hemisphere as wo.
 		if wi.DotNormal(&n) < 0 {
@@ -80,7 +79,7 @@ func (d *Diffuse) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		// f = rho / pi and pdf = 1 / (2 * pi * |cos(th)|), so
 		// f / pdf = 2 * rho * |cos(th)|.
 		fDivPdf.Scale(&d.rho, 2*absCosTh)
-	case DIFFUSE_COSINE_SAMPLING:
+	case DIFFUSE_MATERIAL_COSINE_SAMPLING:
 		k := R3(n)
 		var i, j R3
 		MakeCoordinateSystemNoAlias(&k, &i, &j)
@@ -101,7 +100,7 @@ func (d *Diffuse) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	return
 }
 
-func (d *Diffuse) ComputeLe(
+func (d *DiffuseMaterial) ComputeLe(
 	pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
 	if wo.DotNormal(&nSurface) < 0 {
 		return Spectrum{}
