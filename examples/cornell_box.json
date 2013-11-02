@@ -22,8 +22,7 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
-            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+            "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 }
           }
         },
         {
@@ -48,8 +47,11 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.0,  "g": 0.0,  "b": 0.0  },
-            "emission": { "type": "rgb", "r": 16.0, "g": 14.7, "b": 12.9 }
+            "color": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          },
+          "light": {
+            "type": "DiffuseAreaLight",
+            "emission": { "type": "rgb", "r": 16, "g": 14.7, "b": 12.9 }
           }
         },
         {
@@ -71,8 +73,7 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
-            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+            "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 }
           }
         },
         {
@@ -94,8 +95,7 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.9, "g": 0.5, "b": 0.5 },
-            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+            "color": { "type": "rgb", "r": 0.9, "g": 0.5, "b": 0.5 }
           }
         },
         {
@@ -117,8 +117,7 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.9 },
-            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+            "color": { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.9 }
           }
         },
         {
@@ -140,8 +139,7 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
-            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+            "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 }
           }
         },
         {
@@ -163,8 +161,7 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
-            "emission": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+            "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 }
           }
         },
         {

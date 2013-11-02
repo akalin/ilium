@@ -11,7 +11,6 @@ const (
 
 type DiffuseMaterial struct {
 	samplingMethod DiffuseMaterialSamplingMethod
-	emission       Spectrum
 	color          Spectrum
 }
 
@@ -26,11 +25,9 @@ func MakeDiffuseMaterial(config map[string]interface{}) *DiffuseMaterial {
 	default:
 		panic("unknown sampling method " + samplingMethodConfig)
 	}
-	emissionConfig := config["emission"].(map[string]interface{})
-	emission := MakeSpectrumFromConfig(emissionConfig)
 	colorConfig := config["color"].(map[string]interface{})
 	color := MakeSpectrumFromConfig(colorConfig)
-	return &DiffuseMaterial{samplingMethod, emission, color}
+	return &DiffuseMaterial{samplingMethod, color}
 }
 
 func uniformSampleDisk(u1, u2 float32) (x, y float32) {
@@ -95,12 +92,4 @@ func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		wi.Flip(&wi)
 	}
 	return
-}
-
-func (d *DiffuseMaterial) ComputeLe(
-	pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
-	if wo.DotNormal(&nSurface) < 0 {
-		return Spectrum{}
-	}
-	return d.emission
 }

@@ -44,7 +44,10 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.9,  "g": 0.7,  "b": 0.4 },
+            "color": { "type": "rgb", "r": 0.9, "g": 0.7, "b": 0.4 }
+          },
+          "light": {
+            "type": "DiffuseAreaLight",
             "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 }
           }
         },
@@ -59,7 +62,10 @@
           "material": {
             "type": "DiffuseMaterial",
             "samplingMethod": "cosine",
-            "color":    { "type": "rgb", "r": 0.5,  "g": 0.3,  "b": 0.1  },
+            "color": { "type": "rgb", "r": 0.5, "g": 0.3, "b": 0.1 }
+          },
+          "light": {
+            "type": "DiffuseAreaLight",
             "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 }
           }
         },

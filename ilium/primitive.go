@@ -6,6 +6,7 @@ type Intersection struct {
 	PEpsilon float32
 	N        Normal3
 	material Material
+	light    Light
 }
 
 func (i *Intersection) SampleWi(u1, u2 float32, wo Vector3) (
@@ -14,7 +15,10 @@ func (i *Intersection) SampleWi(u1, u2 float32, wo Vector3) (
 }
 
 func (i *Intersection) ComputeLe(wo Vector3) Spectrum {
-	return i.material.ComputeLe(i.P, i.N, wo)
+	if i.light == nil {
+		return Spectrum{}
+	}
+	return i.light.ComputeLe(i.P, i.N, wo)
 }
 
 type Primitive interface {
