@@ -27,6 +27,13 @@ func (gp *GeometricPrimitive) GetSensors() []Sensor {
 	return gp.shared.sensors
 }
 
+func (gp *GeometricPrimitive) GetLights() []Light {
+	if gp.shared.light == nil {
+		return []Light{}
+	}
+	return []Light{gp.shared.light}
+}
+
 func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 	shapeConfig := config["shape"].(map[string]interface{})
 	shapes := MakeShapes(shapeConfig)

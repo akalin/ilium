@@ -2,6 +2,7 @@ package ilium
 
 type Scene struct {
 	Aggregate Primitive
+	Lights    []Light
 }
 
 func MakeScene(config map[string]interface{}) Scene {
@@ -11,5 +12,5 @@ func MakeScene(config map[string]interface{}) Scene {
 		panic("aggregate must be a single primitive")
 	}
 	aggregate := primitives[0]
-	return Scene{aggregate}
+	return Scene{aggregate, aggregate.GetLights()}
 }
