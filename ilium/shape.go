@@ -8,6 +8,13 @@ type Shape interface {
 
 	// Returns the surface area of the shape.
 	SurfaceArea() float32
+
+	// Samples the surface of the shape uniformly and returns the
+	// sampled point on the surface, the normal at that point, and
+	// the value of the pdf with respect to surface area at that
+	// point.
+	SampleSurface(u1, u2 float32) (
+		pSurface Point3, nSurface Normal3, pdfSurfaceArea float32)
 }
 
 func MakeShapes(config map[string]interface{}) []Shape {
