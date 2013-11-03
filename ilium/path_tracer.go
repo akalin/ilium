@@ -3,6 +3,12 @@ package ilium
 import "fmt"
 import "math/rand"
 
+type PathTracerPathType int
+
+const (
+	PATH_TRACER_EMITTED_LIGHT_PATH PathTracerPathType = iota
+)
+
 type PathTracerRRContribution int
 
 const (
@@ -18,6 +24,7 @@ const (
 )
 
 type PathTracer struct {
+	pathType                      PathTracerPathType
 	russianRouletteContribution   PathTracerRRContribution
 	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
@@ -27,11 +34,13 @@ type PathTracer struct {
 }
 
 func (pt *PathTracer) InitializePathTracer(
+	pathType PathTracerPathType,
 	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability, russianRouletteDelta float32,
 	maxEdgeCount int) {
+	pt.pathType = pathType
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
@@ -51,10 +60,14 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	// Sample wi for each interior vertex to build the next edge
 	// of the path.
 	numWiSamples := minInt(3, maxInteriorVertexCount)
-	return SampleConfig{
-		Sample1DLengths: []int{},
-		Sample2DLengths: []int{numWiSamples},
+	switch pt.pathType {
+	case PATH_TRACER_EMITTED_LIGHT_PATH:
+		return SampleConfig{
+			Sample1DLengths: []int{},
+			Sample2DLengths: []int{numWiSamples},
+		}
 	}
+	return SampleConfig{}
 }
 
 func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
@@ -124,17 +137,19 @@ func (pt *PathTracer) SampleSensorPath(
 		var wo Vector3
 		wo.Flip(&ray.D)
 
-		Le := intersection.ComputeLe(wo)
-		if !Le.IsValid() {
-			fmt.Printf("Invalid Le %v returned for "+
-				"intersection %v and wo %v\n",
-				Le, intersection, wo)
-			Le = Spectrum{}
-		}
+		if pt.pathType == PATH_TRACER_EMITTED_LIGHT_PATH {
+			Le := intersection.ComputeLe(wo)
+			if !Le.IsValid() {
+				fmt.Printf("Invalid Le %v returned for "+
+					"intersection %v and wo %v\n",
+					Le, intersection, wo)
+				Le = Spectrum{}
+			}
 
-		var LeAlpha Spectrum
-		LeAlpha.Mul(&Le, &alpha)
-		WeLiDivPdf.Add(WeLiDivPdf, &LeAlpha)
+			var LeAlpha Spectrum
+			LeAlpha.Mul(&Le, &alpha)
+			WeLiDivPdf.Add(WeLiDivPdf, &LeAlpha)
+		}
 
 		if edgeCount >= pt.maxEdgeCount {
 			break
