@@ -14,6 +14,10 @@ func (i *Intersection) SampleWi(u1, u2 float32, wo Vector3) (
 	return i.material.SampleWi(u1, u2, wo, i.N)
 }
 
+func (i *Intersection) ComputeF(wo, wi Vector3) Spectrum {
+	return i.material.ComputeF(wo, wi, i.N)
+}
+
 func (i *Intersection) ComputeLe(wo Vector3) Spectrum {
 	if i.light == nil {
 		return Spectrum{}

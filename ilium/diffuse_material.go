@@ -1,5 +1,7 @@
 package ilium
 
+import "math"
+
 type DiffuseMaterialSamplingMethod int
 
 const (
@@ -63,4 +65,13 @@ func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		fDivPdf = d.rho
 	}
 	return
+}
+
+func (d *DiffuseMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
+	if wo.DotNormal(&n) < 0 || wi.DotNormal(&n) < 0 {
+		return Spectrum{}
+	}
+	var f Spectrum
+	f.ScaleInv(&d.rho, math.Pi)
+	return f
 }
