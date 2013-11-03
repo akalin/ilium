@@ -13,6 +13,15 @@ type PathTracingRenderer struct {
 
 func MakePathTracingRenderer(
 	config map[string]interface{}) *PathTracingRenderer {
+	var pathType PathTracerPathType
+	pathTypeConfig := config["pathType"].(string)
+	switch pathTypeConfig {
+	case "emittedLight":
+		pathType = PATH_TRACER_EMITTED_LIGHT_PATH
+	default:
+		panic("unknown path type " + pathTypeConfig)
+	}
+
 	var russianRouletteContribution PathTracerRRContribution
 	if russianRouletteContributionConfig, ok :=
 		config["russianRouletteContribution"].(string); ok {
@@ -67,7 +76,7 @@ func MakePathTracingRenderer(
 		sampler:      sampler,
 	}
 	ptr.pathTracer.InitializePathTracer(
-		russianRouletteContribution,
+		pathType, russianRouletteContribution,
 		russianRouletteMethod, russianRouletteStartIndex,
 		russianRouletteMaxProbability, russianRouletteDelta,
 		maxEdgeCount)
