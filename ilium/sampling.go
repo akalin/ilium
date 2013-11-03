@@ -31,3 +31,12 @@ func cosineSampleHemisphere(u1, u2 float32) R3 {
 	z := sqrtFloat32(maxFloat32(0, 1-x*x-y*y))
 	return R3{x, y, z}
 }
+
+func uniformSampleTriangle(u1, u2 float32) (b1, b2 float32) {
+	// This has a slight bias towards 1 for b1 and towards 0 for
+	// b2.
+	sqrtR := sqrtFloat32(u1)
+	b1 = 1 - sqrtR
+	b2 = u2 * sqrtR
+	return
+}

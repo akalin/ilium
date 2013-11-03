@@ -71,3 +71,17 @@ func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
 func (s *Sphere) SurfaceArea() float32 {
 	return 4 * math.Pi * s.radius * s.radius
 }
+
+func (s *Sphere) SampleSurface(u1, u2 float32) (
+	pSurface Point3, nSurface Normal3, pdfSurfaceArea float32) {
+	w := uniformSampleSphere(u1, u2)
+	v := Vector3(w)
+	v.Scale(&v, s.radius)
+	pSurface.Shift(&s.center, &v)
+	nSurface = Normal3(w)
+	if s.flipNormal {
+		nSurface.Flip(&nSurface)
+	}
+	pdfSurfaceArea = 1 / s.SurfaceArea()
+	return
+}

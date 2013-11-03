@@ -99,3 +99,21 @@ func (tr *Triangle) SurfaceArea() float32 {
 	_, _, n := tr.getEVectors()
 	return 0.5 * n.Norm()
 }
+
+func (tr *Triangle) SampleSurface(u1, u2 float32) (
+	pSurface Point3, nSurface Normal3, pdfSurfaceArea float32) {
+	b1, b2 := uniformSampleTriangle(u1, u2)
+	p1, p2, p3 := tr.getVertices()
+	var r1, r2, r3 R3
+	r1.Scale((*R3)(p1), b1)
+	r2.Scale((*R3)(p2), b2)
+	r3.Scale((*R3)(p3), 1-b1-b2)
+	var rSurface R3
+	rSurface.Add(&r1, &r2)
+	rSurface.Add(&rSurface, &r3)
+	pSurface = Point3(rSurface)
+	_, _, n := tr.getEVectors()
+	nSurface.Normalize(&n)
+	pdfSurfaceArea = 1 / tr.SurfaceArea()
+	return
+}
