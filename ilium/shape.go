@@ -5,6 +5,9 @@ type Shape interface {
 	// shape. If the ray intersects the shape and the given
 	// intersection is not nil, also fills in that intersection.
 	Intersect(ray *Ray, intersection *Intersection) bool
+
+	// Returns the surface area of the shape.
+	SurfaceArea() float32
 }
 
 func MakeShapes(config map[string]interface{}) []Shape {

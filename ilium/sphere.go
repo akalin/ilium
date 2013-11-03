@@ -1,5 +1,7 @@
 package ilium
 
+import "math"
+
 type Sphere struct {
 	center     Point3
 	radius     float32
@@ -64,4 +66,8 @@ func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
 	}
 
 	return true
+}
+
+func (s *Sphere) SurfaceArea() float32 {
+	return 4 * math.Pi * s.radius * s.radius
 }
