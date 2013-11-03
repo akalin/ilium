@@ -85,3 +85,10 @@ func (s *Sphere) SampleSurface(u1, u2 float32) (
 	pdfSurfaceArea = 1 / s.SurfaceArea()
 	return
 }
+
+func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
+	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
+	// TODO(akalin): Consider only the surface of the sphere
+	// visible from p if p lies outside the sphere.
+	return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+}
