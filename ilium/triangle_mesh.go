@@ -38,13 +38,24 @@ func MakeTriangleMesh(config map[string]interface{}) []Shape {
 	return triangles
 }
 
-func (tr *Triangle) Intersect(ray *Ray, intersection *Intersection) bool {
-	p1 := &tr.mesh.vertices[tr.mesh.indices[tr.i][0]]
-	p2 := &tr.mesh.vertices[tr.mesh.indices[tr.i][1]]
-	p3 := &tr.mesh.vertices[tr.mesh.indices[tr.i][2]]
-	var e1, e2 Vector3
+func (tr *Triangle) getVertices() (p1, p2, p3 *Point3) {
+	p1 = &tr.mesh.vertices[tr.mesh.indices[tr.i][0]]
+	p2 = &tr.mesh.vertices[tr.mesh.indices[tr.i][1]]
+	p3 = &tr.mesh.vertices[tr.mesh.indices[tr.i][2]]
+	return
+}
+
+func (tr *Triangle) getEVectors() (e1, e2 Vector3, n Normal3) {
+	p1, p2, p3 := tr.getVertices()
 	e1.GetOffset(p1, p2)
 	e2.GetOffset(p1, p3)
+	n.CrossVectorNoAlias(&e1, &e2)
+	return
+}
+
+func (tr *Triangle) Intersect(ray *Ray, intersection *Intersection) bool {
+	p1, _, _ := tr.getVertices()
+	e1, e2, n := tr.getEVectors()
 	var s1 Vector3
 	s1.CrossNoAlias(&ray.D, &e2)
 	divisor := s1.Dot(&e1)
@@ -78,7 +89,13 @@ func (tr *Triangle) Intersect(ray *Ray, intersection *Intersection) bool {
 		intersection.PEpsilon = 1e-3 * intersection.T
 		intersection.N.CrossVectorNoAlias(&e1, &e2)
 		intersection.N.Normalize(&intersection.N)
+		intersection.N.Normalize(&n)
 	}
 
 	return true
+}
+
+func (tr *Triangle) SurfaceArea() float32 {
+	_, _, n := tr.getEVectors()
+	return 0.5 * n.Norm()
 }
