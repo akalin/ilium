@@ -10,6 +10,13 @@ func (out *Vector3) GetOffset(p1, p2 *Point3) {
 	((*R3)(out)).Sub((*R3)(p2), (*R3)(p1))
 }
 
+func (out *Vector3) GetDirectionAndDistance(p1, p2 *Point3) float32 {
+	out.GetOffset(p1, p2)
+	r := ((*R3)(out)).Norm()
+	((*R3)(out)).ScaleInv((*R3)(out), r)
+	return r
+}
+
 func (out *Vector3) Add(v, w *Vector3) {
 	((*R3)(out)).Add((*R3)(v), (*R3)(w))
 }

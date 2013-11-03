@@ -117,3 +117,9 @@ func (tr *Triangle) SampleSurface(u1, u2 float32) (
 	pdfSurfaceArea = 1 / tr.SurfaceArea()
 	return
 }
+
+func (tr *Triangle) SampleSurfaceFromPoint(
+	u1, u2 float32, p Point3, n Normal3) (
+	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
+	return SampleEntireSurfaceFromPoint(tr, u1, u2, p, n)
+}

@@ -15,6 +15,31 @@ type Shape interface {
 	// point.
 	SampleSurface(u1, u2 float32) (
 		pSurface Point3, nSurface Normal3, pdfSurfaceArea float32)
+
+	// Samples the surface of the shape, possible taking advantage
+	// of the fact that only points directly visible from the
+	// given point will be used, and returns the sampled point on
+	// the surface, the normal at that point, and the value of the
+	// pdf with respect to projected solid angle at that point.
+	//
+	// May return a value of 0 for the pdf, in which case the
+	// returned values must not be used.
+	SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
+		pSurface Point3, nSurface Normal3,
+		pdfProjectedSolidAngle float32)
+}
+
+func SampleEntireSurfaceFromPoint(
+	s Shape, u1, u2 float32, p Point3, n Normal3) (
+	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
+	pSurface, nSurface, pdfSurfaceArea := s.SampleSurface(u1, u2)
+	invG := computeInvG(p, n, pSurface, nSurface)
+	pdfProjectedSolidAngle = pdfSurfaceArea * invG
+	if pdfProjectedSolidAngle == 0 {
+		pSurface = Point3{}
+		nSurface = Normal3{}
+	}
+	return
 }
 
 func MakeShapes(config map[string]interface{}) []Shape {

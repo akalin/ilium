@@ -2,6 +2,8 @@ package ilium
 
 import "math"
 
+const _PDF_COS_THETA_EPSILON float32 = 1e-7
+
 func uniformSampleDisk(u1, u2 float32) (x, y float32) {
 	// This has a slight bias towards the center.
 	r := sqrtFloat32(u1)
@@ -39,4 +41,18 @@ func uniformSampleTriangle(u1, u2 float32) (b1, b2 float32) {
 	b1 = 1 - sqrtR
 	b2 = u2 * sqrtR
 	return
+}
+
+func computeInvG(p1 Point3, n1 Normal3, p2 Point3, n2 Normal3) float32 {
+	var w12 Vector3
+	r := w12.GetDirectionAndDistance(&p1, &p2)
+	var w21 Vector3
+	w21.Flip(&w12)
+	absCosTh1 := absFloat32(w12.DotNormal(&n1))
+	absCosTh2 := absFloat32(w21.DotNormal(&n2))
+	if absCosTh1 < _PDF_COS_THETA_EPSILON ||
+		absCosTh2 < _PDF_COS_THETA_EPSILON {
+		return 0
+	}
+	return (r * r) / (absCosTh1 * absCosTh2)
 }
