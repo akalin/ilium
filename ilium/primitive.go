@@ -25,6 +25,7 @@ type Primitive interface {
 	// intersection can be nil.
 	Intersect(ray *Ray, intersection *Intersection) bool
 	GetSensors() []Sensor
+	GetLights() []Light
 }
 
 func MakePrimitives(config map[string]interface{}) []Primitive {

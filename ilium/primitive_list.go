@@ -39,6 +39,20 @@ func (pl *PrimitiveList) GetSensors() []Sensor {
 	return sensors
 }
 
+func (pl *PrimitiveList) GetLights() []Light {
+	lightMap := make(map[Light]bool)
+	for _, primitive := range pl.primitives {
+		for _, light := range primitive.GetLights() {
+			lightMap[light] = true
+		}
+	}
+	lights := []Light{}
+	for light, _ := range lightMap {
+		lights = append(lights, light)
+	}
+	return lights
+}
+
 func MakePrimitiveList(config map[string]interface{}) *PrimitiveList {
 	primitiveConfigs := config["primitives"].([]interface{})
 	primitives := []Primitive{}
