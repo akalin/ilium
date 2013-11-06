@@ -26,6 +26,12 @@ func main() {
 		"x", "", "if non-empty, the extension to append to "+
 			"output paths (but before the real extension)")
 
+	// This flag, combined with -j=1, can be used to get
+	// repeatable renders.
+	seed := flag.Int64(
+		"s", time.Now().UTC().UnixNano(),
+		"the seed to use for the random number generator")
+
 	flag.Parse()
 
 	if len(*profilePath) > 0 {
@@ -45,8 +51,7 @@ func main() {
 
 	runtime.GOMAXPROCS(*numRenderJobs)
 
-	seed := time.Now().UTC().UnixNano()
-	rng := rand.New(rand.NewSource(seed))
+	rng := rand.New(rand.NewSource(*seed))
 
 	if flag.NArg() < 1 {
 		fmt.Fprintf(
