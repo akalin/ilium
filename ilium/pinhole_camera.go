@@ -115,13 +115,10 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 
 	// Reflect the vector {backFocalLength, leftLength, upLength}
 	// to the imaginary image plane across the pinhole.
-	var dFront, dLeft, dUp Vector3
-	dFront.Scale(&pc.frontHat, pc.backFocalLength)
-	dLeft.Scale(&pc.leftHat, leftLength)
-	dUp.Scale(&pc.upHat, upLength)
+	v := R3{pc.backFocalLength, leftLength, upLength}
 	var wo Vector3
-	wo.Add(&dFront, &dLeft)
-	wo.Add(&wo, &dUp)
+	((*R3)(&wo)).ConvertToCoordinateSystemNoAlias(
+		&v, (*R3)(&pc.frontHat), (*R3)(&pc.leftHat), (*R3)(&pc.upHat))
 	wo.Normalize(&wo)
 
 	ray = Ray{pc.position, wo, 0, infFloat32(+1)}
