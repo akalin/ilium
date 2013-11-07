@@ -73,3 +73,12 @@ func MakeCoordinateSystemNoAlias(i, j, k *R3) {
 	j.Normalize(j)
 	k.CrossNoAlias(i, j)
 }
+
+func (out *R3) ConvertToCoordinateSystemNoAlias(r, i, j, k *R3) {
+	out.Scale(i, r.X)
+	var t R3
+	t.Scale(j, r.Y)
+	out.Add(out, &t)
+	t.Scale(k, r.Z)
+	out.Add(out, &t)
+}

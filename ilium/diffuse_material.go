@@ -53,13 +53,8 @@ func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 
 		r3 := cosineSampleHemisphere(u1, u2)
 		// Convert the sampled vector to be around (i, j, k=n).
-		var r3w, t R3
-		t.Scale(&i, r3.X)
-		r3w.Add(&r3w, &t)
-		t.Scale(&j, r3.Y)
-		r3w.Add(&r3w, &t)
-		t.Scale(&k, r3.Z)
-		r3w.Add(&r3w, &t)
+		var r3w R3
+		r3w.ConvertToCoordinateSystemNoAlias(&r3, &i, &j, &k)
 		wi = Vector3(r3w)
 		// f = rho / pi and pdf = 1 / pi, so f / pdf = rho.
 		fDivPdf = d.rho
