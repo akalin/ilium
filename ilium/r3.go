@@ -13,6 +13,16 @@ func MakeR3FromConfig(config interface{}) R3 {
 	}
 }
 
+func MakeSphericalDirection(cosTheta, phi float32) R3 {
+	sinTheta := cosToSin(cosTheta)
+	sinPhi, cosPhi := sincosFloat32(phi)
+	return R3{
+		sinTheta * cosPhi,
+		sinTheta * sinPhi,
+		cosTheta,
+	}
+}
+
 func (out *R3) Add(r, s *R3) {
 	out.X = r.X + s.X
 	out.Y = r.Y + s.Y

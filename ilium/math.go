@@ -54,6 +54,14 @@ func tanFloat32(x float32) float32 {
 	return float32(math.Tan(float64(x)))
 }
 
+func cosToSin(cosTh float32) float32 {
+	return sqrtFloat32(maxFloat32(0, 1-cosTh*cosTh))
+}
+
+func sinToCos(sinTh float32) float32 {
+	return cosToSin(sinTh)
+}
+
 // Avoid math.rand.Rand.Float32() since it's buggy; see
 // https://code.google.com/p/go/issues/detail?id=6721 .
 func randFloat32(rng *rand.Rand) float32 {
