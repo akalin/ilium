@@ -2,13 +2,28 @@ package ilium
 
 import "math"
 
+type SphereSamplingMethod int
+
+const (
+	SPHERE_SAMPLE_ENTIRE SphereSamplingMethod = iota
+)
+
 type Sphere struct {
-	center     Point3
-	radius     float32
-	flipNormal bool
+	samplingMethod SphereSamplingMethod
+	center         Point3
+	radius         float32
+	flipNormal     bool
 }
 
 func MakeSphere(config map[string]interface{}) *Sphere {
+	var samplingMethod SphereSamplingMethod
+	samplingMethodConfig := config["samplingMethod"].(string)
+	switch samplingMethodConfig {
+	case "entire":
+		samplingMethod = SPHERE_SAMPLE_ENTIRE
+	default:
+		panic("unknown sampling method " + samplingMethodConfig)
+	}
 	centerConfig := config["center"].([]interface{})
 	center := MakePoint3FromConfig(centerConfig)
 	radius := float32(config["radius"].(float64))
@@ -16,7 +31,7 @@ func MakeSphere(config map[string]interface{}) *Sphere {
 	if config["flipNormal"] != nil {
 		flipNormal = config["flipNormal"].(bool)
 	}
-	return &Sphere{center, radius, flipNormal}
+	return &Sphere{samplingMethod, center, radius, flipNormal}
 }
 
 func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
@@ -88,7 +103,11 @@ func (s *Sphere) SampleSurface(u1, u2 float32) (
 
 func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
-	// TODO(akalin): Consider only the surface of the sphere
-	// visible from p if p lies outside the sphere.
-	return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+	switch s.samplingMethod {
+	case SPHERE_SAMPLE_ENTIRE:
+		// TODO(akalin): Consider only the surface of the sphere
+		// visible from p if p lies outside the sphere.
+		return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+	}
+	return
 }
