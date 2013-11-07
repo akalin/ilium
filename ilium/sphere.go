@@ -5,7 +5,8 @@ import "math"
 type SphereSamplingMethod int
 
 const (
-	SPHERE_SAMPLE_ENTIRE SphereSamplingMethod = iota
+	SPHERE_SAMPLE_ENTIRE  SphereSamplingMethod = iota
+	SPHERE_SAMPLE_VISIBLE SphereSamplingMethod = iota
 )
 
 type Sphere struct {
@@ -21,6 +22,8 @@ func MakeSphere(config map[string]interface{}) *Sphere {
 	switch samplingMethodConfig {
 	case "entire":
 		samplingMethod = SPHERE_SAMPLE_ENTIRE
+	case "visible":
+		samplingMethod = SPHERE_SAMPLE_VISIBLE
 	default:
 		panic("unknown sampling method " + samplingMethodConfig)
 	}
@@ -105,9 +108,54 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
 	switch s.samplingMethod {
 	case SPHERE_SAMPLE_ENTIRE:
-		// TODO(akalin): Consider only the surface of the sphere
-		// visible from p if p lies outside the sphere.
 		return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+
+	case SPHERE_SAMPLE_VISIBLE:
+		var wcZ Vector3
+		d := wcZ.GetDirectionAndDistance(&p, &s.center)
+		dSq := d * d
+		rSq := s.radius * s.radius
+		if (dSq - rSq) < 1e-4 {
+			return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+		}
+
+		// sinThetaConeMaxSq is sin^2(theta_cone_max).
+		sinThetaConeMaxSq := rSq / dSq
+		// cosThetaConeMax is cos(theta_cone_max).
+		cosThetaConeMax := sinToCos(sinThetaConeMaxSq)
+
+		r3Canonical := uniformSampleCone(u1, u2, cosThetaConeMax)
+		var wcX, wcY R3
+		MakeCoordinateSystemNoAlias((*R3)(&wcZ), &wcX, &wcY)
+		var wi R3
+		wi.ConvertToCoordinateSystemNoAlias(
+			&r3Canonical, &wcX, &wcY, ((*R3)(&wcZ)))
+		absCosTh := absFloat32(wi.Dot((*R3)(&n)))
+		if absCosTh < PDF_COS_THETA_EPSILON {
+			return
+		}
+
+		ray := Ray{p, Vector3(wi), 1e-3, infFloat32(+1)}
+		var intersection Intersection
+		if s.Intersect(&ray, &intersection) {
+			pSurface = intersection.P
+		} else {
+			// ray just grazes the sphere.
+			var w, d Vector3
+			w.GetOffset(&p, &s.center)
+			d.Normalize(&ray.D)
+			t := w.Dot(&d)
+			pSurface = ray.Evaluate(t)
+		}
+		((*Vector3)(&nSurface)).GetOffset(&s.center, &pSurface)
+		nSurface.Normalize(&nSurface)
+		if s.flipNormal {
+			nSurface.Flip(&nSurface)
+		}
+		pdfSolidAngle := uniformConePdfSolidAngle(cosThetaConeMax)
+		pdfProjectedSolidAngle = pdfSolidAngle / absCosTh
+		return
 	}
+
 	return
 }

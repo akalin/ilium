@@ -2,7 +2,7 @@ package ilium
 
 import "math"
 
-const _PDF_COS_THETA_EPSILON float32 = 1e-7
+const PDF_COS_THETA_EPSILON float32 = 1e-7
 
 func uniformSampleDisk(u1, u2 float32) (x, y float32) {
 	// This has a slight bias towards the center.
@@ -56,8 +56,8 @@ func computeInvG(p1 Point3, n1 Normal3, p2 Point3, n2 Normal3) float32 {
 	w21.Flip(&w12)
 	absCosTh1 := absFloat32(w12.DotNormal(&n1))
 	absCosTh2 := absFloat32(w21.DotNormal(&n2))
-	if absCosTh1 < _PDF_COS_THETA_EPSILON ||
-		absCosTh2 < _PDF_COS_THETA_EPSILON {
+	if absCosTh1 < PDF_COS_THETA_EPSILON ||
+		absCosTh2 < PDF_COS_THETA_EPSILON {
 		return 0
 	}
 	return (r * r) / (absCosTh1 * absCosTh2)
