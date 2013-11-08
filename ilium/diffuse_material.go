@@ -32,27 +32,26 @@ func MakeDiffuseMaterial(config map[string]interface{}) *DiffuseMaterial {
 
 func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum) {
+	var r3 R3
 	switch d.samplingMethod {
 	case DIFFUSE_MATERIAL_UNIFORM_SAMPLING:
-		r := uniformSampleSphere(u1, u2)
-		wi = Vector3(r)
-		absCosTh := absFloat32(wi.DotNormal(&n))
+		r3 := uniformSampleHemisphere(u1, u2)
+		absCosTh := r3.Z
 		// f = color / pi and pdf = 1 / (2 * pi * |cos(th)|), so
 		// f / pdf = 2 * color * |cos(th)|.
 		fDivPdf.Scale(&d.color, 2*absCosTh)
 	case DIFFUSE_MATERIAL_COSINE_SAMPLING:
-		k := R3(n)
-		var i, j R3
-		MakeCoordinateSystemNoAlias(&k, &i, &j)
-
-		r3 := cosineSampleHemisphere(u1, u2)
-		// Convert the sampled vector to be around (i, j, k=n).
-		var r3w R3
-		r3w.ConvertToCoordinateSystemNoAlias(&r3, &i, &j, &k)
-		wi = Vector3(r3w)
+		r3 = cosineSampleHemisphere(u1, u2)
 		// f = color / pi and pdf = 1 / pi, so f / pdf = color.
 		fDivPdf = d.color
 	}
+	// Convert the sampled vector to be around (i, j, k=n).
+	k := R3(n)
+	var i, j R3
+	MakeCoordinateSystemNoAlias(&k, &i, &j)
+	var r3w R3
+	r3w.ConvertToCoordinateSystemNoAlias(&r3, &i, &j, &k)
+	wi = Vector3(r3w)
 	// Make wi lie in the same hemisphere as wo.
 	if (wo.DotNormal(&n) >= 0) != (wi.DotNormal(&n) >= 0) {
 		wi.Flip(&wi)

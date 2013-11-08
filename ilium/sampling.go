@@ -14,6 +14,13 @@ func uniformSampleDisk(u1, u2 float32) (x, y float32) {
 	return
 }
 
+func uniformSampleHemisphere(u1, u2 float32) R3 {
+	// This has a slight bias towards the top of the hemisphere.
+	cosTheta := 1 - u1
+	phi := 2 * math.Pi * u2
+	return MakeSphericalDirection(cosTheta, phi)
+}
+
 func uniformSampleSphere(u1, u2 float32) R3 {
 	// This has a slight bias towards the top of the sphere.
 	cosTheta := 1 - 2*u1
