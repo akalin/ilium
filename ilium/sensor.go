@@ -121,6 +121,8 @@ func MakeSensor(config map[string]interface{}, shapes []Shape) Sensor {
 	switch sensorType {
 	case "RadianceMeter":
 		return MakeRadianceMeter(config, shapes)
+	case "IrradianceMeter":
+		return MakeIrradianceMeter(config, shapes)
 	case "PinholeCamera":
 		return MakePinholeCamera(config, shapes)
 	default:
