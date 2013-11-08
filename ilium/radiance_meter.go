@@ -3,6 +3,7 @@ package ilium
 import "fmt"
 
 type RadianceMeter struct {
+	description string
 	ray         Ray
 	sampleCount int
 	n           int
@@ -12,6 +13,7 @@ type RadianceMeter struct {
 
 func MakeRadianceMeter(
 	config map[string]interface{}, shapes []Shape) *RadianceMeter {
+	description := config["description"].(string)
 	if len(shapes) != 1 {
 		panic("Radiance meter must have exactly one PointShape")
 	}
@@ -25,6 +27,7 @@ func MakeRadianceMeter(
 	direction.GetOffset(&pointShape.P, &target)
 	direction.Normalize(&direction)
 	return &RadianceMeter{
+		description: description,
 		ray:         Ray{pointShape.P, direction, 0, infFloat32(+1)},
 		sampleCount: sampleCount,
 	}
@@ -72,6 +75,6 @@ func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {
 	// standard error = standard deviation / sqrt(n)
 	var stdError Spectrum
 	stdError.ScaleInv(&stdDev, sqrtFloat32(float32(rm.n)))
-	fmt.Printf("mean=%v, std dev=%v, std error=%v\n",
-		rm.mean, stdDev, stdError)
+	fmt.Printf("<Li>=%v (s=%v) (se=%v) %s\n",
+		rm.mean, stdDev, stdError, rm.description)
 }

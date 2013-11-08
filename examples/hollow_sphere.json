@@ -44,8 +44,8 @@
           "position": [0, -0.5, 0],
           "sensors": [
             {
-              "_comment": "Towards hollow sphere.",
               "type": "RadianceMeter",
+              "description": "towards hollow sphere",
               "target": [0, 1, 0],
               "sampleCount": 32
             }
