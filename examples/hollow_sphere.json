@@ -1,10 +1,11 @@
 {
   "_comment": [
-    "The scene is a radiance meter inside a hollow sphere that both ",
-    "emits and reflects light.",
+    "The scene is a radiance and irradiance meter inside a hollow sphere ",
+    "that both emits and reflects light.",
 
     "The radiance along any ray inside the sphere should converge to Le ",
-    "/ (1 - rho), which in this case is (0.5, 0.5, 0.5).",
+    "/ (1 - rho), which in this case is (0.5, 0.5, 0.5). Thus, the ",
+    "irradiance at any point and normal should then be pi * Le / (1 - rho).",
 
     "For an eye path with k bounces, the pixel values will be Le (1 - ",
     "rho^k) / (1 - rho).  Thus, the absolute error is Le rho^k / (1 - ",
@@ -39,14 +40,21 @@
           }
         },
         {
-          "_comment": "Radiance meters.",
+          "_comment": "Radiometers.",
           "type": "PointPrimitive",
-          "position": [0, -0.5, 0],
+          "position": [0, 0.5, 0],
           "sensors": [
             {
               "type": "RadianceMeter",
               "description": "towards hollow sphere",
               "target": [0, 1, 0],
+              "sampleCount": 32
+            },
+            {
+              "type": "IrradianceMeter",
+              "description": "in center of hollow sphere",
+              "samplingMethod": "cosine",
+              "up": [0, 1, 0],
               "sampleCount": 32
             }
           ]
