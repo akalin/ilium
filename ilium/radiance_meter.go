@@ -6,9 +6,7 @@ type RadianceMeter struct {
 	description string
 	ray         Ray
 	sampleCount int
-	n           int
-	mean        Spectrum
-	m2          Spectrum
+	estimator   spectrumEstimator
 }
 
 func MakeRadianceMeter(
@@ -30,6 +28,7 @@ func MakeRadianceMeter(
 		description: description,
 		ray:         Ray{pointShape.P, direction, 5e-4, infFloat32(+1)},
 		sampleCount: sampleCount,
+		estimator:   spectrumEstimator{name: "Li"},
 	}
 }
 
@@ -49,32 +48,9 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 }
 
 func (rm *RadianceMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
-	if !WeLiDivPdf.IsValid() {
-		panic(fmt.Sprintf("Invalid WeLiDivPdf %v", WeLiDivPdf))
-	}
-	rm.n++
-	// delta = x - mean
-	var delta Spectrum
-	delta.Sub(&WeLiDivPdf, &rm.mean)
-	// mean = mean + delta/n
-	var deltaOverN Spectrum
-	deltaOverN.ScaleInv(&delta, float32(rm.n))
-	rm.mean.Add(&rm.mean, &deltaOverN)
-	// M2 = M2 + delta*(x - mean)
-	var t Spectrum
-	t.Sub(&WeLiDivPdf, &rm.mean)
-	t.Mul(&t, &delta)
-	rm.m2.Add(&rm.m2, &t)
+	rm.estimator.AddSample(WeLiDivPdf)
 }
 
 func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {
-	var variance Spectrum
-	variance.ScaleInv(&rm.m2, float32(rm.n-1))
-	var stdDev Spectrum
-	stdDev.Sqrt(&variance)
-	// standard error = standard deviation / sqrt(n)
-	var stdError Spectrum
-	stdError.ScaleInv(&stdDev, sqrtFloat32(float32(rm.n)))
-	fmt.Printf("<Li>=%v (s=%v) (se=%v) %s\n",
-		rm.mean, stdDev, stdError, rm.description)
+	fmt.Printf("%s %s\n", &rm.estimator, rm.description)
 }
