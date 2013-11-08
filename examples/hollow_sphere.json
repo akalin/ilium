@@ -7,6 +7,9 @@
     "/ (1 - rho), which in this case is (0.5, 0.5, 0.5). Thus, the ",
     "irradiance at any point and normal should then be pi * Le / (1 - rho).",
 
+    "Also, the flux over the hollow sphere should be ",
+    "4 * pi^2 * r^2 * Le / (1 - rho).",
+
     "For an eye path with k bounces, the pixel values will be Le (1 - ",
     "rho^k) / (1 - rho).  Thus, the absolute error is Le rho^k / (1 - ",
     "rho), and the relative error is rho^k.  To get the absolute error ",
@@ -37,7 +40,15 @@
           "light": {
             "type": "DiffuseAreaLight",
             "emission": { "type": "rgb", "r": 0.1, "g": 0.2, "b": 0.4 }
-          }
+          },
+          "sensors": [
+            {
+              "type": "FluxMeter",
+              "description": "over hollow sphere",
+              "samplingMethod": "cosine",
+              "sampleCount": 32
+            }
+          ]
         },
         {
           "_comment": "Radiometers.",

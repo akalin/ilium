@@ -5,7 +5,9 @@
     "0 < L_e(x, v) <= L). In this case, we set L to be 0.5 and L_e ",
     "to be constant, so the reflectance is also constant.",
 
-    "The irradiance at any point and normal should then be 0.5 * pi."
+    "The irradiance at any point and normal should then be 0.5 * pi, and ",
+    "the flux over each surface should just be 0.5 * pi * surface area, ",
+    "so each sphere should have flux 2 * pi^2 * r^2."
   ],
 
   "scene": {
@@ -30,7 +32,15 @@
           "light": {
             "type": "DiffuseAreaLight",
             "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 }
-          }
+          },
+          "sensors": [
+            {
+              "type": "FluxMeter",
+              "description": "over hollow sphere",
+              "samplingMethod": "cosine",
+              "sampleCount": 32
+            }
+          ]
         },
         {
           "_comment": "Off-center light.",
@@ -49,7 +59,15 @@
           "light": {
             "type": "DiffuseAreaLight",
             "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 }
-          }
+          },
+          "sensors": [
+            {
+              "type": "FluxMeter",
+              "description": "over off-center light",
+              "samplingMethod": "cosine",
+              "sampleCount": 32
+            }
+          ]
         },
         {
           "_comment": "Radiometers.",
