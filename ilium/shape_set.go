@@ -14,6 +14,21 @@ func MakeShapeSet(shapes []Shape) shapeSet {
 	return shapeSet{shapes, shapeAreaDistribution}
 }
 
+// Samples the surface of the shape set uniformly and returns the
+// sampled point on the surface, an epsilon to use for rays starting
+// or ending at that point, the normal at that point, and the value of
+// the pdf with respect to surface area at that point.
+func (ss *shapeSet) SampleSurface(u, v1, v2 float32) (
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, pdfSurfaceArea float32) {
+	i, pShape := ss.shapeAreaDistribution.SampleDiscrete(u)
+	shape := ss.shapes[i]
+	pSurface, pSurfaceEpsilon, nSurface, pdfShape :=
+		shape.SampleSurface(v1, v2)
+	pdfSurfaceArea = pShape * pdfShape
+	return
+}
+
 // Samples the surface of the shape set, possible taking advantage of
 // the fact that only points directly visible from the given point
 // will be used, and returns the sampled point on the surface, an
