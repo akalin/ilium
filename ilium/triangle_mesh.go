@@ -1,5 +1,7 @@
 package ilium
 
+const _TRIANGLE_EPSILON_SCALE float32 = 1e-3
+
 type triangleMesh struct {
 	vertices []Point3
 	indices  [][3]int
@@ -86,7 +88,7 @@ func (tr *Triangle) Intersect(ray *Ray, intersection *Intersection) bool {
 	if intersection != nil {
 		intersection.T = t
 		intersection.P = ray.Evaluate(intersection.T)
-		intersection.PEpsilon = 1e-3 * intersection.T
+		intersection.PEpsilon = _TRIANGLE_EPSILON_SCALE * intersection.T
 		intersection.N.CrossVectorNoAlias(&e1, &e2)
 		intersection.N.Normalize(&intersection.N)
 		intersection.N.Normalize(&n)
@@ -101,7 +103,8 @@ func (tr *Triangle) SurfaceArea() float32 {
 }
 
 func (tr *Triangle) SampleSurface(u1, u2 float32) (
-	pSurface Point3, nSurface Normal3, pdfSurfaceArea float32) {
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, pdfSurfaceArea float32) {
 	b1, b2 := uniformSampleTriangle(u1, u2)
 	p1, p2, p3 := tr.getVertices()
 	var r1, r2, r3 R3
@@ -112,6 +115,8 @@ func (tr *Triangle) SampleSurface(u1, u2 float32) (
 	rSurface.Add(&r1, &r2)
 	rSurface.Add(&rSurface, &r3)
 	pSurface = Point3(rSurface)
+	pSurfaceEpsilon =
+		_TRIANGLE_EPSILON_SCALE * sqrtFloat32(tr.SurfaceArea())
 	_, _, n := tr.getEVectors()
 	nSurface.Normalize(&n)
 	pdfSurfaceArea = 1 / tr.SurfaceArea()
@@ -120,6 +125,7 @@ func (tr *Triangle) SampleSurface(u1, u2 float32) (
 
 func (tr *Triangle) SampleSurfaceFromPoint(
 	u1, u2 float32, p Point3, n Normal3) (
-	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3,
+	pdfProjectedSolidAngle float32) {
 	return SampleEntireSurfaceFromPoint(tr, u1, u2, p, n)
 }

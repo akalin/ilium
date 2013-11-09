@@ -16,7 +16,8 @@ func MakeShapeSet(shapes []Shape) shapeSet {
 
 // Samples the surface of the shape set, possible taking advantage of
 // the fact that only points directly visible from the given point
-// will be used, and returns the sampled point on the surface, the
+// will be used, and returns the sampled point on the surface, an
+// epsilon to use for rays starting or ending at that point, the
 // normal at that point, and the value of the pdf with respect to
 // projected solid angle at that point.
 //
@@ -24,10 +25,11 @@ func MakeShapeSet(shapes []Shape) shapeSet {
 // values must not be used.
 func (ss *shapeSet) SampleSurfaceFromPoint(
 	u, v1, v2 float32, p Point3, n Normal3) (
-	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	i, pShape := ss.shapeAreaDistribution.SampleDiscrete(u)
 	shape := ss.shapes[i]
-	pSurface, nSurface, pdfShape :=
+	pSurface, pSurfaceEpsilon, nSurface, pdfShape :=
 		shape.SampleSurfaceFromPoint(v1, v2, p, n)
 	if pdfShape == 0 {
 		return
