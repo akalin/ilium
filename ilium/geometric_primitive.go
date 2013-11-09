@@ -46,7 +46,7 @@ func MakeGeometricPrimitives(config map[string]interface{}) []Primitive {
 	sensors := []Sensor{}
 	if sensorsConfig, ok := config["sensors"].([]interface{}); ok {
 		for _, o := range sensorsConfig {
-			sensor := MakeSensor(o.(map[string]interface{}))
+			sensor := MakeSensor(o.(map[string]interface{}), shapes)
 			sensors = append(sensors, sensor)
 		}
 	}

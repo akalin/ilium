@@ -16,7 +16,8 @@ type PinholeCamera struct {
 	image           Image
 }
 
-func MakePinholeCamera(config map[string]interface{}) *PinholeCamera {
+func MakePinholeCamera(
+	config map[string]interface{}, shapes []Shape) *PinholeCamera {
 	outputPath := config["outputPath"].(string)
 	position := MakePoint3FromConfig(config["position"])
 	target := MakePoint3FromConfig(config["target"])

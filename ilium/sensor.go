@@ -116,13 +116,13 @@ type Sensor interface {
 	EmitSignal(outputDir, outputExt string)
 }
 
-func MakeSensor(config map[string]interface{}) Sensor {
+func MakeSensor(config map[string]interface{}, shapes []Shape) Sensor {
 	sensorType := config["type"].(string)
 	switch sensorType {
 	case "RadianceMeter":
-		return MakeRadianceMeter(config)
+		return MakeRadianceMeter(config, shapes)
 	case "PinholeCamera":
-		return MakePinholeCamera(config)
+		return MakePinholeCamera(config, shapes)
 	default:
 		panic("unknown sensor type " + sensorType)
 	}
