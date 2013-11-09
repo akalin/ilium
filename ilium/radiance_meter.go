@@ -12,14 +12,20 @@ type RadianceMeter struct {
 
 func MakeRadianceMeter(
 	config map[string]interface{}, shapes []Shape) *RadianceMeter {
-	position := MakePoint3FromConfig(config["position"])
+	if len(shapes) != 1 {
+		panic("Radiance meter must have exactly one PointShape")
+	}
+	pointShape, ok := shapes[0].(*PointShape)
+	if !ok {
+		panic("Radiance meter must have exactly one PointShape")
+	}
 	target := MakePoint3FromConfig(config["target"])
 	sampleCount := int(config["sampleCount"].(float64))
 	var direction Vector3
-	direction.GetOffset(&position, &target)
+	direction.GetOffset(&pointShape.P, &target)
 	direction.Normalize(&direction)
 	return &RadianceMeter{
-		ray:         Ray{position, direction, 0, infFloat32(+1)},
+		ray:         Ray{pointShape.P, direction, 0, infFloat32(+1)},
 		sampleCount: sampleCount,
 	}
 }

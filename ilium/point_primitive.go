@@ -1,9 +1,8 @@
 package ilium
 
 type PointPrimitive struct {
-	position Point3
-	sensors  []Sensor
-	lights   []Light
+	sensors []Sensor
+	lights  []Light
 }
 
 func (pp *PointPrimitive) Intersect(ray *Ray, intersection *Intersection) bool {
@@ -21,11 +20,12 @@ func (pp *PointPrimitive) GetLights() []Light {
 func MakePointPrimitive(
 	config map[string]interface{}) *PointPrimitive {
 	position := MakePoint3FromConfig(config["position"])
+	shapes := []Shape{&PointShape{position}}
 	sensors := []Sensor{}
 	if sensorsConfig, ok := config["sensors"].([]interface{}); ok {
 		for _, o := range sensorsConfig {
 			sensor := MakeSensor(
-				o.(map[string]interface{}), []Shape{})
+				o.(map[string]interface{}), shapes)
 			sensors = append(sensors, sensor)
 		}
 	}
@@ -33,9 +33,9 @@ func MakePointPrimitive(
 	if lightsConfig, ok := config["lights"].([]interface{}); ok {
 		for _, o := range lightsConfig {
 			light := MakeLight(
-				o.(map[string]interface{}), []Shape{})
+				o.(map[string]interface{}), shapes)
 			lights = append(lights, light)
 		}
 	}
-	return &PointPrimitive{position, sensors, lights}
+	return &PointPrimitive{sensors, lights}
 }
