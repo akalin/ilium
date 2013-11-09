@@ -53,6 +53,8 @@ func SampleEntireSurfaceFromPoint(
 func MakeShapes(config map[string]interface{}) []Shape {
 	shapeType := config["type"].(string)
 	switch shapeType {
+	case "Disk":
+		return []Shape{MakeDisk(config)}
 	case "Sphere":
 		return []Shape{MakeSphere(config)}
 	case "TriangleMesh":
