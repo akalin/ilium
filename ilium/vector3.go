@@ -41,6 +41,10 @@ func (out *Vector3) CrossNoAlias(v, w *Vector3) {
 	((*R3)(out)).CrossNoAlias((*R3)(v), (*R3)(w))
 }
 
+func (v *Vector3) NormSq() float32 {
+	return ((*R3)(v)).NormSq()
+}
+
 func (out *Vector3) Normalize(v *Vector3) {
 	((*R3)(out)).Normalize((*R3)(v))
 }

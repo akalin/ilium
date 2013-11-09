@@ -2,6 +2,10 @@ package ilium
 
 type Normal3 R3
 
+func MakeNormal3FromConfig(config interface{}) Normal3 {
+	return Normal3(MakeR3FromConfig(config))
+}
+
 func (out *Normal3) Flip(n *Normal3) {
 	((*R3)(out)).Invert((*R3)(n))
 }
