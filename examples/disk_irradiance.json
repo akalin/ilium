@@ -1,0 +1,63 @@
+{
+  "_comment": [
+    "The scene is an irradiance meter pointing up at a disk of radius = 1 ",
+    "that is h = 1 units away with a constant emitted radiance of ",
+    "L = 10 W/m^2 sr.",
+
+    "The measured irradiance should be close to the calculated value of ",
+    "E = pi * L / (1 + h^2)."
+  ],
+
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_comment": "Disk light.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Disk",
+            "center": [0, 0, 1],
+            "normal": [0, 0, -1],
+            "radius": 1
+          },
+          "material": {
+            "type": "DiffuseMaterial",
+            "samplingMethod": "cosine",
+            "color": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          },
+          "light": {
+            "type": "DiffuseAreaLight",
+            "emission": { "type": "rgb", "r": 10, "g": 10, "b": 10 }
+          }
+        },
+        {
+          "_comment": "Radiometers.",
+          "type": "PointPrimitive",
+          "position": [0, 0, 0],
+          "sensors": [
+            {
+              "type": "IrradianceMeter",
+              "description": "at origin",
+              "samplingMethod": "cosine",
+              "up": [0, 0, 1],
+              "sampleCount": 1024
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "pathType": "emittedLight",
+    "russianRouletteMethod": "fixed",
+    "russianRouletteStartIndex": 1,
+    "russianRouletteMaxProbability": 1,
+    "maxEdgeCount": 1,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
