@@ -10,6 +10,8 @@ const (
 	SPHERE_SAMPLE_VISIBLE_FAST SphereSamplingMethod = iota
 )
 
+const _SPHERE_EPSILON_SCALE float32 = 5e-4
+
 type Sphere struct {
 	samplingMethod SphereSamplingMethod
 	center         Point3
@@ -77,7 +79,7 @@ func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
 			intersection.T = t1
 		}
 		intersection.P = ray.Evaluate(intersection.T)
-		intersection.PEpsilon = 5e-4 * intersection.T
+		intersection.PEpsilon = _SPHERE_EPSILON_SCALE * intersection.T
 		((*Vector3)(&intersection.N)).GetOffset(
 			&s.center, &intersection.P)
 		intersection.N.Normalize(&intersection.N)
@@ -93,17 +95,18 @@ func (s *Sphere) SurfaceArea() float32 {
 	return 4 * math.Pi * s.radius * s.radius
 }
 
-func (s *Sphere) solidAngleToPoint(w R3) Point3 {
+func (s *Sphere) solidAngleToPoint(w R3) (p Point3, pEpsilon float32) {
 	w.Scale(&w, s.radius)
-	var p Point3
 	p.Shift(&s.center, (*Vector3)(&w))
-	return p
+	pEpsilon = _SPHERE_EPSILON_SCALE * s.radius
+	return
 }
 
 func (s *Sphere) SampleSurface(u1, u2 float32) (
-	pSurface Point3, nSurface Normal3, pdfSurfaceArea float32) {
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, pdfSurfaceArea float32) {
 	w := uniformSampleSphere(u1, u2)
-	pSurface = s.solidAngleToPoint(w)
+	pSurface, pSurfaceEpsilon = s.solidAngleToPoint(w)
 	nSurface = Normal3(w)
 	if s.flipNormal {
 		nSurface.Flip(&nSurface)
@@ -125,7 +128,8 @@ func (s *Sphere) computeThetaConeMax(d float32) (
 }
 
 func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
-	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	switch s.samplingMethod {
 	case SPHERE_SAMPLE_ENTIRE:
 		return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
@@ -156,6 +160,7 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 		var intersection Intersection
 		if s.Intersect(&ray, &intersection) {
 			pSurface = intersection.P
+			pSurfaceEpsilon = intersection.PEpsilon
 		} else {
 			// ray just grazes the sphere.
 			var w, d Vector3
@@ -163,6 +168,7 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 			d.Normalize(&ray.D)
 			t := w.Dot(&d)
 			pSurface = ray.Evaluate(t)
+			pSurfaceEpsilon = _SPHERE_EPSILON_SCALE * t
 		}
 		((*Vector3)(&nSurface)).GetOffset(&s.center, &pSurface)
 		nSurface.Normalize(&nSurface)
@@ -204,7 +210,7 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 		w.ConvertToCoordinateSystemNoAlias(
 			&r3Canonical, &wpX, &wpY, ((*R3)(&wpZ)))
 
-		pSurface = s.solidAngleToPoint(w)
+		pSurface, pSurfaceEpsilon = s.solidAngleToPoint(w)
 		nSurface = Normal3(w)
 		if s.flipNormal {
 			nSurface.Flip(&nSurface)

@@ -7,14 +7,17 @@ type Shape interface {
 	SurfaceArea() float32
 
 	// Samples the surface of the shape uniformly and returns the
-	// sampled point on the surface, the normal at that point, and
-	// the value of the pdf with respect to surface area at that
-	// point.
+	// sampled point on the surface, an epsilon to use for rays
+	// starting or ending at that point, the normal at that point,
+	// and the value of the pdf with respect to surface area at
+	// that point.
 	SampleSurface(u1, u2 float32) (
-		pSurface Point3, nSurface Normal3, pdfSurfaceArea float32)
+		pSurface Point3, pSurfaceEpsilon float32,
+		nSurface Normal3, pdfSurfaceArea float32)
 
 	// Samples the surface of the shape from the given point and
-	// returns the sampled point on the surface, the normal at
+	// returns the sampled point on the surface, an epsilon to use
+	// for rays starting or ending at that point, the normal at
 	// that point, and the value of the pdf (with respect to
 	// projected solid angle) from p. A simple implementation
 	// would be to just forward to SampleSurface() and convert
@@ -22,18 +25,21 @@ type Shape interface {
 	// may take advantage of the fact that only points visible
 	// from the given point will be used.
 	SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
-		pSurface Point3, nSurface Normal3,
-		pdfProjectedSolidAngle float32)
+		pSurface Point3, pSurfaceEpsilon float32,
+		nSurface Normal3, pdfProjectedSolidAngle float32)
 }
 
 func SampleEntireSurfaceFromPoint(
 	s Shape, u1, u2 float32, p Point3, n Normal3) (
-	pSurface Point3, nSurface Normal3, pdfProjectedSolidAngle float32) {
-	pSurface, nSurface, pdfSurfaceArea := s.SampleSurface(u1, u2)
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, pdfProjectedSolidAngle float32) {
+	pSurface, pSurfaceEpsilon, nSurface, pdfSurfaceArea :=
+		s.SampleSurface(u1, u2)
 	invG := computeInvG(p, n, pSurface, nSurface)
 	pdfProjectedSolidAngle = pdfSurfaceArea * invG
 	if pdfProjectedSolidAngle == 0 {
 		pSurface = Point3{}
+		pSurfaceEpsilon = 0
 		nSurface = Normal3{}
 	}
 	return

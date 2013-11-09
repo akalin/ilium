@@ -16,13 +16,13 @@ func MakeDiffuseAreaLight(
 func (d *DiffuseAreaLight) SampleLeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	LeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
-	pSurface, nSurface, pdf :=
+	pSurface, pSurfaceEpsilon, nSurface, pdf :=
 		d.shapeSet.SampleSurfaceFromPoint(u, v1, v2, p, n)
 	if pdf == 0 {
 		return
 	}
 	r := wi.GetDirectionAndDistance(&p, &pSurface)
-	shadowRay = Ray{p, wi, pEpsilon, r * (1 - 1e-3)}
+	shadowRay = Ray{p, wi, pEpsilon, r * (1 - pSurfaceEpsilon)}
 	var wo Vector3
 	wo.Flip(&wi)
 	Le := d.ComputeLe(pSurface, nSurface, wo)
