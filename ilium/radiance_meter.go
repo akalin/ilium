@@ -10,7 +10,8 @@ type RadianceMeter struct {
 	m2          Spectrum
 }
 
-func MakeRadianceMeter(config map[string]interface{}) *RadianceMeter {
+func MakeRadianceMeter(
+	config map[string]interface{}, shapes []Shape) *RadianceMeter {
 	position := MakePoint3FromConfig(config["position"])
 	target := MakePoint3FromConfig(config["target"])
 	sampleCount := int(config["sampleCount"].(float64))

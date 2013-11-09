@@ -24,7 +24,8 @@ func MakePointPrimitive(
 	sensors := []Sensor{}
 	if sensorsConfig, ok := config["sensors"].([]interface{}); ok {
 		for _, o := range sensorsConfig {
-			sensor := MakeSensor(o.(map[string]interface{}))
+			sensor := MakeSensor(
+				o.(map[string]interface{}), []Shape{})
 			sensors = append(sensors, sensor)
 		}
 	}
