@@ -18,8 +18,16 @@ type PinholeCamera struct {
 
 func MakePinholeCamera(
 	config map[string]interface{}, shapes []Shape) *PinholeCamera {
+	if len(shapes) != 1 {
+		panic("Pinhole camera must have exactly one PointShape")
+	}
+	pointShape, ok := shapes[0].(*PointShape)
+	if !ok {
+		panic("Pinhole camera must have exactly one PointShape")
+	}
+
 	outputPath := config["outputPath"].(string)
-	position := MakePoint3FromConfig(config["position"])
+	position := pointShape.P
 	target := MakePoint3FromConfig(config["target"])
 	up := MakeVector3FromConfig(config["up"])
 
