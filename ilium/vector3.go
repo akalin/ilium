@@ -21,6 +21,10 @@ func (out *Vector3) Add(v, w *Vector3) {
 	((*R3)(out)).Add((*R3)(v), (*R3)(w))
 }
 
+func (out *Vector3) Sub(v, w *Vector3) {
+	((*R3)(out)).Sub((*R3)(v), (*R3)(w))
+}
+
 func (out *Vector3) Flip(v *Vector3) {
 	((*R3)(out)).Invert((*R3)(v))
 }
