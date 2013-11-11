@@ -11,6 +11,8 @@ func MakeMaterial(config map[string]interface{}) Material {
 	switch materialType {
 	case "DiffuseMaterial":
 		return MakeDiffuseMaterial(config)
+	case "MicrofacetMaterial":
+		return MakeMicrofacetMaterial(config)
 	default:
 		panic("unknown material type " + materialType)
 	}
