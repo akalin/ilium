@@ -48,6 +48,10 @@ func minFloat32(x, y float32) float32 {
 	return float32(math.Min(float64(x), float64(y)))
 }
 
+func powFloat32(x, y float32) float32 {
+	return float32(math.Pow(float64(x), float64(y)))
+}
+
 func sincosFloat32(x float32) (sin, cos float32) {
 	sinFloat64, cosFloat64 := math.Sincos(float64(x))
 	sin = float32(sinFloat64)

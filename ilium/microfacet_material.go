@@ -1,0 +1,102 @@
+package ilium
+
+import "math"
+
+const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
+
+type MicrofacetMaterial struct {
+	rho           Spectrum
+	blinnExponent float32
+}
+
+func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
+	rhoConfig := config["rho"].(map[string]interface{})
+	rho := MakeSpectrumFromConfig(rhoConfig)
+	blinnExponent := float32(config["blinnExponent"].(float64))
+	return &MicrofacetMaterial{rho, blinnExponent}
+}
+
+func (m *MicrofacetMaterial) computeG(
+	absCosThO, absCosThI, absCosThH, absWoDotWh float32) float32 {
+	return minFloat32(
+		1, 2*absCosThH*minFloat32(absCosThO, absCosThI)/absWoDotWh)
+}
+
+func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
+	wi Vector3, fDivPdf Spectrum) {
+	cosThO := wo.DotNormal(&n)
+	if cosThO < _MICROFACET_COS_THETA_EPSILON {
+		return
+	}
+
+	// TODO(akalin): Implement better sampling methods.
+	vh := uniformSampleHemisphere(u1, u2)
+
+	// Convert the sampled vector to be around (i, j, k=n).
+	k := R3(n)
+	var i, j R3
+	MakeCoordinateSystemNoAlias(&k, &i, &j)
+	var vhW R3
+	vhW.ConvertToCoordinateSystemNoAlias(&vh, &i, &j, &k)
+	wh := Vector3(vhW)
+
+	woDotWh := wo.Dot(&wh)
+	if woDotWh < _MICROFACET_COS_THETA_EPSILON {
+		return
+	}
+	absWoDotWh := woDotWh
+
+	wi.Scale(&wh, 2*woDotWh)
+	wi.Sub(&wi, &wo)
+
+	cosThI := wi.DotNormal(&n)
+	if cosThI < _MICROFACET_COS_THETA_EPSILON {
+		wi = Vector3{}
+		return
+	}
+	absCosThI := cosThI
+
+	f := m.ComputeF(wo, wi, n)
+	// pdf = 1 / (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|).
+	fDivPdf.Scale(&f, 8*math.Pi*absCosThI*absWoDotWh)
+	return
+}
+
+func (m *MicrofacetMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
+	cosThO := wo.DotNormal(&n)
+	if cosThO < _MICROFACET_COS_THETA_EPSILON {
+		return Spectrum{}
+	}
+	absCosThO := cosThO
+
+	cosThI := wi.DotNormal(&n)
+	if cosThI < _MICROFACET_COS_THETA_EPSILON {
+		return Spectrum{}
+	}
+	absCosThI := cosThI
+
+	var wh Vector3
+	wh.Add(&wo, &wi)
+	wh.Normalize(&wh)
+	woDotWh := wo.Dot(&wh)
+	// This check is redundant due to how wh is constructed, but
+	// keep it around to be consistent with SampleWi().
+	if woDotWh < _MICROFACET_COS_THETA_EPSILON {
+		return Spectrum{}
+	}
+	absWoDotWh := woDotWh
+
+	// Assume perfect reflection for now (i.e., a Fresnel term of 1).
+	//
+	// TODO(akalin): Implement a real Fresnel term and refraction.
+	cosThH := wh.DotNormal(&n)
+	// By construction, wh is always in the same hemisphere as wo
+	// (with respect to n).
+	absCosThH := cosThH
+	e := m.blinnExponent
+	blinnD := (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
+	G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
+	var f Spectrum
+	f.Scale(&m.rho, (blinnD*G)/(4*absCosThO*absCosThI))
+	return f
+}
