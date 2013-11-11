@@ -165,6 +165,21 @@
           }
         },
         {
+          "_comment": "Sphere.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Sphere",
+            "samplingMethod": "visible",
+            "center": [ 0, 3, 0.1 ],
+            "radius": 0.6
+          },
+          "material": {
+            "type": "DiffuseMaterial",
+            "samplingMethod": "cosine",
+            "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 }
+          }
+        },
+        {
           "_comment": "Sensors.",
           "type": "PointPrimitive",
           "position": [0, -0.5, 0],
