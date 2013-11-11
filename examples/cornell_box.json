@@ -174,9 +174,9 @@
             "radius": 0.6
           },
           "material": {
-            "type": "DiffuseMaterial",
-            "samplingMethod": "cosine",
-            "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 }
+            "type": "MicrofacetMaterial",
+            "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 },
+            "blinnExponent": 2000
           }
         },
         {
