@@ -55,6 +55,17 @@ func (r *R3) Dot(s *R3) float32 {
 	return r.X*s.X + r.Y*s.Y + r.Z*s.Z
 }
 
+func (r *R3) DistanceSq(s *R3) float32 {
+	dx := r.X - s.X
+	dy := r.Y - s.Y
+	dz := r.Z - s.Z
+	return dx*dx + dy*dy + dz*dz
+}
+
+func (r *R3) Distance(s *R3) float32 {
+	return sqrtFloat32(r.DistanceSq(s))
+}
+
 func (out *R3) CrossNoAlias(r, s *R3) {
 	out.X = r.Y*s.Z - r.Z*s.Y
 	out.Y = r.Z*s.X - r.X*s.Z
