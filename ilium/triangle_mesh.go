@@ -129,3 +129,8 @@ func (tr *Triangle) SampleSurfaceFromPoint(
 	pdfProjectedSolidAngle float32) {
 	return SampleEntireSurfaceFromPoint(tr, u1, u2, p, pEpsilon, n)
 }
+
+func (tr *Triangle) ComputePdfFromPoint(
+	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	return ComputeEntireSurfacePdfFromPoint(tr, p, pEpsilon, n, wi)
+}
