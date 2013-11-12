@@ -14,11 +14,19 @@ func uniformSampleDisk(u1, u2 float32) (x, y float32) {
 	return
 }
 
+func uniformDiskPdfSurfaceArea() float32 {
+	return 1 / math.Pi
+}
+
 func uniformSampleHemisphere(u1, u2 float32) R3 {
 	// This has a slight bias towards the top of the hemisphere.
 	cosTheta := 1 - u1
 	phi := 2 * math.Pi * u2
 	return MakeSphericalDirection(cosTheta, phi)
+}
+
+func uniformHemispherePdfSolidAngle() float32 {
+	return 0.5 / math.Pi
 }
 
 func uniformSampleSphere(u1, u2 float32) R3 {
@@ -28,11 +36,19 @@ func uniformSampleSphere(u1, u2 float32) R3 {
 	return MakeSphericalDirection(cosTheta, phi)
 }
 
+func uniformSpherePdfSolidAngle() float32 {
+	return 0.25 / math.Pi
+}
+
 func cosineSampleHemisphere(u1, u2 float32) R3 {
 	// This has a slight bias towards the top of the hemisphere.
 	x, y := uniformSampleDisk(u1, u2)
 	z := sqrtFloat32(maxFloat32(0, 1-x*x-y*y))
 	return R3{x, y, z}
+}
+
+func cosineHemispherePdfProjectedSolidAngle() float32 {
+	return uniformDiskPdfSurfaceArea()
 }
 
 func uniformSampleTriangle(u1, u2 float32) (b1, b2 float32) {
@@ -42,6 +58,10 @@ func uniformSampleTriangle(u1, u2 float32) (b1, b2 float32) {
 	b1 = 1 - sqrtR
 	b2 = u2 * sqrtR
 	return
+}
+
+func uniformTrianglePdfSurfaceArea() float32 {
+	return 2
 }
 
 // cosThetaMax is cos(theta_max), not cos(theta)_max.
