@@ -67,3 +67,17 @@ func (d *DiffuseMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
 	f.ScaleInv(&d.color, math.Pi)
 	return f
 }
+
+func (d *DiffuseMaterial) ComputePdf(wo, wi Vector3, n Normal3) float32 {
+	if (wo.DotNormal(&n) >= 0) != (wi.DotNormal(&n) >= 0) {
+		return 0
+	}
+	switch d.samplingMethod {
+	case DIFFUSE_MATERIAL_UNIFORM_SAMPLING:
+		absCosTh := wi.DotNormal(&n)
+		return uniformHemispherePdfSolidAngle() / absCosTh
+	case DIFFUSE_MATERIAL_COSINE_SAMPLING:
+		return cosineHemispherePdfProjectedSolidAngle()
+	}
+	return 0
+}
