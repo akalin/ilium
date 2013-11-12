@@ -235,3 +235,32 @@ func (s *Sphere) SampleSurfaceFromPoint(
 
 	return
 }
+
+func (s *Sphere) ComputePdfFromPoint(
+	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	switch s.samplingMethod {
+	case SPHERE_SAMPLE_ENTIRE:
+		return ComputeEntireSurfacePdfFromPoint(s, p, pEpsilon, n, wi)
+
+	case SPHERE_SAMPLE_VISIBLE:
+		fallthrough
+
+	case SPHERE_SAMPLE_VISIBLE_FAST:
+		d := p.Distance(&s.center)
+		if s.shouldSampleEntireSphere(d) {
+			return ComputeEntireSurfacePdfFromPoint(
+				s, p, pEpsilon, n, wi)
+		}
+
+		absCosTh := absFloat32(wi.DotNormal(&n))
+		if absCosTh < PDF_COS_THETA_EPSILON {
+			return 0
+		}
+
+		_, cosThetaConeMax := s.computeThetaConeMax(d)
+		pdfSolidAngle := uniformConePdfSolidAngle(cosThetaConeMax)
+		return pdfSolidAngle / absCosTh
+	}
+
+	return 0
+}
