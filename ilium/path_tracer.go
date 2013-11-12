@@ -212,7 +212,13 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 func (pt *PathTracer) computeEmittedLight(
 	edgeCount int, alpha *Spectrum, wo Vector3, intersection *Intersection,
 	debugRecords *[]PathTracerDebugRecord) (wLeAlpha Spectrum) {
-	Le := intersection.ComputeLe(wo)
+	light := intersection.Light
+
+	if light == nil {
+		return Spectrum{}
+	}
+
+	Le := light.ComputeLe(intersection.P, intersection.N, wo)
 
 	if Le.IsBlack() {
 		return
@@ -257,9 +263,10 @@ func (pt *PathTracer) sampleDirectLighting(
 	i, pChooseLight := scene.LightDistribution.SampleDiscrete(u.U)
 	light := scene.Lights[i]
 
+	n := intersection.N
+
 	LeDivPdf, wi, shadowRay := light.SampleLeFromPoint(
-		v.U, w.U1, w.U2, intersection.P, intersection.PEpsilon,
-		intersection.N)
+		v.U, w.U1, w.U2, intersection.P, intersection.PEpsilon, n)
 
 	if LeDivPdf.IsBlack() {
 		return
@@ -269,7 +276,7 @@ func (pt *PathTracer) sampleDirectLighting(
 		return
 	}
 
-	f := intersection.ComputeF(wo, wi)
+	f := intersection.Material.ComputeF(wo, wi, n)
 
 	if f.IsBlack() {
 		return
@@ -392,7 +399,8 @@ func (pt *PathTracer) SampleSensorPath(
 
 		sampleIndex := edgeCount - 1
 		u := wiSamples.GetSample(sampleIndex, rng)
-		wi, fDivPdf := intersection.SampleWi(u.U1, u.U2, wo)
+		wi, fDivPdf := intersection.Material.SampleWi(
+			u.U1, u.U2, wo, intersection.N)
 		if fDivPdf.IsBlack() {
 			break
 		}
