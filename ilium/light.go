@@ -16,6 +16,17 @@ type Light interface {
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 		LeDivPdf Spectrum, wi Vector3, shadowRay Ray)
 
+	// Returns the value of the pdf of the distribution used by
+	// SampleLeFromPoint() with respect to projected solid angle
+	// at the closest intersection point on the light from the ray
+	// (p, wi), or 0 if no such point exists.
+	//
+	// Note that even if (p, wi) is expected to intersect this
+	// light, 0 may still be returned due to floating point
+	// inaccuracies.
+	ComputeLePdfFromPoint(
+		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
+
 	ComputeLe(pSurface Point3, nSurface Normal3, wo Vector3) Spectrum
 }
 
