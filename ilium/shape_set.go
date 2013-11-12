@@ -2,16 +2,21 @@ package ilium
 
 type shapeSet struct {
 	shapes                []Shape
+	shapeAreas            []float32
+	totalArea             float32
 	shapeAreaDistribution Distribution1D
 }
 
 func MakeShapeSet(shapes []Shape) shapeSet {
 	shapeAreas := make([]float32, len(shapes))
+	var totalArea float32
 	for i := 0; i < len(shapes); i++ {
-		shapeAreas[i] = shapes[i].SurfaceArea()
+		area := shapes[i].SurfaceArea()
+		shapeAreas[i] = area
+		totalArea += area
 	}
 	shapeAreaDistribution := MakeDistribution1D(shapeAreas)
-	return shapeSet{shapes, shapeAreaDistribution}
+	return shapeSet{shapes, shapeAreas, totalArea, shapeAreaDistribution}
 }
 
 // Samples the surface of the shape set uniformly and returns the
@@ -55,4 +60,29 @@ func (ss *shapeSet) SampleSurfaceFromPoint(
 	// closer intersection point.)
 	pdfProjectedSolidAngle = pShape * pdfShape
 	return
+}
+
+// Returns the value of the pdf of the distribution used by
+// SampleSurfaceFromPoint() with respect to projected solid angle at
+// the closest intersection point on the shape set from the ray (p,
+// wi), or 0 if no such point exists.
+//
+// Note that even if (p, wi) is expected to intersect this shape set,
+// 0 may still be returned due to floating point inaccuracies.
+func (ss *shapeSet) ComputePdfFromPoint(
+	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	if ss.totalArea == 0 {
+		return 0
+	}
+	// The given direction may hit multiple shapes if some shapes
+	// occlude others, so compute the pdf from all shapes and
+	// weigh each by the shape's area.
+	var weightedPdf float32 = 0
+	for i := 0; i < len(ss.shapes); i++ {
+		shape := ss.shapes[i]
+		area := ss.shapeAreas[i]
+		shapePdf := shape.ComputePdfFromPoint(p, pEpsilon, n, wi)
+		weightedPdf += area * shapePdf
+	}
+	return weightedPdf / ss.totalArea
 }
