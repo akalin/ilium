@@ -17,8 +17,8 @@ func (gp *GeometricPrimitive) Intersect(
 		return false
 	}
 	if intersection != nil {
-		intersection.material = gp.shared.material
-		intersection.light = gp.shared.light
+		intersection.Material = gp.shared.material
+		intersection.Light = gp.shared.light
 	}
 	return true
 }
