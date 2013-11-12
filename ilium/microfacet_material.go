@@ -128,6 +128,11 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	return
 }
 
+func (m *MicrofacetMaterial) computeBlinnD(absCosThH float32) float32 {
+	e := m.blinnExponent
+	return (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
+}
+
 func (m *MicrofacetMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
 	cosThO := wo.DotNormal(&n)
 	if cosThO < _MICROFACET_COS_THETA_EPSILON {
@@ -159,10 +164,52 @@ func (m *MicrofacetMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
 	// By construction, wh is always in the same hemisphere as wo
 	// (with respect to n).
 	absCosThH := cosThH
-	e := m.blinnExponent
-	blinnD := (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
+	blinnD := m.computeBlinnD(absCosThH)
 	G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
 	var f Spectrum
 	f.Scale(&m.rho, (blinnD*G)/(4*absCosThO*absCosThI))
 	return f
+}
+
+func (m *MicrofacetMaterial) ComputePdf(wo, wi Vector3, n Normal3) float32 {
+	cosThO := wo.DotNormal(&n)
+	if cosThO < _MICROFACET_COS_THETA_EPSILON {
+		return 0
+	}
+
+	cosThI := wi.DotNormal(&n)
+	if cosThI < _MICROFACET_COS_THETA_EPSILON {
+		return 0
+	}
+	absCosThI := cosThI
+
+	var wh Vector3
+	wh.Add(&wo, &wi)
+	wh.Normalize(&wh)
+	woDotWh := wo.Dot(&wh)
+	// This check is redundant due to how wh is constructed, but
+	// keep it around to be consistent with SampleWi().
+	if woDotWh < _MICROFACET_COS_THETA_EPSILON {
+		return 0
+	}
+	absWoDotWh := woDotWh
+
+	switch m.samplingMethod {
+	case MICROFACET_UNIFORM_SAMPLING:
+		return 1 / (8 * math.Pi * absCosThI * absWoDotWh)
+	case MICROFACET_COSINE_SAMPLING:
+		absCosThH := absFloat32(wh.DotNormal(&n))
+		return absCosThH / (4 * math.Pi * absCosThI * absWoDotWh)
+	case MICROFACET_DISTRIBUTION_SAMPLING:
+		absCosThH := absFloat32(wh.DotNormal(&n))
+		e := m.blinnExponent
+		blinnD := m.computeBlinnD(absCosThH)
+		return ((e + 1) * blinnD) /
+			(4 * (e + 2) * absCosThI * absWoDotWh)
+	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
+		absCosThH := absFloat32(wh.DotNormal(&n))
+		blinnD := m.computeBlinnD(absCosThH)
+		return (blinnD * absCosThH) / (4 * absCosThI * absWoDotWh)
+	}
+	panic("unexpectedly reached")
 }
