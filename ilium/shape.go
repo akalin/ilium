@@ -28,6 +28,12 @@ type Shape interface {
 		u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 		pSurface Point3, pSurfaceEpsilon float32,
 		nSurface Normal3, pdfProjectedSolidAngle float32)
+
+	// Returns the value of the pdf of the distribution used by
+	// SampleSurfaceFromPoint() with respect to projected solid
+	// angle from p pointing in direction wi.
+	ComputePdfFromPoint(
+		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 }
 
 func SampleEntireSurfaceFromPoint(
@@ -44,6 +50,18 @@ func SampleEntireSurfaceFromPoint(
 		nSurface = Normal3{}
 	}
 	return
+}
+
+func ComputeEntireSurfacePdfFromPoint(
+	s Shape, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	ray := Ray{p, wi, pEpsilon, infFloat32(+1)}
+	var intersection Intersection
+	if !s.Intersect(&ray, &intersection) {
+		return 0
+	}
+	pdfSurfaceArea := 1 / s.SurfaceArea()
+	invG := computeInvG(p, n, intersection.P, intersection.N)
+	return pdfSurfaceArea * invG
 }
 
 func MakeShapes(config map[string]interface{}) []Shape {

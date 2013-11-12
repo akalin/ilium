@@ -20,3 +20,7 @@ func MakePoint3sFromConfig(config interface{}) []Point3 {
 func (out *Point3) Shift(p *Point3, offset *Vector3) {
 	((*R3)(out)).Add((*R3)(p), (*R3)(offset))
 }
+
+func (p *Point3) Distance(q *Point3) float32 {
+	return ((*R3)(p)).Distance((*R3)(q))
+}

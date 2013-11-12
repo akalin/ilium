@@ -76,3 +76,8 @@ func (d *Disk) SampleSurfaceFromPoint(
 	nSurface Normal3, pdfSolidAngle float32) {
 	return SampleEntireSurfaceFromPoint(d, u1, u2, p, pEpsilon, n)
 }
+
+func (d *Disk) ComputePdfFromPoint(
+	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	return ComputeEntireSurfacePdfFromPoint(d, p, pEpsilon, n, wi)
+}

@@ -33,3 +33,8 @@ func (ps *PointShape) SampleSurfaceFromPoint(
 	// 1 / G(p <-> pSurface).
 	panic("Trying to sample a PointShape")
 }
+
+func (ps *PointShape) ComputePdfFromPoint(
+	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	return 0
+}
