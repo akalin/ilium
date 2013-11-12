@@ -30,6 +30,11 @@ func (d *DiffuseAreaLight) SampleLeFromPoint(
 	return
 }
 
+func (d *DiffuseAreaLight) ComputeLePdfFromPoint(
+	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	return d.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
+}
+
 func (d *DiffuseAreaLight) ComputeLe(
 	pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
 	if wo.DotNormal(&nSurface) < 0 {
