@@ -1,11 +1,11 @@
 package main
 
 type Scene struct {
-	Aggregate Primitive
+	Aggregate Aggregate
 }
 
 func MakeScene(config map[string]interface{}) Scene {
 	aggregateConfig := config["aggregate"].(map[string]interface{})
-	aggregate := MakePrimitive(aggregateConfig)
+	aggregate := MakeAggregate(aggregateConfig)
 	return Scene{aggregate}
 }
