@@ -1,15 +1,11 @@
 package ilium
 
 type Scene struct {
-	Aggregate Primitive
+	Aggregate Aggregate
 }
 
 func MakeScene(config map[string]interface{}) Scene {
 	aggregateConfig := config["aggregate"].(map[string]interface{})
-	primitives := MakePrimitives(aggregateConfig)
-	if len(primitives) != 1 {
-		panic("aggregate must be a single primitive")
-	}
-	aggregate := primitives[0]
+	aggregate := MakeAggregate(aggregateConfig)
 	return Scene{aggregate}
 }

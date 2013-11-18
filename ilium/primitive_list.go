@@ -24,14 +24,7 @@ func (pl *PrimitiveList) GetSensors() []Sensor {
 	return sensors
 }
 
-func MakePrimitiveList(config map[string]interface{}) *PrimitiveList {
-	primitiveConfigs := config["primitives"].([]interface{})
-	primitives := []Primitive{}
-	for _, primitiveConfig := range primitiveConfigs {
-		primitives = append(
-			primitives,
-			MakePrimitives(
-				primitiveConfig.(map[string]interface{}))...)
-	}
+func MakePrimitiveList(
+	config map[string]interface{}, primitives []Primitive) Aggregate {
 	return &PrimitiveList{primitives}
 }

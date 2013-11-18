@@ -24,16 +24,40 @@ type Primitive interface {
 	GetSensors() []Sensor
 }
 
+type Aggregate Primitive
+
 func MakePrimitives(config map[string]interface{}) []Primitive {
 	primitiveType := config["type"].(string)
 	switch primitiveType {
-	case "PrimitiveList":
-		return []Primitive{MakePrimitiveList(config)}
 	case "GeometricPrimitive":
 		return MakeGeometricPrimitives(config)
 	case "PointPrimitive":
 		return []Primitive{MakePointPrimitive(config)}
 	default:
-		panic("unknown primitive type " + primitiveType)
+		return []Primitive{MakeAggregate(config)}
+	}
+}
+
+func MakeAggregate(config map[string]interface{}) Aggregate {
+	primitiveConfigs := config["primitives"].([]interface{})
+	primitives := []Primitive{}
+	for _, primitiveConfig := range primitiveConfigs {
+		primitives = append(
+			primitives,
+			MakePrimitives(
+				primitiveConfig.(map[string]interface{}))...)
+	}
+	delete(config, "primitives")
+	return MakeAggregateWithPrimitives(config, primitives)
+}
+
+func MakeAggregateWithPrimitives(
+	config map[string]interface{}, primitives []Primitive) Aggregate {
+	aggregateType := config["type"].(string)
+	switch aggregateType {
+	case "PrimitiveList":
+		return MakePrimitiveList(config, primitives)
+	default:
+		panic("unknown primitive/aggregate type " + aggregateType)
 	}
 }
