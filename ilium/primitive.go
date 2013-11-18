@@ -10,6 +10,23 @@ type Intersection struct {
 	material Material
 }
 
+func (i *Intersection) IsCloseTo(j *Intersection, epsilon float32) bool {
+	if absFloat32(i.T-j.T) >= epsilon {
+		return false
+	}
+	var dP R3
+	dP.Sub((*R3)(&i.P), (*R3)(&j.P))
+	if dP.Norm() >= epsilon {
+		return false
+	}
+	var dN R3
+	dN.Sub((*R3)(&i.N), (*R3)(&j.N))
+	if dN.Norm() >= epsilon {
+		return false
+	}
+	return i.material == j.material
+}
+
 func (i *Intersection) SampleF(rng *rand.Rand, wo Vector3) (
 	f Spectrum, wi Vector3, pdf float32) {
 	return i.material.SampleF(rng, wo, i.N)
@@ -57,6 +74,8 @@ func MakeAggregateWithPrimitives(
 	switch aggregateType {
 	case "PrimitiveList":
 		return MakePrimitiveList(config, primitives)
+	case "DoubleCheckPrimitive":
+		return MakeDoubleCheckPrimitive(config, primitives)
 	default:
 		panic("unknown primitive/aggregate type " + aggregateType)
 	}
