@@ -1,10 +1,14 @@
 package main
 
+type voxel struct {
+	primitives []Primitive
+}
+
 type GridAggregate struct {
-	boundingBox BBox
-	nVoxels     [3]int
-	widths      [3]float32
-	voxels      []PrimitiveList
+	boundingBox       BBox
+	nVoxels           [3]int
+	widths, invWidths [3]float32
+	voxels            []voxel
 }
 
 func argMin3(x [3]float32) int {
@@ -22,19 +26,56 @@ func argMin3(x [3]float32) int {
 	return 2
 }
 
-func (g *GridAggregate) getVoxel(voxelPos [3]int) PrimitiveList {
-	return g.voxels[0]
+func max3(x [3]float32) float32 {
+	return maxFloat32(maxFloat32(x[0], x[1]), x[2])
+}
+
+func (g *GridAggregate) getVoxel(voxelPos [3]int) *voxel {
+	i := voxelPos[2]*g.nVoxels[0]*g.nVoxels[1] +
+		voxelPos[1]*g.nVoxels[0] + voxelPos[0]
+	return &g.voxels[i]
 }
 
 func (g *GridAggregate) pointToVoxelPosI(
 	pointI float32, i int) (voxelPosI int) {
-	return 0
+	PMin := ((*R3)(&g.boundingBox.PMin)).ToArray()
+	voxelPosI = int((pointI - PMin[i]) * g.invWidths[i])
+	if voxelPosI < 0 {
+		voxelPosI = 0
+	}
+	if voxelPosI >= g.nVoxels[i] {
+		voxelPosI = g.nVoxels[i] - 1
+	}
+	return
 }
 
 func (g *GridAggregate) voxelPosToPointI(
 	voxelPosI, i int) (pointI float32) {
 	PMin := ((*R3)(&g.boundingBox.PMin)).ToArray()
-	return PMin[i]
+	return PMin[i] + float32(voxelPosI)*g.widths[i]
+}
+
+func (g *GridAggregate) addPrimitives(primitives []Primitive) {
+	for _, primitive := range primitives {
+		boundingBox := primitive.GetBoundingBox()
+		PMin := ((*R3)(&boundingBox.PMin)).ToArray()
+		PMax := ((*R3)(&boundingBox.PMax)).ToArray()
+		var vMin, vMax [3]int
+		for i := 0; i < 3; i++ {
+			vMin[i] = g.pointToVoxelPosI(PMin[i], i)
+			vMax[i] = g.pointToVoxelPosI(PMax[i], i)
+		}
+
+		for z := vMin[2]; z <= vMax[2]; z++ {
+			for y := vMin[1]; y <= vMax[1]; y++ {
+				for x := vMin[0]; x <= vMax[0]; x++ {
+					v := g.getVoxel([3]int{x, y, z})
+					v.primitives =
+						append(v.primitives, primitive)
+				}
+			}
+		}
+	}
 }
 
 func (g *GridAggregate) Intersect(ray *Ray, intersection *Intersection) bool {
@@ -76,8 +117,8 @@ func (g *GridAggregate) Intersect(ray *Ray, intersection *Intersection) bool {
 	found := false
 	tempRay := *ray
 	for {
-		v := g.getVoxel(vp)
-		if v.Intersect(&tempRay, intersection) {
+		p := PrimitiveList{g.getVoxel(vp).primitives}
+		if p.Intersect(&tempRay, intersection) {
 			tempRay.MaxT = intersection.T
 			found = true
 		}
@@ -104,7 +145,8 @@ func (g *GridAggregate) GetBoundingBox() BBox {
 func (g *GridAggregate) GetSensors() []Sensor {
 	sensors := []Sensor{}
 	for _, voxel := range g.voxels {
-		sensors = append(sensors, voxel.GetSensors()...)
+		p := PrimitiveList{voxel.primitives}
+		sensors = append(sensors, p.GetSensors()...)
 	}
 	return sensors
 }
@@ -113,10 +155,32 @@ func MakeGridAggregate(
 	config map[string]interface{}, primitives []Primitive) Aggregate {
 	allPrimitives := PrimitiveList{primitives}
 	boundingBox := allPrimitives.GetBoundingBox()
-	nVoxels := [3]int{1, 1, 1}
 	var widthV Vector3
 	widthV.GetOffset(&boundingBox.PMin, &boundingBox.PMax)
-	widths := ((*R3)(&widthV)).ToArray()
-	voxels := []PrimitiveList{allPrimitives}
-	return &GridAggregate{boundingBox, nVoxels, widths, voxels}
+	boundingWidths := ((*R3)(&widthV)).ToArray()
+	voxelsPerUnitDistance :=
+		3 * powFloat32(float32(len(primitives)), 1/3) /
+			max3(boundingWidths)
+
+	var nVoxels [3]int
+	var widths, invWidths [3]float32
+	for i := 0; i < 3; i++ {
+		nVoxels[i] =
+			int(boundingWidths[i]*voxelsPerUnitDistance + 0.5)
+		if nVoxels[i] < 1 {
+			nVoxels[i] = 1
+		} else if nVoxels[i] > 64 {
+			nVoxels[i] = 64
+		}
+		widths[i] = boundingWidths[i] / float32(nVoxels[i])
+		if widths[i] != 0 {
+			invWidths[i] = 1 / widths[i]
+		}
+	}
+
+	totalVoxels := nVoxels[0] * nVoxels[1] * nVoxels[2]
+	voxels := make([]voxel, totalVoxels)
+	grid := &GridAggregate{boundingBox, nVoxels, widths, invWidths, voxels}
+	grid.addPrimitives(primitives)
+	return grid
 }
