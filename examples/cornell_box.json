@@ -1,7 +1,7 @@
 {
   "scene": {
     "aggregate": {
-      "type": "PrimitiveList",
+      "type": "GridAggregate",
       "primitives": [
         {
           "_comment": "Top light.",

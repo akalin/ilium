@@ -75,6 +75,8 @@ func MakeAggregateWithPrimitives(
 		return MakePrimitiveList(config, primitives)
 	case "DoubleCheckPrimitive":
 		return MakeDoubleCheckPrimitive(config, primitives)
+	case "GridAggregate":
+		return MakeGridAggregate(config, primitives)
 	default:
 		panic("unknown primitive/aggregate type " + aggregateType)
 	}
