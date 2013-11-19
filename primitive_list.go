@@ -16,6 +16,14 @@ func (pl *PrimitiveList) Intersect(ray *Ray, intersection *Intersection) bool {
 	return found
 }
 
+func (pl *PrimitiveList) GetBoundingBox() BBox {
+	boundingBox := MakeInvalidBBox()
+	for _, primitive := range pl.primitives {
+		boundingBox = boundingBox.Union(primitive.GetBoundingBox())
+	}
+	return boundingBox
+}
+
 func (pl *PrimitiveList) GetSensors() []Sensor {
 	sensors := []Sensor{}
 	for _, primitive := range pl.primitives {
