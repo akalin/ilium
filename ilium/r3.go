@@ -13,6 +13,10 @@ func MakeR3FromConfig(config interface{}) R3 {
 	}
 }
 
+func (r *R3) ToArray() [3]float32 {
+	return [3]float32{r.X, r.Y, r.Z}
+}
+
 func (out *R3) Add(r, s *R3) {
 	out.X = r.X + s.X
 	out.Y = r.Y + s.Y
