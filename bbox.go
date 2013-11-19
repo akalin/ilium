@@ -12,6 +12,12 @@ func MakeInvalidBBox() BBox {
 	return BBox{PMin, PMax}
 }
 
+func (b *BBox) Contains(p Point3) bool {
+	return p.X >= b.PMin.X && p.X <= b.PMax.X &&
+		p.Y >= b.PMin.Y && p.Y <= b.PMax.Y &&
+		p.Z >= b.PMin.Z && p.Z <= b.PMax.Z
+}
+
 func (b *BBox) IntersectRay(r *Ray, tHitMin, tHitMax *float32) bool {
 	t0 := r.MinT
 	t1 := r.MaxT
