@@ -56,3 +56,25 @@ func (r *Rect) Intersect(ray *Ray, intersection *Intersection) bool {
 	*(*Vector3)(&intersection.N) = r.zHat
 	return true
 }
+
+func (r *Rect) GetBoundingBox() BBox {
+	pMin := r.origin
+	pMax := r.origin
+	var dx1 Vector3
+	dx1.Scale(&r.xHat, r.xMin)
+	var dy1 Vector3
+	dy1.Scale(&r.yHat, r.yMin)
+	var dx2 Vector3
+	dx2.Scale(&r.xHat, r.xMax)
+	var dy2 Vector3
+	dy2.Scale(&r.yHat, r.yMax)
+	pMin.Shift(&pMin, &dx1)
+	pMin.Shift(&pMin, &dy1)
+	pMax.Shift(&pMax, &dx2)
+	pMax.Shift(&pMax, &dy2)
+	return BBox{pMin, pMax}
+}
+
+func (r *Rect) MayIntersectBoundingBox(boundingBox BBox) bool {
+	return true
+}
