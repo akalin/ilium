@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type voxel struct {
 	primitives []Primitive

@@ -1,4 +1,4 @@
-package main
+package ilium
 
 type BBox struct {
 	PMin, PMax Point3
