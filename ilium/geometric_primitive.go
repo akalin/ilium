@@ -15,6 +15,10 @@ func (gp *GeometricPrimitive) Intersect(
 	return true
 }
 
+func (gp *GeometricPrimitive) GetBoundingBox() BBox {
+	return gp.shape.GetBoundingBox()
+}
+
 func (gp *GeometricPrimitive) GetSensors() []Sensor {
 	return gp.sensors
 }

@@ -28,6 +28,18 @@ func (dcp *DoubleCheckPrimitive) Intersect(
 	return primaryFound
 }
 
+func (dcp *DoubleCheckPrimitive) GetBoundingBox() BBox {
+	primaryBoundingBox := dcp.primary.GetBoundingBox()
+	secondaryBoundingBox := dcp.secondary.GetBoundingBox()
+	if primaryBoundingBox != secondaryBoundingBox {
+		fmt.Printf(
+			"primary bounding box: %v, "+
+				"secondary bounding box: %v",
+			primaryBoundingBox, secondaryBoundingBox)
+	}
+	return primaryBoundingBox
+}
+
 func (dcp *DoubleCheckPrimitive) GetSensors() []Sensor {
 	primarySensors := dcp.primary.GetSensors()
 	secondarySensors := dcp.secondary.GetSensors()
