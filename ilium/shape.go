@@ -2,6 +2,7 @@ package ilium
 
 type Shape interface {
 	Intersect(ray *Ray, intersection *Intersection) bool
+	GetBoundingBox() BBox
 }
 
 func MakeShapes(config map[string]interface{}) []Shape {
