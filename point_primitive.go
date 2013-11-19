@@ -9,6 +9,10 @@ func (pp *PointPrimitive) Intersect(ray *Ray, intersection *Intersection) bool {
 	return false
 }
 
+func (pp *PointPrimitive) MayIntersectBoundingBox(boundingBox BBox) bool {
+	return boundingBox.Contains(pp.location)
+}
+
 func (pp *PointPrimitive) GetBoundingBox() BBox {
 	return BBox{pp.location, pp.location}
 }
