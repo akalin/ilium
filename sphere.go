@@ -60,3 +60,17 @@ func (s *Sphere) Intersect(ray *Ray, intersection *Intersection) bool {
 	}
 	return true
 }
+
+func (s *Sphere) GetBoundingBox() BBox {
+	pMin := Point3{
+		s.center.X - s.radius,
+		s.center.Y - s.radius,
+		s.center.Z - s.radius,
+	}
+	pMax := Point3{
+		s.center.X + s.radius,
+		s.center.Y + s.radius,
+		s.center.Z + s.radius,
+	}
+	return BBox{pMin, pMax}
+}

@@ -2,6 +2,7 @@ package main
 
 type Shape interface {
 	Intersect(ray *Ray, intersection *Intersection) bool
+	GetBoundingBox() BBox
 }
 
 func MakeShape(config map[string]interface{}) Shape {
