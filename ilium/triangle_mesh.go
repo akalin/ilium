@@ -79,3 +79,18 @@ func (tr *Triangle) Intersect(ray *Ray, intersection *Intersection) bool {
 	intersection.N.Normalize(&intersection.N)
 	return true
 }
+
+func (tr *Triangle) GetBoundingBox() BBox {
+	p1 := &tr.mesh.vertices[tr.mesh.indices[tr.i][0]]
+	p2 := &tr.mesh.vertices[tr.mesh.indices[tr.i][1]]
+	p3 := &tr.mesh.vertices[tr.mesh.indices[tr.i][2]]
+	boundingBox := MakeInvalidBBox()
+	boundingBox = boundingBox.UnionPoint(*p1)
+	boundingBox = boundingBox.UnionPoint(*p2)
+	boundingBox = boundingBox.UnionPoint(*p3)
+	return boundingBox
+}
+
+func (t *Triangle) MayIntersectBoundingBox(boundingBox BBox) bool {
+	return true
+}

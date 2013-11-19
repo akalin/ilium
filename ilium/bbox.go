@@ -47,6 +47,20 @@ func (b *BBox) IntersectRay(r *Ray, tHitMin, tHitMax *float32) bool {
 	return true
 }
 
+func (b BBox) UnionPoint(p Point3) BBox {
+	PMin := Point3{
+		minFloat32(b.PMin.X, p.X),
+		minFloat32(b.PMin.Y, p.Y),
+		minFloat32(b.PMin.Z, p.Z),
+	}
+	PMax := Point3{
+		maxFloat32(b.PMax.X, p.X),
+		maxFloat32(b.PMax.Y, p.Y),
+		maxFloat32(b.PMax.Z, p.Z),
+	}
+	return BBox{PMin, PMax}
+}
+
 func (b BBox) Union(c BBox) BBox {
 	PMin := Point3{
 		minFloat32(b.PMin.X, c.PMin.X),
