@@ -28,6 +28,20 @@ func (dcp *DoubleCheckPrimitive) Intersect(
 	return primaryFound
 }
 
+func (dcp *DoubleCheckPrimitive) MayIntersectBoundingBox(
+	boundingBox BBox) bool {
+	primaryMayIntersect :=
+		dcp.primary.MayIntersectBoundingBox(boundingBox)
+	secondaryMayIntersect :=
+		dcp.secondary.MayIntersectBoundingBox(boundingBox)
+	if primaryMayIntersect != secondaryMayIntersect {
+		fmt.Printf("bounding box=%v: primary may intersect: %v, "+
+			"secondary may intersect: %v\n",
+			primaryMayIntersect, secondaryMayIntersect)
+	}
+	return primaryMayIntersect
+}
+
 func (dcp *DoubleCheckPrimitive) GetBoundingBox() BBox {
 	primaryBoundingBox := dcp.primary.GetBoundingBox()
 	secondaryBoundingBox := dcp.secondary.GetBoundingBox()
