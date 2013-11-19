@@ -76,5 +76,18 @@ func (s *Sphere) GetBoundingBox() BBox {
 }
 
 func (s *Sphere) MayIntersectBoundingBox(boundingBox BBox) bool {
-	return true
+	var dSq float32
+	c := ((*R3)(&s.center)).ToArray()
+	PMin := ((*R3)(&boundingBox.PMin)).ToArray()
+	PMax := ((*R3)(&boundingBox.PMax)).ToArray()
+	for i := 0; i < 3; i++ {
+		if c[i] < PMin[i] {
+			e := PMin[i] - c[i]
+			dSq += e * e
+		} else if c[i] > PMax[i] {
+			e := c[i] - PMax[i]
+			dSq += e * e
+		}
+	}
+	return dSq < s.radius*s.radius
 }
