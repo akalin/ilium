@@ -74,3 +74,7 @@ func (s *Sphere) GetBoundingBox() BBox {
 	}
 	return BBox{pMin, pMax}
 }
+
+func (s *Sphere) MayIntersectBoundingBox(boundingBox BBox) bool {
+	return true
+}

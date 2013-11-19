@@ -55,6 +55,20 @@ func (g *GridAggregate) voxelPosToPointI(
 	return PMin[i] + float32(voxelPosI)*g.widths[i]
 }
 
+func (g *GridAggregate) getVoxelBoundingBox(voxelPos [3]int) BBox {
+	PMin := Point3{
+		g.voxelPosToPointI(voxelPos[0], 0),
+		g.voxelPosToPointI(voxelPos[1], 1),
+		g.voxelPosToPointI(voxelPos[2], 2),
+	}
+	PMax := Point3{
+		g.voxelPosToPointI(voxelPos[0]+1, 0),
+		g.voxelPosToPointI(voxelPos[1]+1, 1),
+		g.voxelPosToPointI(voxelPos[2]+1, 2),
+	}
+	return BBox{PMin, PMax}
+}
+
 func (g *GridAggregate) addPrimitives(primitives []Primitive) {
 	for _, primitive := range primitives {
 		boundingBox := primitive.GetBoundingBox()
@@ -69,13 +83,25 @@ func (g *GridAggregate) addPrimitives(primitives []Primitive) {
 		for z := vMin[2]; z <= vMax[2]; z++ {
 			for y := vMin[1]; y <= vMax[1]; y++ {
 				for x := vMin[0]; x <= vMax[0]; x++ {
-					v := g.getVoxel([3]int{x, y, z})
-					v.primitives =
-						append(v.primitives, primitive)
+					voxelPos := [3]int{x, y, z}
+					vBoundingBox :=
+						g.getVoxelBoundingBox(voxelPos)
+					if primitive.MayIntersectBoundingBox(
+						vBoundingBox) {
+						v := g.getVoxel(voxelPos)
+						v.primitives =
+							append(
+								v.primitives,
+								primitive)
+					}
 				}
 			}
 		}
 	}
+}
+
+func (g *GridAggregate) MayIntersectBoundingBox(boundingBox BBox) bool {
+	return true
 }
 
 func (g *GridAggregate) Intersect(ray *Ray, intersection *Intersection) bool {

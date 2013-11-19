@@ -15,6 +15,11 @@ func (gp *GeometricPrimitive) Intersect(
 	return true
 }
 
+func (gp *GeometricPrimitive) MayIntersectBoundingBox(
+	boundingBox BBox) bool {
+	return gp.shape.MayIntersectBoundingBox(boundingBox)
+}
+
 func (gp *GeometricPrimitive) GetBoundingBox() BBox {
 	return gp.shape.GetBoundingBox()
 }

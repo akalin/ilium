@@ -16,6 +16,10 @@ func (pl *PrimitiveList) Intersect(ray *Ray, intersection *Intersection) bool {
 	return found
 }
 
+func (pl *PrimitiveList) MayIntersectBoundingBox(boundingBox BBox) bool {
+	return true
+}
+
 func (pl *PrimitiveList) GetBoundingBox() BBox {
 	boundingBox := MakeInvalidBBox()
 	for _, primitive := range pl.primitives {
