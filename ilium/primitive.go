@@ -7,6 +7,7 @@ type Intersection struct {
 	N        Normal3
 	Material Material
 	Light    Light
+	Sensors  []Sensor
 }
 
 type Primitive interface {
