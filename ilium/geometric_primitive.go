@@ -19,6 +19,7 @@ func (gp *GeometricPrimitive) Intersect(
 	if intersection != nil {
 		intersection.Material = gp.shared.material
 		intersection.Light = gp.shared.light
+		intersection.Sensors = gp.shared.sensors
 	}
 	return true
 }
