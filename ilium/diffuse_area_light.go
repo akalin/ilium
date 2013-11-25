@@ -1,5 +1,7 @@
 package ilium
 
+import "math"
+
 type DiffuseAreaLight struct {
 	emission Spectrum
 	shapeSet shapeSet
@@ -11,6 +13,36 @@ func MakeDiffuseAreaLight(
 	emission := MakeSpectrumFromConfig(emissionConfig)
 	shapeSet := MakeShapeSet(shapes)
 	return &DiffuseAreaLight{emission, shapeSet}
+}
+
+func (d *DiffuseAreaLight) GetSampleConfig() SampleConfig {
+	return SampleConfig{
+		Sample1DLengths: []int{1},
+		Sample2DLengths: []int{1, 1},
+	}
+}
+
+func (d *DiffuseAreaLight) SampleRay(sampleBundle SampleBundle) (
+	ray Ray, LeDivPdf Spectrum) {
+	u := sampleBundle.Samples1D[0][0].U
+	v1 := sampleBundle.Samples2D[0][0].U1
+	v2 := sampleBundle.Samples2D[0][0].U2
+	w1 := sampleBundle.Samples2D[1][0].U1
+	w2 := sampleBundle.Samples2D[1][0].U2
+	pSurface, pSurfaceEpsilon, nSurface, pdfSurfaceArea :=
+		d.shapeSet.SampleSurface(u, v1, v2)
+	// TODO(akalin): Add option to use cosine sampling.
+	wR3 := uniformSampleHemisphere(w1, w2)
+	absCosTh := wR3.Z
+	k := R3(nSurface)
+	var i, j R3
+	MakeCoordinateSystemNoAlias(&k, &i, &j)
+	var wR3w R3
+	wR3w.ConvertToCoordinateSystemNoAlias(&wR3, &i, &j, &k)
+	ray = Ray{pSurface, Vector3(wR3w), pSurfaceEpsilon, infFloat32(+1)}
+	// pdf = pdfSurfaceArea / (2 * pi * |cos(th)|).
+	LeDivPdf.Scale(&d.emission, 2*math.Pi*absCosTh/pdfSurfaceArea)
+	return
 }
 
 func (d *DiffuseAreaLight) SampleLeFromPoint(
