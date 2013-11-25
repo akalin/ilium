@@ -1,6 +1,8 @@
 package ilium
 
 type Light interface {
+	GetSampleConfig() SampleConfig
+	SampleRay(sampleBundle SampleBundle) (ray Ray, LeDivPdf Spectrum)
 	SampleLeFromPoint(
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 		LeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray)
