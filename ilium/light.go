@@ -1,6 +1,9 @@
 package ilium
 
 type Light interface {
+	GetSampleConfig() SampleConfig
+	SampleRay(sampleBundle SampleBundle) (ray Ray, LeDivPdf Spectrum)
+
 	// Samples the surface of the light, possible taking advantage
 	// of the fact that only points directly visible from the
 	// given point will be used, and returns the
