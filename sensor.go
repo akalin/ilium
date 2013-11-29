@@ -95,10 +95,15 @@ type Sensor interface {
 	// Returns this sensor's extent in pixel coordinates.
 	GetExtent() SensorExtent
 
+	// Returns the desired sample configuration for the Sample
+	// passed into SampleRay.
+	GetSampleConfig() SampleConfig
+
 	// Returns a sampled ray for the given pixel coordinates over
 	// which to measure radiometric quantities, and its associated
 	// pdf-weighted importance.
-	SampleRay(x, y int, u1, u2 float32) (ray Ray, WeDivPdf Spectrum)
+	SampleRay(x, y int, sampleBundle SampleBundle) (
+		ray Ray, WeDivPdf Spectrum)
 
 	// Records the given pdf-weighted contribution for the given
 	// pixel coordinates.
