@@ -40,6 +40,23 @@ func (pt *PathTracer) InitializePathTracer(
 	pt.maxEdgeCount = maxEdgeCount
 }
 
+func (pt *PathTracer) GetSampleConfig() SampleConfig {
+	if pt.maxEdgeCount <= 0 {
+		return SampleConfig{}
+	}
+
+	// maxVertexCount = maxEdgeCount + 1, and there are two
+	// non-interior vertices (or one in the degenerate case).
+	maxInteriorVertexCount := maxInt(0, pt.maxEdgeCount-1)
+	// Sample wi for each interior vertex to build the next edge
+	// of the path.
+	numWiSamples := maxInteriorVertexCount
+	return SampleConfig{
+		Sample1DLengths: []int{},
+		Sample2DLengths: []int{numWiSamples},
+	}
+}
+
 func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 	if i < pt.russianRouletteStartIndex {
 		return 1
@@ -62,7 +79,7 @@ func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 // path.
 func (pt *PathTracer) SampleSensorPath(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
-	sensorBundle SampleBundle, WeLiDivPdf *Spectrum) {
+	sensorBundle, tracerBundle SampleBundle, WeLiDivPdf *Spectrum) {
 	*WeLiDivPdf = Spectrum{}
 	if pt.maxEdgeCount <= 0 {
 		return
@@ -73,6 +90,7 @@ func (pt *PathTracer) SampleSensorPath(
 		return
 	}
 
+	wiSamples := tracerBundle.Samples2D[0]
 	ray := initialRay
 	// alpha = We * T(path) / pdf.
 	alpha := WeDivPdf
@@ -122,8 +140,9 @@ func (pt *PathTracer) SampleSensorPath(
 			break
 		}
 
-		wi, fDivPdf := intersection.SampleWi(
-			randFloat32(rng), randFloat32(rng), wo)
+		sampleIndex := edgeCount - 1
+		u := wiSamples[sampleIndex]
+		wi, fDivPdf := intersection.SampleWi(u.U1, u.U2, wo)
 		if fDivPdf.IsBlack() {
 			break
 		}
