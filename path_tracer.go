@@ -62,14 +62,14 @@ func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 // that path.
 func (pt *PathTracer) SampleSensorPath(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
-	sensorSample Sample, WeLiDivPdf *Spectrum) {
+	sensorBundle SampleBundle, WeLiDivPdf *Spectrum) {
 	*WeLiDivPdf = Spectrum{}
 	if pt.maxEdgeCount <= 0 {
 		return
 	}
 
-	u1 := sensorSample.Sample2D.U1
-	u2 := sensorSample.Sample2D.U2
+	u1 := sensorBundle.Samples2D[0][0].U1
+	u2 := sensorBundle.Samples2D[0][0].U2
 	initialRay, WeDivPdf := sensor.SampleRay(x, y, u1, u2)
 	if WeDivPdf.IsBlack() {
 		return
