@@ -91,15 +91,19 @@ type processedPathTracingBlock struct {
 
 func (ptr *PathTracingRenderer) processPixel(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
-	sampleBundles []SampleBundle, pathRecords []pathRecord) {
+	sensorSampleBundles []SampleBundle, tracerSampleBundles []SampleBundle,
+	pathRecords []pathRecord) {
 	ptr.sampler.GenerateSampleBundles(
-		sensor.GetSampleConfig(), sampleBundles, rng)
-	for i := 0; i < len(sampleBundles); i++ {
+		sensor.GetSampleConfig(), sensorSampleBundles, rng)
+	ptr.sampler.GenerateSampleBundles(
+		ptr.pathTracer.GetSampleConfig(), tracerSampleBundles, rng)
+	for i := 0; i < len(sensorSampleBundles); i++ {
 		pathRecords[i].x = x
 		pathRecords[i].y = y
 		ptr.pathTracer.SampleSensorPath(
 			rng, scene, sensor, x, y,
-			sampleBundles[i], &pathRecords[i]._WeLiDivPdf)
+			tracerSampleBundles[i],
+			sensorSampleBundles[i], &pathRecords[i]._WeLiDivPdf)
 	}
 }
 
@@ -108,9 +112,11 @@ func (ptr *PathTracingRenderer) processBlocks(
 	inputCh chan pathTracingBlock,
 	outputCh chan processedPathTracingBlock) {
 	sensorSampleStorage := make([]SampleBundle, maxSampleCount)
+	tracerSampleStorage := make([]SampleBundle, maxSampleCount)
 	for block := range inputCh {
 		extent := block.blockExtent
 		sensorBundles := sensorSampleStorage[:extent.SamplesPerXY]
+		tracerBundles := tracerSampleStorage[:extent.SamplesPerXY]
 		pathRecords := make([]pathRecord, extent.GetSampleCount())
 		i := 0
 		for x := extent.XStart; x < extent.XEnd; x++ {
@@ -120,7 +126,8 @@ func (ptr *PathTracingRenderer) processBlocks(
 				pixelRecords := pathRecords[start:end]
 				ptr.processPixel(
 					rng, scene, sensor, x, y,
-					sensorBundles, pixelRecords)
+					sensorBundles, tracerBundles,
+					pixelRecords)
 				i++
 			}
 		}
