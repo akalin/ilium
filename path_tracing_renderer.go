@@ -91,15 +91,15 @@ type processedPathTracingBlock struct {
 
 func (ptr *PathTracingRenderer) processPixel(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
-	bundles []SampleBundle, pathRecords []pathRecord) {
-	sampleConfig := SampleConfig{[]int{0}, []int{1}}
-	ptr.sampler.GenerateSampleBundles(sampleConfig, bundles, rng)
-	for i := 0; i < len(bundles); i++ {
+	sampleBundles []SampleBundle, pathRecords []pathRecord) {
+	ptr.sampler.GenerateSampleBundles(
+		sensor.GetSampleConfig(), sampleBundles, rng)
+	for i := 0; i < len(sampleBundles); i++ {
 		pathRecords[i].x = x
 		pathRecords[i].y = y
 		ptr.pathTracer.SampleSensorPath(
 			rng, scene, sensor, x, y,
-			bundles[i], &pathRecords[i]._WeLiDivPdf)
+			sampleBundles[i], &pathRecords[i]._WeLiDivPdf)
 	}
 }
 

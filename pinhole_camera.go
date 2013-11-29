@@ -120,10 +120,17 @@ func (pc *PinholeCamera) GetExtent() SensorExtent {
 	}
 }
 
-func (pc *PinholeCamera) SampleRay(x, y int, u1, u2 float32) (
+func (pc *PinholeCamera) GetSampleConfig() SampleConfig {
+	return SampleConfig{
+		Sample1DLengths: []int{},
+		Sample2DLengths: []int{1},
+	}
+}
+
+func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum) {
-	xC := float32(x) + u1
-	yC := float32(y) + u2
+	xC := float32(x) + sampleBundle.Samples2D[0][0].U1
+	yC := float32(y) + sampleBundle.Samples2D[0][0].U2
 	leftLength := 0.5*float32(pc.width) - xC
 	upLength := 0.5*float32(pc.height) - yC
 

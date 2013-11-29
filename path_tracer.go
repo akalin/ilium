@@ -68,9 +68,7 @@ func (pt *PathTracer) SampleSensorPath(
 		return
 	}
 
-	u1 := sensorBundle.Samples2D[0][0].U1
-	u2 := sensorBundle.Samples2D[0][0].U2
-	initialRay, WeDivPdf := sensor.SampleRay(x, y, u1, u2)
+	initialRay, WeDivPdf := sensor.SampleRay(x, y, sensorBundle)
 	if WeDivPdf.IsBlack() {
 		return
 	}

@@ -27,7 +27,11 @@ func (rm *RadianceMeter) GetExtent() SensorExtent {
 	return SensorExtent{0, 1, 0, 1, rm.sampleCount}
 }
 
-func (rm *RadianceMeter) SampleRay(x, y int, u1, u2 float32) (
+func (rm *RadianceMeter) GetSampleConfig() SampleConfig {
+	return SampleConfig{}
+}
+
+func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum) {
 	ray = rm.ray
 	WeDivPdf = MakeConstantSpectrum(1)
