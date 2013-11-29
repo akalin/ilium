@@ -10,9 +10,27 @@ type Sample2D struct {
 	U1, U2 float32
 }
 
+type Sample1DArray []Sample1D
+
+type Sample2DArray []Sample2D
+
+func (sample1DArray Sample1DArray) GetSample(i int, rng *rand.Rand) Sample1D {
+	if i < len(sample1DArray) {
+		return sample1DArray[i]
+	}
+	return Sample1D{randFloat32(rng)}
+}
+
+func (sample2DArray Sample2DArray) GetSample(i int, rng *rand.Rand) Sample2D {
+	if i < len(sample2DArray) {
+		return sample2DArray[i]
+	}
+	return Sample2D{randFloat32(rng), randFloat32(rng)}
+}
+
 type SampleBundle struct {
-	Samples1D [][]Sample1D
-	Samples2D [][]Sample2D
+	Samples1D []Sample1DArray
+	Samples2D []Sample2DArray
 }
 
 type SampleConfig struct {

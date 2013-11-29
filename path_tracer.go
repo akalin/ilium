@@ -50,7 +50,7 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	maxInteriorVertexCount := maxInt(0, pt.maxEdgeCount-1)
 	// Sample wi for each interior vertex to build the next edge
 	// of the path.
-	numWiSamples := maxInteriorVertexCount
+	numWiSamples := minInt(3, maxInteriorVertexCount)
 	return SampleConfig{
 		Sample1DLengths: []int{},
 		Sample2DLengths: []int{numWiSamples},
@@ -141,7 +141,7 @@ func (pt *PathTracer) SampleSensorPath(
 		}
 
 		sampleIndex := edgeCount - 1
-		u := wiSamples[sampleIndex]
+		u := wiSamples.GetSample(sampleIndex, rng)
 		wi, fDivPdf := intersection.SampleWi(u.U1, u.U2, wo)
 		if fDivPdf.IsBlack() {
 			break
