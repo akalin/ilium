@@ -38,13 +38,23 @@ type SampleConfig struct {
 	Sample2DLengths []int
 }
 
+type SampleStorage struct {
+	sampleBundles []SampleBundle
+}
+
 // Sampler is the interface for objects that can generate samples to
 // be used for Monte Carlo sampling.
 type Sampler interface {
-	// Fills the given SampleBundle slice with samples according to the
+	// Allocates memory to be used by GenerateSamples() with the
 	// given config.
+	AllocateSampleStorage(
+		config SampleConfig, maxSampleCount int) SampleStorage
+
+	// Generates the given number of sample bundles according to
+	// the given config.
 	GenerateSampleBundles(
-		config SampleConfig, bundles []SampleBundle, rng *rand.Rand)
+		config SampleConfig, storage SampleStorage,
+		bundleCount int, rng *rand.Rand) []SampleBundle
 }
 
 func MakeSampler(config map[string]interface{}) Sampler {
