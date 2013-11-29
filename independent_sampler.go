@@ -13,8 +13,8 @@ func MakeIndependentSampler(config map[string]interface{}) *IndependentSampler {
 func (is *IndependentSampler) GenerateSampleBundles(
 	config SampleConfig, bundles []SampleBundle, rng *rand.Rand) {
 	for i := 0; i < len(bundles); i++ {
-		samples1D := make([][]Sample1D, len(config.Sample1DLengths))
-		samples2D := make([][]Sample2D, len(config.Sample2DLengths))
+		samples1D := make([]Sample1DArray, len(config.Sample1DLengths))
+		samples2D := make([]Sample2DArray, len(config.Sample2DLengths))
 
 		for j := 0; j < len(samples1D); j++ {
 			samples1D[j] = make(
