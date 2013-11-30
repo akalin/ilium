@@ -15,6 +15,8 @@ func MakeRenderer(config map[string]interface{}) Renderer {
 	switch rendererType {
 	case "PathTracingRenderer":
 		return MakePathTracingRenderer(config)
+	case "ParticleTracingRenderer":
+		return MakeParticleTracingRenderer(config)
 	default:
 		panic("unknown renderer type " + rendererType)
 	}

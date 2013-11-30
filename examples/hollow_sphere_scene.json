@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "The scene is a radiance and irradiance meter inside a hollow sphere ",
+    "that both emits and reflects light.",
+
+    "The radiance along any ray inside the sphere should converge to Le ",
+    "/ (1 - rho), which in this case is (0.5, 0.5, 0.5). Thus, the ",
+    "irradiance at any point and normal should then be pi * Le / (1 - rho).",
+
+    "Also, the flux over the hollow sphere should be ",
+    "4 * pi^2 * r^2 * Le / (1 - rho).",
+
+    "For an eye path with k bounces, the pixel values will be Le (1 - ",
+    "rho^k) / (1 - rho).  Thus, the absolute error is Le rho^k / (1 - ",
+    "rho), and the relative error is rho^k.  To get the absolute error ",
+    "less than eps, you need more than (lg eps + lg (1 - rho) - lg Le) / ",
+    "lg rho bounces, and to get the relative error less than eps, you ",
+    "need more than lg eps / lg rho bounces."
+  ],
+
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_comment": "Hollow sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [0, 0.5, 0],
+        "radius": 10,
+        "flipNormal": true
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.8, "g": 0.6, "b": 0.2 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "emission": { "type": "rgb", "r": 0.1, "g": 0.2, "b": 0.4 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over hollow sphere",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    }
+  ]
+}
