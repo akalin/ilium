@@ -105,6 +105,18 @@ type Sensor interface {
 	SampleRay(x, y int, sampleBundle SampleBundle) (
 		ray Ray, WeDivPdf Spectrum)
 
+	// Given a point and normal on the sensor and an outgoing
+	// direction, returns the corresponding pixel coordinates and
+	// emitted importance.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularPosition() returns false, and when pSurface is
+	// known to lie on the surface on the sensor with normal
+	// nSurface. (However, wo can be arbitrary.)
+	ComputePixelPositionAndWe(
+		pSurface Point3, nSurface Normal3, wo Vector3) (
+		x, y int, We Spectrum)
+
 	// Accumulates (but does not record) the given
 	// inverse-pdf-weighted contribution for the given pixel
 	// coordinates.

@@ -50,6 +50,12 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (rm *RadianceMeter) ComputePixelPositionAndWe(
+	pSurface Point3, nSurface Normal3, wo Vector3) (
+	x, y int, We Spectrum) {
+	panic("Called unexpectedly")
+}
+
 func (rm *RadianceMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	rm.estimator.AccumulateSample(WeLiDivPdf)
 }
