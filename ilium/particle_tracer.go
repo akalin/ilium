@@ -99,7 +99,26 @@ func (pt *ParticleTracer) SampleLightPath(
 		var wo Vector3
 		wo.Flip(&ray.D)
 
-		// TODO(akalin): Accumulate alpha into any hit sensors.
+		for _, sensor := range intersection.Sensors {
+			x, y, We := sensor.ComputePixelPositionAndWe(
+				intersection.P, intersection.N, wo)
+
+			if !We.IsValid() {
+				fmt.Printf("Invalid We %v returned for "+
+					"intersection %v and wo %v and "+
+					"sensor %v\n",
+					We, intersection, wo, sensor)
+				continue
+			}
+
+			if We.IsBlack() {
+				continue
+			}
+
+			var WeAlpha Spectrum
+			WeAlpha.Mul(&We, &alpha)
+			sensor.AccumulateLightContribution(x, y, WeAlpha)
+		}
 
 		if edgeCount >= pt.maxEdgeCount {
 			break
