@@ -1,0 +1,52 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "constant_radiance_scene.json"
+        },
+        {
+          "_comment": "Radiometers.",
+          "type": "PointPrimitive",
+          "position": [0, -0.5, 0],
+          "sensors": [
+            {
+              "type": "RadianceMeter",
+              "description": "towards off-center light",
+              "target": [0, 1, 0],
+              "sampleCount": 32
+            },
+            {
+              "type": "RadianceMeter",
+              "description": "towards hollow sphere",
+              "target": [0, -1, 0],
+              "sampleCount": 32
+            },
+            {
+              "type": "IrradianceMeter",
+              "description": "in center of hollow sphere",
+              "samplingMethod": "cosine",
+              "up": [0, 1, 0],
+              "sampleCount": 32
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "pathTypes": [ "emittedLight", "directLighting" ],
+    "weighingMethod": "power",
+    "russianRouletteMethod": "proportional",
+    "russianRouletteStartIndex": 5,
+    "russianRouletteMaxProbability": 0.95,
+    "russianRouletteDelta": 0.25,
+    "maxEdgeCount": 100,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
