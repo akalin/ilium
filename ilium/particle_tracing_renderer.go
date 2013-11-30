@@ -74,6 +74,10 @@ func (ptr *ParticleTracingRenderer) processSamples(
 		ptr.particleTracer.SampleLightPath(
 			rng, scene, lightBundles[i], tracerBundles[i])
 
+		for _, sensor := range sensors {
+			sensor.RecordAccumulatedLightContributions()
+		}
+
 		if (i+1)%progressInterval == 0 || i+1 == sampleCount {
 			fmt.Printf("Processed %d/%d sample(s)\n",
 				i+1, sampleCount)
