@@ -51,7 +51,8 @@ func (m *MicrofacetMaterial) computeBlinnD(absCosThH float32) float32 {
 	return (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
 }
 
-func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
+func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
+	u1, u2 float32, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	cosThO := wo.DotNormal(&n)
 	absCosThO := absFloat32(cosThO)
@@ -109,12 +110,12 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 
 	switch m.samplingMethod {
 	case MICROFACET_UNIFORM_SAMPLING:
-		f := m.ComputeF(wo, wi, n)
+		f := m.ComputeF(transportType, wo, wi, n)
 		// pdf = 1 / (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|).
 		fDivPdf.Scale(&f, 8*math.Pi*absCosThI*absWoDotWh)
 		pdf = 1 / (8 * math.Pi * absCosThI * absWoDotWh)
 	case MICROFACET_COSINE_SAMPLING:
-		f := m.ComputeF(wo, wi, n)
+		f := m.ComputeF(transportType, wo, wi, n)
 		// pdf = |cos(th_h)| / (pi * |cos(th_i)| * 4 * |w_o * w_h|).
 		fDivPdf.Scale(&f, 4*math.Pi*absCosThI*absWoDotWh/absCosThH)
 		pdf = absCosThH / (4 * math.Pi * absCosThI * absWoDotWh)
@@ -147,7 +148,8 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	return
 }
 
-func (m *MicrofacetMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
+func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) Spectrum {
 	cosThO := wo.DotNormal(&n)
 	cosThI := wi.DotNormal(&n)
 	absCosThO := absFloat32(cosThO)
@@ -184,7 +186,8 @@ func (m *MicrofacetMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
 	return f
 }
 
-func (m *MicrofacetMaterial) ComputePdf(wo, wi Vector3, n Normal3) float32 {
+func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) float32 {
 	cosThO := wo.DotNormal(&n)
 	cosThI := wi.DotNormal(&n)
 	absCosThO := absFloat32(cosThO)
