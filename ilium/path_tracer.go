@@ -282,7 +282,7 @@ func (pt *PathTracer) sampleDirectLighting(
 		return
 	}
 
-	f := material.ComputeF(wo, wi, n)
+	f := material.ComputeF(MATERIAL_LIGHT_TRANSPORT, wo, wi, n)
 
 	if f.IsBlack() {
 		return
@@ -298,7 +298,8 @@ func (pt *PathTracer) sampleDirectLighting(
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
 		case PATH_TRACER_POWER_WEIGHTS:
-			emittedPdf := material.ComputePdf(wo, wi, n)
+			emittedPdf := material.ComputePdf(
+				MATERIAL_LIGHT_TRANSPORT, wo, wi, n)
 			pContinue := pt.getContinueProbabilityFromIntersection(
 				edgeCount-1, alpha, &f, emittedPdf)
 			pdfRatio :=
@@ -428,6 +429,7 @@ func (pt *PathTracer) SampleSensorPath(
 		sampleIndex := edgeCount - 1
 		u := wiSamples.GetSample(sampleIndex, rng)
 		wi, fDivPdf, pdf := intersection.Material.SampleWi(
+			MATERIAL_LIGHT_TRANSPORT,
 			u.U1, u.U2, wo, intersection.N)
 		if fDivPdf.IsBlack() || pdf == 0 {
 			break

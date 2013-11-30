@@ -30,7 +30,8 @@ func MakeDiffuseMaterial(config map[string]interface{}) *DiffuseMaterial {
 	return &DiffuseMaterial{samplingMethod, rho}
 }
 
-func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
+func (d *DiffuseMaterial) SampleWi(transportType MaterialTransportType,
+	u1, u2 float32, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	if wo.DotNormal(&n) < 0 {
 		return
@@ -60,7 +61,8 @@ func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	return
 }
 
-func (d *DiffuseMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
+func (d *DiffuseMaterial) ComputeF(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) Spectrum {
 	if wo.DotNormal(&n) < 0 || wi.DotNormal(&n) < 0 {
 		return Spectrum{}
 	}
@@ -69,7 +71,8 @@ func (d *DiffuseMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
 	return f
 }
 
-func (d *DiffuseMaterial) ComputePdf(wo, wi Vector3, n Normal3) float32 {
+func (d *DiffuseMaterial) ComputePdf(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) float32 {
 	if wo.DotNormal(&n) < 0 || wi.DotNormal(&n) < 0 {
 		return 0
 	}
