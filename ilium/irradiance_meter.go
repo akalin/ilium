@@ -92,6 +92,12 @@ func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (im *IrradianceMeter) ComputePixelPositionAndWe(
+	pSurface Point3, nSurface Normal3, wo Vector3) (
+	x, y int, We Spectrum) {
+	panic("Called unexpectedly")
+}
+
 func (im *IrradianceMeter) AccumulateContribution(
 	x, y int, WeLiDivPdf Spectrum) {
 	im.estimator.AccumulateSample(WeLiDivPdf)
