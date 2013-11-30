@@ -85,6 +85,15 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (fm *FluxMeter) ComputePixelPositionAndWe(
+	pSurface Point3, nSurface Normal3, wo Vector3) (
+	x, y int, We Spectrum) {
+	if wo.DotNormal(&nSurface) >= 0 {
+		We = MakeConstantSpectrum(1)
+	}
+	return
+}
+
 func (fm *FluxMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	fm.estimator.AccumulateSample(WeLiDivPdf)
 }
