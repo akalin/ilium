@@ -140,6 +140,12 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (pc *PinholeCamera) ComputePixelPositionAndWe(
+	pSurface Point3, nSurface Normal3, wo Vector3) (
+	x, y int, We Spectrum) {
+	panic("Called unexpectedly")
+}
+
 func (pc *PinholeCamera) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	pc.image.AccumulateContribution(x, y, WeLiDivPdf)
 }
