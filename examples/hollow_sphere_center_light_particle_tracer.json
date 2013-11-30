@@ -1,0 +1,24 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "hollow_sphere_center_light_scene.json"
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "ParticleTracingRenderer",
+    "russianRouletteMethod": "proportional",
+    "russianRouletteStartIndex": 5,
+    "russianRouletteMaxProbability": 0.95,
+    "russianRouletteDelta": 0.25,
+    "maxEdgeCount": 100,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}

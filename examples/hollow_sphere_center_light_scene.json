@@ -1,0 +1,92 @@
+{
+  "_comment" : [
+    "Let:",
+    "  - R (r) be the radius of the hollow sphere (center light),",
+    "  - alpha be r/R,",
+    "  - L_e^R (L_e^r) be the corresponding emission,",
+    "  - rho_R (rho_r) be the corresponding reflectance,",
+    "  - and L_R (L_r) be the corresponding limit color.",
+
+    "Then",
+
+    "  L_R = (L_e^R + L_e^r rho_R alpha^2) /",
+    "        ((1 - rho_R) + (1 - rho_r) rho_R alpha^2)",
+
+    "and",
+
+    "  L_r = L_e^r + L_R rho_r.",
+
+    "Let C_R (C_r) be the convergence points of each sphere in isolation ",
+    "(i.e., C_R = L_e^R / (1 - rho_R) and similarly for C_r).",
+
+    "  - If C_R = C_r = C, then L_R = L_r = C.",
+    "  - If L_e^R = 0 and rho_R = 1, then L_R = L_r = C_r.",
+    "  - If L_e^r = 0 and rho_r = 1, then L_R = L_r = C_R.",
+    "  - If L_R = C_r, then L_r = L_R = C_r.",
+
+    "In this case, C_R = C_r = 0.5 for all wavelengths, so L_R = L_r = ",
+    "0.5. Similarly, the irradiance at any point and normal should then be ",
+    "pi * 0.5.",
+
+    "Also, the flux over each sphere should be 4 * pi^2 * r^2 * 0.5."
+  ],
+
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_comment": "Hollow sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 10,
+        "flipNormal": true
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.9, "g": 0.7, "b": 0.4 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over hollow sphere",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    },
+    {
+      "_comment": "Center light.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "entire",
+        "center": [ 0.0, 2.5, 0.0 ],
+        "radius": 1
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.5, "g": 0.3, "b": 0.1 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over center light",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    }
+  ]
+}
