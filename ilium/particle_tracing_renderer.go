@@ -67,7 +67,7 @@ func (ptr *ParticleTracingRenderer) processBlock(
 	rng *rand.Rand, scene *Scene, blockSampleCount int,
 	particleTracerConfig, lightConfig SampleConfig,
 	particleTracerSampleStorage, lightSampleStorage SampleStorage,
-	sensors []Sensor) {
+	recordsCh chan []ParticleRecord) {
 	tracerBundles := ptr.sampler.GenerateSampleBundles(
 		particleTracerConfig,
 		particleTracerSampleStorage, blockSampleCount, rng)
@@ -79,21 +79,14 @@ func (ptr *ParticleTracingRenderer) processBlock(
 	for i := 0; i < blockSampleCount; i++ {
 		records := ptr.particleTracer.SampleLightPath(
 			rng, scene, lightBundles[i], tracerBundles[i])
-
-		for j := 0; j < len(records); j++ {
-			records[j].Accumulate()
-		}
-
-		for _, sensor := range sensors {
-			sensor.RecordAccumulatedLightContributions()
-		}
+		recordsCh <- records
 	}
 }
 
 func (ptr *ParticleTracingRenderer) processSamples(
 	rng *rand.Rand, scene *Scene, sensors []Sensor,
 	lightConfig SampleConfig, sampleCount int,
-	outputDir, outputExt string) {
+	recordsCh chan []ParticleRecord) {
 	blockSize := minInt(sampleCount, 1024)
 	blockCount := (sampleCount + blockSize - 1) / blockSize
 
@@ -104,26 +97,12 @@ func (ptr *ParticleTracingRenderer) processSamples(
 	lightSampleStorage := ptr.sampler.AllocateSampleStorage(
 		lightConfig, blockSize)
 
-	progressInterval := (blockCount + 99) / 100
 	for i := 0; i < blockCount; i++ {
 		blockSampleCount := minInt(sampleCount-i*blockSize, blockSize)
-
 		ptr.processBlock(rng, scene, blockSampleCount,
 			particleTracerConfig, lightConfig,
 			particleTracerSampleStorage, lightSampleStorage,
-			sensors)
-
-		if (i+1)%progressInterval == 0 || i+1 == blockCount {
-			fmt.Printf("Processed %d/%d block(s)\n",
-				i+1, blockCount)
-		}
-
-		if ((i + 1) == sampleCount) ||
-			(ptr.emitInterval > 0 && (i+1)%ptr.emitInterval == 0) {
-			for _, sensor := range sensors {
-				sensor.EmitSignal(outputDir, outputExt)
-			}
-		}
+			recordsCh)
 	}
 }
 
@@ -143,6 +122,42 @@ func (ptr *ParticleTracingRenderer) Render(
 		totalSampleCount += extent.GetSampleCount()
 	}
 
-	ptr.processSamples(rng, scene, sensors, combinedLightConfig,
-		totalSampleCount, outputDir, outputExt)
+	samplesPerJob := (totalSampleCount + numRenderJobs - 1) / numRenderJobs
+	totalSampleCount = samplesPerJob * numRenderJobs
+
+	channelSize := minInt(totalSampleCount, 1024)
+	recordsCh := make(chan []ParticleRecord, channelSize)
+
+	for i := 0; i < numRenderJobs; i++ {
+		workerRng := rand.New(rand.NewSource(rng.Int63()))
+		go ptr.processSamples(
+			workerRng, scene, sensors, combinedLightConfig,
+			samplesPerJob, recordsCh)
+	}
+
+	progressInterval := (totalSampleCount + 99) / 100
+
+	for i := 0; i < totalSampleCount; i++ {
+		records := <-recordsCh
+
+		for j := 0; j < len(records); j++ {
+			records[j].Accumulate()
+		}
+
+		for _, sensor := range sensors {
+			sensor.RecordAccumulatedLightContributions()
+		}
+
+		if (i+1)%progressInterval == 0 || i+1 == totalSampleCount {
+			fmt.Printf("Processed %d/%d sample(s)\n",
+				i+1, totalSampleCount)
+		}
+
+		if ((i + 1) == totalSampleCount) ||
+			(ptr.emitInterval > 0 && (i+1)%ptr.emitInterval == 0) {
+			for _, sensor := range sensors {
+				sensor.EmitSignal(outputDir, outputExt)
+			}
+		}
+	}
 }
