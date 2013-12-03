@@ -71,8 +71,12 @@ func (ptr *ParticleTracingRenderer) processSamples(
 
 	progressInterval := (sampleCount + 99) / 100
 	for i := 0; i < sampleCount; i++ {
-		ptr.particleTracer.SampleLightPath(
+		records := ptr.particleTracer.SampleLightPath(
 			rng, scene, lightBundles[i], tracerBundles[i])
+
+		for j := 0; j < len(records); j++ {
+			records[j].Accumulate()
+		}
 
 		for _, sensor := range sensors {
 			sensor.RecordAccumulatedLightContributions()

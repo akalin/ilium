@@ -10,6 +10,16 @@ const (
 	PARTICLE_TRACER_RR_ALBEDO ParticleTracerRRContribution = iota
 )
 
+type ParticleRecord struct {
+	sensor      Sensor
+	x, y        int
+	_WeLiDivPdf Spectrum
+}
+
+func (pr *ParticleRecord) Accumulate() {
+	pr.sensor.AccumulateLightContribution(pr.x, pr.y, pr._WeLiDivPdf)
+}
+
 type ParticleTracer struct {
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
@@ -45,13 +55,14 @@ func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
 }
 
 func (pt *ParticleTracer) SampleLightPath(
-	rng *rand.Rand, scene *Scene, lightBundle, tracerBundle SampleBundle) {
+	rng *rand.Rand, scene *Scene,
+	lightBundle, tracerBundle SampleBundle) []ParticleRecord {
 	if pt.maxEdgeCount <= 0 {
-		return
+		return []ParticleRecord{}
 	}
 
 	if len(scene.Lights) == 0 {
-		return
+		return []ParticleRecord{}
 	}
 
 	u := tracerBundle.Samples1D[0][0]
@@ -59,7 +70,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 	initialRay, LeDivPdf := light.SampleRay(lightBundle)
 	if LeDivPdf.IsBlack() {
-		return
+		return []ParticleRecord{}
 	}
 
 	LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
@@ -77,6 +88,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		t = &albedo
 	}
 	var edgeCount int
+	var records []ParticleRecord
 	for {
 		pContinue := pt.russianRouletteState.GetContinueProbability(
 			edgeCount, t)
@@ -117,7 +129,13 @@ func (pt *ParticleTracer) SampleLightPath(
 
 			var WeAlpha Spectrum
 			WeAlpha.Mul(&We, &alpha)
-			sensor.AccumulateLightContribution(x, y, WeAlpha)
+			particleRecord := ParticleRecord{
+				sensor,
+				x,
+				y,
+				WeAlpha,
+			}
+			records = append(records, particleRecord)
 		}
 
 		if edgeCount >= pt.maxEdgeCount {
@@ -146,4 +164,6 @@ func (pt *ParticleTracer) SampleLightPath(
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
+
+	return records
 }
