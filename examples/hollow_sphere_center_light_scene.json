@@ -50,6 +50,7 @@
       },
       "light": {
         "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
         "emission": { "type": "rgb", "r": 0.05, "g": 0.15, "b": 0.3 }
       },
       "sensors": [
@@ -77,6 +78,7 @@
       },
       "light": {
         "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
         "emission": { "type": "rgb", "r": 0.25, "g": 0.35, "b": 0.45 }
       },
       "sensors": [
