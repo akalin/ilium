@@ -2,17 +2,35 @@ package ilium
 
 import "math"
 
+type DiffuseAreaLightSamplingMethod int
+
+const (
+	DAL_UNIFORM_SAMPLING DiffuseAreaLightSamplingMethod = iota
+	DAL_COSINE_SAMPLING  DiffuseAreaLightSamplingMethod = iota
+)
+
 type DiffuseAreaLight struct {
-	emission Spectrum
-	shapeSet shapeSet
+	samplingMethod DiffuseAreaLightSamplingMethod
+	emission       Spectrum
+	shapeSet       shapeSet
 }
 
 func MakeDiffuseAreaLight(
 	config map[string]interface{}, shapes []Shape) *DiffuseAreaLight {
+	var samplingMethod DiffuseAreaLightSamplingMethod
+	samplingMethodConfig := config["samplingMethod"].(string)
+	switch samplingMethodConfig {
+	case "uniform":
+		samplingMethod = DAL_UNIFORM_SAMPLING
+	case "cosine":
+		samplingMethod = DAL_COSINE_SAMPLING
+	default:
+		panic("unknown sampling method " + samplingMethodConfig)
+	}
 	emissionConfig := config["emission"].(map[string]interface{})
 	emission := MakeSpectrumFromConfig(emissionConfig)
 	shapeSet := MakeShapeSet(shapes)
-	return &DiffuseAreaLight{emission, shapeSet}
+	return &DiffuseAreaLight{samplingMethod, emission, shapeSet}
 }
 
 func (d *DiffuseAreaLight) GetSampleConfig() SampleConfig {
@@ -31,17 +49,25 @@ func (d *DiffuseAreaLight) SampleRay(sampleBundle SampleBundle) (
 	w2 := sampleBundle.Samples2D[1][0].U2
 	pSurface, pSurfaceEpsilon, nSurface, pdfSurfaceArea :=
 		d.shapeSet.SampleSurface(u, v1, v2)
-	// TODO(akalin): Add option to use cosine sampling.
-	wR3 := uniformSampleHemisphere(w1, w2)
-	absCosTh := wR3.Z
+	var wR3 R3
+	switch d.samplingMethod {
+	case DAL_UNIFORM_SAMPLING:
+		wR3 = uniformSampleHemisphere(w1, w2)
+		absCosTh := wR3.Z
+		// pdf = pdfSurfaceArea / (2 * pi * |cos(th)|).
+		LeDivPdf.Scale(
+			&d.emission, 2*math.Pi*absCosTh/pdfSurfaceArea)
+	case DAL_COSINE_SAMPLING:
+		wR3 = cosineSampleHemisphere(w1, w2)
+		// pdf = pdfSurfaceArea / pi.
+		LeDivPdf.Scale(&d.emission, math.Pi/pdfSurfaceArea)
+	}
 	k := R3(nSurface)
 	var i, j R3
 	MakeCoordinateSystemNoAlias(&k, &i, &j)
 	var wR3w R3
 	wR3w.ConvertToCoordinateSystemNoAlias(&wR3, &i, &j, &k)
 	ray = Ray{pSurface, Vector3(wR3w), pSurfaceEpsilon, infFloat32(+1)}
-	// pdf = pdfSurfaceArea / (2 * pi * |cos(th)|).
-	LeDivPdf.Scale(&d.emission, 2*math.Pi*absCosTh/pdfSurfaceArea)
 	return
 }
 

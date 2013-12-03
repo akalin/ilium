@@ -41,6 +41,7 @@
           },
           "light": {
             "type": "DiffuseAreaLight",
+            "samplingMethod": "cosine",
             "emission": { "type": "rgb", "r": 51, "g": 46.8, "b": 41.1 }
           }
         },
