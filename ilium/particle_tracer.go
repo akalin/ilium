@@ -6,7 +6,8 @@ import "math/rand"
 type ParticleTracerPathType int
 
 const (
-	PARTICLE_TRACER_EMITTED_W_PATH ParticleTracerPathType = iota
+	PARTICLE_TRACER_EMITTED_W_PATH     ParticleTracerPathType = iota
+	PARTICLE_TRACER_DIRECT_SENSOR_PATH ParticleTracerPathType = iota
 )
 
 type ParticleTracerRRContribution int
@@ -58,7 +59,7 @@ func (pt *ParticleTracer) InitializeParticleTracer(
 	pt.debugMaxEdgeCount = debugMaxEdgeCount
 }
 
-func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
+func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
 	if pt.maxEdgeCount <= 0 {
 		return SampleConfig{}
 	}
@@ -77,6 +78,24 @@ func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
 				1,
 			},
 			Sample2DLengths: []int{numWiSamples},
+		}
+	case PARTICLE_TRACER_DIRECT_SENSOR_PATH:
+		// Do direct sensor sampling for the first vertex and
+		// each interior vertex; don't do it from the last
+		// vertex since that would add an extra edge.
+		numDirectSensorSamples := minInt(3, maxInteriorVertexCount+1)
+		// Do direct sampling for all sensors.
+		directSensorSampleLengths := make([]int, len(sensors))
+		for i := 0; i < len(directSensorSampleLengths); i++ {
+			directSensorSampleLengths[i] = numDirectSensorSamples
+		}
+		sample1DLengths := append(
+			[]int{1}, directSensorSampleLengths...)
+		sample2DLengths := append(
+			[]int{numWiSamples}, directSensorSampleLengths...)
+		return SampleConfig{
+			Sample1DLengths: sample1DLengths,
+			Sample2DLengths: sample2DLengths,
 		}
 	}
 	return SampleConfig{}
@@ -131,8 +150,126 @@ func (pt *ParticleTracer) makeWeAlphaDebugRecords(
 	return debugRecords
 }
 
+func (pt *ParticleTracer) computeEmittedImportance(
+	edgeCount int, alpha *Spectrum, wo Vector3, intersection *Intersection,
+	records []ParticleRecord) []ParticleRecord {
+	for _, sensor := range intersection.Sensors {
+		x, y, We := sensor.ComputePixelPositionAndWe(
+			intersection.P, intersection.N, wo)
+
+		if !We.IsValid() {
+			fmt.Printf("Invalid We %v returned for "+
+				"intersection %v and wo %v and sensor %v\n",
+				We, intersection, wo, sensor)
+			continue
+		}
+
+		if We.IsBlack() {
+			continue
+		}
+
+		var WeAlpha Spectrum
+		WeAlpha.Mul(&We, alpha)
+		debugRecords := pt.makeWeAlphaDebugRecords(
+			edgeCount, sensor, &WeAlpha, &We, alpha,
+			"We", "Ae")
+		particleRecord := ParticleRecord{
+			sensor,
+			x,
+			y,
+			WeAlpha,
+			debugRecords,
+		}
+		records = append(records, particleRecord)
+	}
+	return records
+}
+
+// This implements the sensor equivalent of direct lighting sampling.
+func (pt *ParticleTracer) directSampleSensors(
+	currentEdgeCount int, rng *rand.Rand, scene *Scene, sensors []Sensor,
+	tracerBundle SampleBundle, alpha *Spectrum, p Point3,
+	pEpsilon float32, n Normal3, wo Vector3, material Material,
+	records []ParticleRecord) []ParticleRecord {
+	directSensor1DSamples := tracerBundle.Samples1D[1:]
+	directSensor2DSamples := tracerBundle.Samples2D[1:]
+
+	sampleIndex := currentEdgeCount
+	for i, sensor := range sensors {
+		u := directSensor1DSamples[i].GetSample(sampleIndex, rng)
+		v := directSensor2DSamples[i].GetSample(sampleIndex, rng)
+		x, y, WeDivPdf, wi, shadowRay :=
+			sensor.SamplePixelPositionAndWeFromPoint(
+				u.U, v.U1, v.U2, p, pEpsilon, n)
+
+		if !WeDivPdf.IsValid() {
+			fmt.Printf("Invalid WeDivPdf %v returned for "+
+				"point %v and sensor %v\n",
+				WeDivPdf, p, sensor)
+			continue
+		}
+
+		if WeDivPdf.IsBlack() {
+			continue
+		}
+
+		if scene.Aggregate.Intersect(&shadowRay, nil) {
+			continue
+		}
+
+		f := material.ComputeF(MATERIAL_IMPORTANCE_TRANSPORT, wo, wi, n)
+
+		if f.IsBlack() {
+			continue
+		}
+
+		sensorEdgeCount := currentEdgeCount + 1
+
+		var fAlpha Spectrum
+		fAlpha.Mul(&f, alpha)
+
+		var WeAlphaNext Spectrum
+		WeAlphaNext.Mul(&WeDivPdf, &fAlpha)
+		debugRecords := pt.makeWeAlphaDebugRecords(
+			sensorEdgeCount, sensor, &WeAlphaNext, &WeDivPdf,
+			&fAlpha, "Wd", "Ad")
+		particleRecord := ParticleRecord{
+			sensor,
+			x,
+			y,
+			WeAlphaNext,
+			debugRecords,
+		}
+		records = append(records, particleRecord)
+	}
+	return records
+}
+
+// A wrapper that implements the Material interface in terms of Light
+// functions.
+type lightMaterial struct {
+	light    Light
+	pSurface Point3
+}
+
+func (lm *lightMaterial) SampleWi(transportType MaterialTransportType,
+	u1, u2 float32, wo Vector3, n Normal3) (
+	wi Vector3, fDivPdf Spectrum, pdf float32) {
+	panic("called unexpectedly")
+}
+
+func (lm *lightMaterial) ComputeF(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) Spectrum {
+	return lm.light.ComputeLeDirectional(lm.pSurface, n, wi)
+}
+
+func (lm *lightMaterial) ComputePdf(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) float32 {
+	panic("called unexpectedly")
+}
+
 func (pt *ParticleTracer) SampleLightPath(
-	rng *rand.Rand, scene *Scene,
+	rng *rand.Rand, scene *Scene, sensors []Sensor,
 	lightBundle, tracerBundle SampleBundle) []ParticleRecord {
 	if pt.maxEdgeCount <= 0 {
 		return []ParticleRecord{}
@@ -145,18 +282,52 @@ func (pt *ParticleTracer) SampleLightPath(
 	u := tracerBundle.Samples1D[0][0]
 	light, pChooseLight := scene.SampleLight(u.U)
 
-	initialRay, LeDivPdf := light.SampleRay(lightBundle)
-	if LeDivPdf.IsBlack() {
-		return []ParticleRecord{}
+	var edgeCount int
+	var ray Ray
+	// alpha = Le * T(path) / pdf.
+	var alpha Spectrum
+	var albedo Spectrum
+	var records []ParticleRecord
+
+	if pt.pathType == PARTICLE_TRACER_EMITTED_W_PATH {
+		// No need to sample the spatial and directional
+		// components separately.
+		initialRay, LeDivPdf := light.SampleRay(lightBundle)
+		if LeDivPdf.IsBlack() {
+			return records
+		}
+
+		LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
+		ray = initialRay
+		alpha = LeDivPdf
+		albedo = LeDivPdf
+	} else {
+		pSurface, pSurfaceEpsilon, nSurface, LeSpatialDivPdf :=
+			light.SampleSurface(lightBundle)
+		if LeSpatialDivPdf.IsBlack() {
+			return records
+		}
+
+		LeSpatialDivPdf.ScaleInv(&LeSpatialDivPdf, pChooseLight)
+		alpha = LeSpatialDivPdf
+
+		records = pt.directSampleSensors(
+			edgeCount, rng, scene, sensors, tracerBundle,
+			&alpha, pSurface, pSurfaceEpsilon, nSurface,
+			Vector3{}, &lightMaterial{light, pSurface}, records)
+
+		wo, LeDirectionalDivPdf := light.SampleDirection(
+			lightBundle, pSurface, nSurface)
+		if LeDirectionalDivPdf.IsBlack() {
+			return records
+		}
+
+		ray = Ray{pSurface, wo, pSurfaceEpsilon, infFloat32(+1)}
+		alpha.Mul(&alpha, &LeDirectionalDivPdf)
+		albedo = alpha
 	}
 
-	LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
-
 	wiSamples := tracerBundle.Samples2D[0]
-	ray := initialRay
-	// alpha = Le * T(path) / pdf.
-	alpha := LeDivPdf
-	albedo := LeDivPdf
 	var t *Spectrum
 	switch pt.russianRouletteContribution {
 	case PARTICLE_TRACER_RR_ALPHA:
@@ -164,8 +335,6 @@ func (pt *ParticleTracer) SampleLightPath(
 	case PARTICLE_TRACER_RR_ALBEDO:
 		t = &albedo
 	}
-	var edgeCount int
-	var records []ParticleRecord
 	for {
 		pContinue := pt.russianRouletteState.GetContinueProbability(
 			edgeCount, t)
@@ -189,47 +358,32 @@ func (pt *ParticleTracer) SampleLightPath(
 		wo.Flip(&ray.D)
 
 		if pt.pathType == PARTICLE_TRACER_EMITTED_W_PATH {
-			for _, sensor := range intersection.Sensors {
-				x, y, We := sensor.ComputePixelPositionAndWe(
-					intersection.P, intersection.N, wo)
-
-				if !We.IsValid() {
-					fmt.Printf("Invalid We %v returned "+
-						"for intersection %v and "+
-						"wo %v and sensor %v\n",
-						We, intersection, wo, sensor)
-					continue
-				}
-
-				if We.IsBlack() {
-					continue
-				}
-
-				var WeAlpha Spectrum
-				WeAlpha.Mul(&We, &alpha)
-				debugRecords := pt.makeWeAlphaDebugRecords(
-					edgeCount, sensor, &WeAlpha,
-					&We, &alpha, "We", "Ae")
-				particleRecord := ParticleRecord{
-					sensor,
-					x,
-					y,
-					WeAlpha,
-					debugRecords,
-				}
-				records = append(records, particleRecord)
-			}
+			records = pt.computeEmittedImportance(
+				edgeCount, &alpha, wo, &intersection,
+				records)
 		}
 
 		if edgeCount >= pt.maxEdgeCount {
 			break
 		}
 
+		p := intersection.P
+		pEpsilon := intersection.PEpsilon
+		n := intersection.N
+		material := intersection.Material
+
+		// Don't direct-sample sensors for the last edge,
+		// since the process adds an extra edge.
+		if pt.pathType == PARTICLE_TRACER_DIRECT_SENSOR_PATH {
+			records = pt.directSampleSensors(
+				edgeCount, rng, scene, sensors, tracerBundle,
+				&alpha, p, pEpsilon, n, wo, material, records)
+		}
+
 		sampleIndex := edgeCount - 1
 		u := wiSamples.GetSample(sampleIndex, rng)
-		wi, fDivPdf, pdf := intersection.Material.SampleWi(
-			MATERIAL_IMPORTANCE_TRANSPORT,
-			u.U1, u.U2, wo, intersection.N)
+		wi, fDivPdf, pdf := material.SampleWi(
+			MATERIAL_IMPORTANCE_TRANSPORT, u.U1, u.U2, wo, n)
 		if fDivPdf.IsBlack() || pdf == 0 {
 			break
 		}
@@ -240,10 +394,7 @@ func (pt *ParticleTracer) SampleLightPath(
 			break
 		}
 
-		ray = Ray{
-			intersection.P, wi,
-			intersection.PEpsilon, infFloat32(+1),
-		}
+		ray = Ray{p, wi, pEpsilon, infFloat32(+1)}
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
