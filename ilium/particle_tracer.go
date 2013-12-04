@@ -3,6 +3,12 @@ package ilium
 import "fmt"
 import "math/rand"
 
+type ParticleTracerPathType int
+
+const (
+	PARTICLE_TRACER_EMITTED_W_PATH ParticleTracerPathType = iota
+)
+
 type ParticleTracerRRContribution int
 
 const (
@@ -31,6 +37,7 @@ func (pr *ParticleRecord) Accumulate() {
 }
 
 type ParticleTracer struct {
+	pathType                    ParticleTracerPathType
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
@@ -39,9 +46,11 @@ type ParticleTracer struct {
 }
 
 func (pt *ParticleTracer) InitializeParticleTracer(
+	pathType ParticleTracerPathType,
 	russianRouletteContribution ParticleTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
+	pt.pathType = pathType
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
@@ -60,13 +69,17 @@ func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
 	// Sample wi for each interior vertex to build the next edge
 	// of the path.
 	numWiSamples := minInt(3, maxInteriorVertexCount)
-	return SampleConfig{
-		Sample1DLengths: []int{
-			// One to pick the light.
-			1,
-		},
-		Sample2DLengths: []int{numWiSamples},
+	switch pt.pathType {
+	case PARTICLE_TRACER_EMITTED_W_PATH:
+		return SampleConfig{
+			Sample1DLengths: []int{
+				// One to pick the light.
+				1,
+			},
+			Sample2DLengths: []int{numWiSamples},
+		}
 	}
+	return SampleConfig{}
 }
 
 func (pt *ParticleTracer) makeWeAlphaDebugRecords(
@@ -175,35 +188,37 @@ func (pt *ParticleTracer) SampleLightPath(
 		var wo Vector3
 		wo.Flip(&ray.D)
 
-		for _, sensor := range intersection.Sensors {
-			x, y, We := sensor.ComputePixelPositionAndWe(
-				intersection.P, intersection.N, wo)
+		if pt.pathType == PARTICLE_TRACER_EMITTED_W_PATH {
+			for _, sensor := range intersection.Sensors {
+				x, y, We := sensor.ComputePixelPositionAndWe(
+					intersection.P, intersection.N, wo)
 
-			if !We.IsValid() {
-				fmt.Printf("Invalid We %v returned for "+
-					"intersection %v and wo %v and "+
-					"sensor %v\n",
-					We, intersection, wo, sensor)
-				continue
-			}
+				if !We.IsValid() {
+					fmt.Printf("Invalid We %v returned "+
+						"for intersection %v and "+
+						"wo %v and sensor %v\n",
+						We, intersection, wo, sensor)
+					continue
+				}
 
-			if We.IsBlack() {
-				continue
-			}
+				if We.IsBlack() {
+					continue
+				}
 
-			var WeAlpha Spectrum
-			WeAlpha.Mul(&We, &alpha)
-			debugRecords := pt.makeWeAlphaDebugRecords(
-				edgeCount, sensor, &WeAlpha, &We, &alpha,
-				"We", "Ae")
-			particleRecord := ParticleRecord{
-				sensor,
-				x,
-				y,
-				WeAlpha,
-				debugRecords,
+				var WeAlpha Spectrum
+				WeAlpha.Mul(&We, &alpha)
+				debugRecords := pt.makeWeAlphaDebugRecords(
+					edgeCount, sensor, &WeAlpha,
+					&We, &alpha, "We", "Ae")
+				particleRecord := ParticleRecord{
+					sensor,
+					x,
+					y,
+					WeAlpha,
+					debugRecords,
+				}
+				records = append(records, particleRecord)
 			}
-			records = append(records, particleRecord)
 		}
 
 		if edgeCount >= pt.maxEdgeCount {
