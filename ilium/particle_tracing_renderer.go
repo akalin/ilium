@@ -18,6 +18,8 @@ func MakeParticleTracingRenderer(
 	switch pathTypeConfig {
 	case "emittedImportance":
 		pathType = PARTICLE_TRACER_EMITTED_W_PATH
+	case "directSensor":
+		pathType = PARTICLE_TRACER_DIRECT_SENSOR_PATH
 	default:
 		panic("unknown path type " + pathTypeConfig)
 	}
@@ -73,7 +75,7 @@ func MakeParticleTracingRenderer(
 }
 
 func (ptr *ParticleTracingRenderer) processBlock(
-	rng *rand.Rand, scene *Scene, blockSampleCount int,
+	rng *rand.Rand, scene *Scene, sensors []Sensor, blockSampleCount int,
 	particleTracerConfig, lightConfig SampleConfig,
 	particleTracerSampleStorage, lightSampleStorage SampleStorage,
 	recordsCh chan []ParticleRecord) {
@@ -87,7 +89,7 @@ func (ptr *ParticleTracingRenderer) processBlock(
 
 	for i := 0; i < blockSampleCount; i++ {
 		records := ptr.particleTracer.SampleLightPath(
-			rng, scene, lightBundles[i], tracerBundles[i])
+			rng, scene, sensors, lightBundles[i], tracerBundles[i])
 		recordsCh <- records
 	}
 }
@@ -99,7 +101,7 @@ func (ptr *ParticleTracingRenderer) processSamples(
 	blockSize := minInt(sampleCount, 1024)
 	blockCount := (sampleCount + blockSize - 1) / blockSize
 
-	particleTracerConfig := ptr.particleTracer.GetSampleConfig()
+	particleTracerConfig := ptr.particleTracer.GetSampleConfig(sensors)
 	particleTracerSampleStorage := ptr.sampler.AllocateSampleStorage(
 		particleTracerConfig, blockSize)
 
@@ -108,7 +110,7 @@ func (ptr *ParticleTracingRenderer) processSamples(
 
 	for i := 0; i < blockCount; i++ {
 		blockSampleCount := minInt(sampleCount-i*blockSize, blockSize)
-		ptr.processBlock(rng, scene, blockSampleCount,
+		ptr.processBlock(rng, scene, sensors, blockSampleCount,
 			particleTracerConfig, lightConfig,
 			particleTracerSampleStorage, lightSampleStorage,
 			recordsCh)
