@@ -105,6 +105,13 @@ type Sensor interface {
 	SampleRay(x, y int, sampleBundle SampleBundle) (
 		ray Ray, WeDivPdf Spectrum)
 
+	// Given a point, samples a point on the sensor and returns
+	// its pixel coordinates, pdf-weighted importance, direction,
+	// and shadow ray.
+	SamplePixelPositionAndWeFromPoint(
+		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+		x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray)
+
 	// Given a point and normal on the sensor and an outgoing
 	// direction, returns the corresponding pixel coordinates and
 	// emitted importance.

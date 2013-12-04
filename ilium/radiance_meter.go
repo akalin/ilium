@@ -46,6 +46,12 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (rm *RadianceMeter) SamplePixelPositionAndWeFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	return
+}
+
 func (rm *RadianceMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
