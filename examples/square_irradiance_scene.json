@@ -1,0 +1,55 @@
+{
+  "_comment": [
+    "The scene is an irradiance meter pointing up at a square of side ",
+    "length = 1 that is unit away with a constant emitted radiance ",
+    "of L = 10 W/m^2 sr.",
+
+    "The measured irradiance should be close to the calculated value of ",
+    "E = 4 * L * atan(1/sqrt(5)) / sqrt(5)."
+  ],
+
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_comment": "Square light.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "TriangleMesh",
+        "vertices": [
+            -0.5,  0.5, 1,
+            -0.5, -0.5, 1,
+          0.5,  0.5, 1,
+          0.5, -0.5, 1
+        ],
+        "indices": [
+          0, 2, 1,
+          1, 2, 3
+        ]
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 10, "g": 10, "b": 10 }
+      }
+    },
+    {
+      "_comment": "Radiometers.",
+      "type": "PointPrimitive",
+      "position": [0, 0, 0],
+      "sensors": [
+        {
+          "type": "IrradianceMeter",
+          "description": "at origin",
+          "samplingMethod": "cosine",
+          "up": [0, 0, 1],
+          "sampleCount": 1024
+        }
+      ]
+    }
+  ]
+}
