@@ -89,6 +89,27 @@ func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (im *IrradianceMeter) SamplePixelPositionAndWeFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	r := wi.GetDirectionAndDistance(&p, &im.position)
+	var wo Vector3
+	wo.Flip(&wi)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+	cosThO := wo.DotNormal((*Normal3)(&im.k))
+	if absCosThI < PDF_COS_THETA_EPSILON ||
+		cosThO < PDF_COS_THETA_EPSILON || r < PDF_R_EPSILON {
+		return
+	}
+
+	// The pdf w.r.t. surface area is just 1 (with an implicit
+	// delta distribution), so pdf = 1 / G(p <-> im.position) =
+	// r^2 / |cos(thI) * cos(thO)|. (See PointShape.)
+	WeDivPdf = MakeConstantSpectrum((absCosThI * cosThO) / (r * r))
+	shadowRay = Ray{p, wi, pEpsilon, r * (1 - 5e-4)}
+	return
+}
+
 func (im *IrradianceMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
