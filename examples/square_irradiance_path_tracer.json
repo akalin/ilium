@@ -1,0 +1,25 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "square_irradiance_scene.json"
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "pathTypes": [ "emittedLight" ],
+    "weighingMethod": "uniform",
+    "russianRouletteMethod": "fixed",
+    "russianRouletteStartIndex": 1,
+    "russianRouletteMaxProbability": 1,
+    "maxEdgeCount": 1,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
