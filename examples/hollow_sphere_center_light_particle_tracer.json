@@ -5,6 +5,20 @@
       "primitives": [
         {
           "_include": "hollow_sphere_center_light_scene.json"
+        },
+        {
+          "_comment": "Radiometers.",
+          "type": "PointPrimitive",
+          "position": [0, -0.5, 0],
+          "sensors": [
+            {
+              "type": "IrradianceMeter",
+              "description": "in center of hollow sphere",
+              "samplingMethod": "cosine",
+              "up": [0, 1, 0],
+              "sampleCount": 32
+            }
+          ]
         }
       ]
     }
