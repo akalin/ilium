@@ -30,6 +30,7 @@
 
   "renderer": {
     "type": "ParticleTracingRenderer",
+    "pathType": "emittedImportance",
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,
     "russianRouletteMaxProbability": 0.95,
