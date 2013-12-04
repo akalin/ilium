@@ -139,9 +139,59 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	wo.Normalize(&wo)
 
 	ray = Ray{pc.position, wo, 0, infFloat32(+1)}
-	// There's a bit of subtlety here; the pdf isn't trivial, but
-	// We is set so that We/pdf = 1.
+	// There's a bit of subtlety here; the pdf isn't trivial (see
+	// the comments in SamplePixelPositionAndWeFromPoint() for the
+	// derivation), but We is set so that We/pdf = 1.
 	WeDivPdf = MakeConstantSpectrum(1)
+	return
+}
+
+func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	var wo Vector3
+	r := wo.GetDirectionAndDistance(&pc.position, &p)
+	wi.Flip(&wo)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+	cosThO := wo.Dot(&pc.frontHat)
+	if absCosThI < PDF_COS_THETA_EPSILON ||
+		cosThO < PDF_COS_THETA_EPSILON || r < PDF_R_EPSILON {
+		return
+	}
+
+	// Project p onto the imaginary image plane.
+	s := pc.backFocalLength / cosThO
+	leftLength := s * wo.Dot(&pc.leftHat)
+	upLength := s * wo.Dot(&pc.upHat)
+	xC := 0.5*float32(pc.image.Width) - leftLength
+	yC := 0.5*float32(pc.image.Height) - upLength
+	extent := pc.GetExtent()
+	if xC >= float32(extent.XStart) && xC < float32(extent.XEnd) &&
+		yC >= float32(extent.YStart) && yC < float32(extent.YEnd) {
+		x = int(xC)
+		y = int(yC)
+		// To compute We, recall that We is set so that We/p = 1,
+		// where p is the pdf with respect to projected
+		// solid angle of sampling a point on a pixel on the
+		// imaginary image plane. The pdf with respect to
+		// surface area is just 1, and the geometric factor is
+		// r'^2 / cos^2(thO), where r' is the distance to the
+		// imaginary image plane. From the geometry, r' turns
+		// out to be backFocalLength / cos(thO), so
+		// We = p = backFocalLength^2 / cos^4(thO).
+		//
+		// The pdf w.r.t. surface area is just 1 (with an
+		// implicit delta distribution), so pdf =
+		// 1 / G(p <-> im.position) =
+		// r^2 / |cos(thI) * cos(thO)|. (See PointShape.)
+		//
+		// Putting it all together, we get
+		// We/pdf = backFocalLength^2 * |cos(thI)| / (r^2 * cos^3(thO)).
+		WeDivPdf = MakeConstantSpectrum(
+			(pc.backFocalLength * pc.backFocalLength * absCosThI) /
+				(r * r * cosThO * cosThO * cosThO))
+		shadowRay = Ray{p, wi, pEpsilon, r * (1 - 5e-4)}
+	}
 	return
 }
 
