@@ -113,6 +113,25 @@ type Sensor interface {
 	SampleRay(x, y int, sampleBundle SampleBundle) (
 		ray Ray, WeDivPdf Spectrum)
 
+	// Samples the surface of the sensor, possible taking
+	// advantage of the fact that only points directly visible
+	// from the given point will be used, and returns the pixel
+	// coordinates at the sampled point, the inverse-pdf-weighted
+	// emitted importance from the sampled point (with the pdf
+	// being with respect to projected solid angle), a vector
+	// pointing to the sampled point, and a shadow ray to use to
+	// test whether the sampled point is visible from the given
+	// one.
+	//
+	// May return a black value for the weighted importance, in
+	// which case the returned values must not be used.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularDirection() returns false.
+	SamplePixelPositionAndWeFromPoint(
+		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+		x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray)
+
 	// Given a point and normal on the sensor and an outgoing
 	// direction, returns the corresponding pixel coordinates and
 	// emitted importance.

@@ -4,6 +4,8 @@ import "math"
 
 const PDF_COS_THETA_EPSILON float32 = 1e-7
 
+const PDF_R_EPSILON float32 = 1e-7
+
 func uniformSampleDisk(u1, u2 float32) (x, y float32) {
 	// This has a slight bias towards the center.
 	r := sqrtFloat32(u1)
