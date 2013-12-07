@@ -1,0 +1,29 @@
+{
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_include": "cornell_box_room_scene.json"
+    },
+
+    {
+      "_comment": "Top spherical light.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0, 3.75, 2.3 ],
+        "radius": 0.1
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 51, "g": 46.8, "b": 41.1 }
+      }
+    }
+  ]
+}
