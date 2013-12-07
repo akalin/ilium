@@ -1,0 +1,29 @@
+{
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_include": "cornell_box_room_scene.json"
+    },
+
+    {
+      "_comment": "Top disk light.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Disk",
+        "center": [ 0, 3.75, 2.49 ],
+        "normal": [ 0, 0, -1 ],
+        "radius": 0.1
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 102, "g": 93.6, "b": 82.2 }
+      }
+    }
+  ]
+}

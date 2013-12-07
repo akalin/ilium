@@ -1,0 +1,39 @@
+{
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_include": "cornell_box_room_scene.json"
+    },
+
+    {
+      "_comment": "Top light.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "TriangleMesh",
+        "_comment": [
+          "Put this slightly below the real ceiling to avoid artifacts."
+        ],
+        "vertices": [
+          -1.9,  4.5, 2.49,
+          -1.9, -3.0, 2.49,
+           1.9,  4.5, 2.49,
+           1.9, -3.0, 2.49
+        ],
+        "indices": [
+          0, 2, 1,
+          1, 2, 3
+        ]
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 1.6, "g": 1.47, "b": 1.29 }
+      }
+    }
+  ]
+}
