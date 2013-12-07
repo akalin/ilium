@@ -63,26 +63,20 @@ func MakeParticleTracingRenderer(
 	return ptr
 }
 
-func (ptr *ParticleTracingRenderer) processSamples(
-	numRenderJobs int, rng *rand.Rand, scene *Scene, sensors []Sensor,
-	lightConfig SampleConfig, sampleCount int,
-	outputDir, outputExt string) {
-	// TODO(akalin): Implement blocking to avoid using too much
-	// memory when sampleCount is large.
-	particleTracerConfig := ptr.particleTracer.GetSampleConfig()
-	particleTracerSampleStorage := ptr.sampler.AllocateSampleStorage(
-		particleTracerConfig, sampleCount)
+func (ptr *ParticleTracingRenderer) processBlock(
+	rng *rand.Rand, scene *Scene, blockSampleCount int,
+	particleTracerConfig, lightConfig SampleConfig,
+	particleTracerSampleStorage, lightSampleStorage SampleStorage,
+	sensors []Sensor) {
 	tracerBundles := ptr.sampler.GenerateSampleBundles(
 		particleTracerConfig,
-		particleTracerSampleStorage, sampleCount, rng)
+		particleTracerSampleStorage, blockSampleCount, rng)
 
-	lightSampleStorage := ptr.sampler.AllocateSampleStorage(
-		lightConfig, sampleCount)
 	lightBundles := ptr.sampler.GenerateSampleBundles(
-		lightConfig, lightSampleStorage, sampleCount, rng)
+		lightConfig, lightSampleStorage,
+		blockSampleCount, rng)
 
-	progressInterval := (sampleCount + 99) / 100
-	for i := 0; i < sampleCount; i++ {
+	for i := 0; i < blockSampleCount; i++ {
 		records := ptr.particleTracer.SampleLightPath(
 			rng, scene, lightBundles[i], tracerBundles[i])
 
@@ -93,10 +87,35 @@ func (ptr *ParticleTracingRenderer) processSamples(
 		for _, sensor := range sensors {
 			sensor.RecordAccumulatedLightContributions()
 		}
+	}
+}
 
-		if (i+1)%progressInterval == 0 || i+1 == sampleCount {
-			fmt.Printf("Processed %d/%d sample(s)\n",
-				i+1, sampleCount)
+func (ptr *ParticleTracingRenderer) processSamples(
+	rng *rand.Rand, scene *Scene, sensors []Sensor,
+	lightConfig SampleConfig, sampleCount int,
+	outputDir, outputExt string) {
+	blockSize := minInt(sampleCount, 1024)
+	blockCount := (sampleCount + blockSize - 1) / blockSize
+
+	particleTracerConfig := ptr.particleTracer.GetSampleConfig()
+	particleTracerSampleStorage := ptr.sampler.AllocateSampleStorage(
+		particleTracerConfig, blockSize)
+
+	lightSampleStorage := ptr.sampler.AllocateSampleStorage(
+		lightConfig, blockSize)
+
+	progressInterval := (blockCount + 99) / 100
+	for i := 0; i < blockCount; i++ {
+		blockSampleCount := minInt(sampleCount-i*blockSize, blockSize)
+
+		ptr.processBlock(rng, scene, blockSampleCount,
+			particleTracerConfig, lightConfig,
+			particleTracerSampleStorage, lightSampleStorage,
+			sensors)
+
+		if (i+1)%progressInterval == 0 || i+1 == blockCount {
+			fmt.Printf("Processed %d/%d block(s)\n",
+				i+1, blockCount)
 		}
 
 		if ((i + 1) == sampleCount) ||
@@ -125,6 +144,6 @@ func (ptr *ParticleTracingRenderer) Render(
 		totalSampleCount += extent.GetSampleCount()
 	}
 
-	ptr.processSamples(numRenderJobs, rng, scene, sensors,
-		combinedLightConfig, totalSampleCount, outputDir, outputExt)
+	ptr.processSamples(rng, scene, sensors, combinedLightConfig,
+		totalSampleCount, outputDir, outputExt)
 }
