@@ -4,7 +4,7 @@
       "type": "PrimitiveList",
       "primitives": [
         {
-          "_include": "cornell_box_scene.json"
+          "_include": "cornell_box_bright_scene.json"
         },
         {
           "_comment": "Sensors.",
@@ -14,7 +14,7 @@
             {
               "_comment": "Towards back wall.",
               "type": "PinholeCamera",
-              "outputPath": "cornell_box.png",
+              "outputPath": "cornell_box_bright_particle_tracer.png",
               "target":   [0, 1, 0],
               "up":       [0, 0, 1],
               "fov": 82,
@@ -29,9 +29,7 @@
   },
 
   "renderer": {
-    "type": "PathTracingRenderer",
-    "pathTypes": [ "emittedLight", "directLighting" ],
-    "weighingMethod": "power",
+    "type": "ParticleTracingRenderer",
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,
     "russianRouletteMaxProbability": 0.95,
