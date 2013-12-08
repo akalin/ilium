@@ -23,7 +23,7 @@ func (ps *PointShape) SampleSurface(u1, u2 float32) (
 }
 
 func (ps *PointShape) SampleSurfaceFromPoint(
-	u1, u2 float32, p Point3, n Normal3) (
+	u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 	pSurface Point3, pSurfaceEpsilon float32,
 	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	// As above, there's no need to sample a point shape yet, and

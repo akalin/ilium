@@ -24,13 +24,14 @@ type Shape interface {
 	// pdfSurfaceArea appropriately, but a smarter implementation
 	// may take advantage of the fact that only points visible
 	// from the given point will be used.
-	SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
+	SampleSurfaceFromPoint(
+		u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 		pSurface Point3, pSurfaceEpsilon float32,
 		nSurface Normal3, pdfProjectedSolidAngle float32)
 }
 
 func SampleEntireSurfaceFromPoint(
-	s Shape, u1, u2 float32, p Point3, n Normal3) (
+	s Shape, u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 	pSurface Point3, pSurfaceEpsilon float32,
 	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	pSurface, pSurfaceEpsilon, nSurface, pdfSurfaceArea :=

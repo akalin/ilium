@@ -26,13 +26,13 @@ func (ss *shapeSet) SampleSurface(u, v1, v2 float32) (
 }
 
 func (ss *shapeSet) SampleSurfaceFromPoint(
-	u, v1, v2 float32, p Point3, n Normal3) (
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	pSurface Point3, pSurfaceEpsilon float32,
 	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	i, pShape := ss.shapeAreaDistribution.SampleDiscrete(u)
 	shape := ss.shapes[i]
 	pSurface, pSurfaceEpsilon, nSurface, pdfShape :=
-		shape.SampleSurfaceFromPoint(v1, v2, p, n)
+		shape.SampleSurfaceFromPoint(v1, v2, p, pEpsilon, n)
 	if pdfShape == 0 {
 		return
 	}
