@@ -127,18 +127,20 @@ func (s *Sphere) computeThetaConeMax(d float32) (
 	return
 }
 
-func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
+func (s *Sphere) SampleSurfaceFromPoint(
+	u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 	pSurface Point3, pSurfaceEpsilon float32,
 	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	switch s.samplingMethod {
 	case SPHERE_SAMPLE_ENTIRE:
-		return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+		return SampleEntireSurfaceFromPoint(s, u1, u2, p, pEpsilon, n)
 
 	case SPHERE_SAMPLE_VISIBLE:
 		var wcZ Vector3
 		d := wcZ.GetDirectionAndDistance(&p, &s.center)
 		if s.shouldSampleEntireSphere(d) {
-			return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+			return SampleEntireSurfaceFromPoint(
+				s, u1, u2, p, pEpsilon, n)
 		}
 
 		_, cosThetaConeMax := s.computeThetaConeMax(d)
@@ -156,7 +158,7 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 			return
 		}
 
-		ray := Ray{p, Vector3(wi), 1e-3, infFloat32(+1)}
+		ray := Ray{p, Vector3(wi), pEpsilon, infFloat32(+1)}
 		var intersection Intersection
 		if s.Intersect(&ray, &intersection) {
 			pSurface = intersection.P
@@ -183,7 +185,8 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 		var wpZ Vector3
 		d := wpZ.GetDirectionAndDistance(&s.center, &p)
 		if s.shouldSampleEntireSphere(d) {
-			return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+			return SampleEntireSurfaceFromPoint(
+				s, u1, u2, p, pEpsilon, n)
 		}
 
 		sinThetaConeMax, cosThetaConeMax := s.computeThetaConeMax(d)

@@ -28,13 +28,14 @@ type Shape interface {
 	//
 	// May return a value of 0 for the pdf, in which case the
 	// returned values must not be used.
-	SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
+	SampleSurfaceFromPoint(
+		u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 		pSurface Point3, pSurfaceEpsilon float32,
 		nSurface Normal3, pdfProjectedSolidAngle float32)
 }
 
 func SampleEntireSurfaceFromPoint(
-	s Shape, u1, u2 float32, p Point3, n Normal3) (
+	s Shape, u1, u2 float32, p Point3, pEpsilon float32, n Normal3) (
 	pSurface Point3, pSurfaceEpsilon float32,
 	nSurface Normal3, pdfProjectedSolidAngle float32) {
 	pSurface, pSurfaceEpsilon, nSurface, pdfSurfaceArea :=
