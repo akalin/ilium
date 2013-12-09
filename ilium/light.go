@@ -5,16 +5,17 @@ type Light interface {
 	// of the fact that only points directly visible from the
 	// given point will be used, and returns the
 	// inverse-pdf-weighted emitted radiance from the sampled
-	// point (with the pdf being with respect to projected solid
-	// angle), a vector pointing to the sampled point, and a
-	// shadow ray to use to test whether the sampled point is
-	// visible from the given one.
+	// point, the value of the pdf with respect to projected solid
+	// angle at that point, a vector pointing to the sampled
+	// point, and a shadow ray to use to test whether the sampled
+	// point is visible from the given one.
 	//
-	// May return a black value for the weighted radiance, in
-	// which case the returned values must not be used.
+	// May return a black value for the weighted radiance or 0 for
+	// the pdf, in which case the returned values must not be
+	// used.
 	SampleLeFromPoint(
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-		LeDivPdf Spectrum, wi Vector3, shadowRay Ray)
+		LeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray)
 
 	// Returns the value of the pdf of the distribution used by
 	// SampleLeFromPoint() with respect to projected solid angle

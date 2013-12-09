@@ -264,10 +264,10 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	n := intersection.N
 
-	LeDivPdf, wi, shadowRay := light.SampleLeFromPoint(
+	LeDivPdf, pdf, wi, shadowRay := light.SampleLeFromPoint(
 		v.U, w.U1, w.U2, intersection.P, intersection.PEpsilon, n)
 
-	if LeDivPdf.IsBlack() {
+	if LeDivPdf.IsBlack() || pdf == 0 {
 		return
 	}
 
