@@ -116,16 +116,32 @@ func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 }
 
 func (pt *PathTracer) recordLeAlphaDebugInfo(
-	edgeCount int, LeAlpha *Spectrum,
+	edgeCount int, LeAlpha, f1, f2 *Spectrum, f1Name, f2Name string,
 	debugRecords *[]PathTracerDebugRecord) {
 	if pt.debugLevel >= 1 {
 		width := widthInt(pt.maxEdgeCount)
-		tag := fmt.Sprintf("LA%0*d", width, edgeCount)
+		tagSuffix := fmt.Sprintf("%0*d", width, edgeCount)
+
 		debugRecord := PathTracerDebugRecord{
-			Tag: tag,
+			Tag: "LA" + tagSuffix,
 			S:   *LeAlpha,
 		}
 		*debugRecords = append(*debugRecords, debugRecord)
+
+		if pt.debugLevel >= 2 {
+			f1DebugRecord := PathTracerDebugRecord{
+				Tag: f1Name + tagSuffix,
+				S:   *f1,
+			}
+
+			f2DebugRecord := PathTracerDebugRecord{
+				Tag: f2Name + tagSuffix,
+				S:   *f2,
+			}
+
+			*debugRecords = append(
+				*debugRecords, f1DebugRecord, f2DebugRecord)
+		}
 	}
 }
 
@@ -174,7 +190,9 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	LeAlphaNext.Mul(&LeDivPdf, &fAlpha)
 
-	pt.recordLeAlphaDebugInfo(edgeCount, &LeAlphaNext, debugRecords)
+	pt.recordLeAlphaDebugInfo(
+		edgeCount, &LeAlphaNext, &LeDivPdf, &fAlpha,
+		"Ld", "Ad", debugRecords)
 	return
 }
 
@@ -245,7 +263,8 @@ func (pt *PathTracer) SampleSensorPath(
 			LeAlpha.Mul(&Le, &alpha)
 
 			pt.recordLeAlphaDebugInfo(
-				edgeCount, &LeAlpha, debugRecords)
+				edgeCount, &LeAlpha, &Le, &alpha,
+				"Le", "Ae", debugRecords)
 
 			WeLiDivPdf.Add(WeLiDivPdf, &LeAlpha)
 		}
