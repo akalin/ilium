@@ -46,8 +46,13 @@ func (m *MicrofacetMaterial) computeG(
 		1, 2*absCosThH*minFloat32(absCosThO, absCosThI)/woDotWh)
 }
 
+func (m *MicrofacetMaterial) computeBlinnD(absCosThH float32) float32 {
+	e := m.blinnExponent
+	return (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
+}
+
 func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
-	wi Vector3, fDivPdf Spectrum) {
+	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	cosThO := wo.DotNormal(&n)
 	absCosThO := absFloat32(cosThO)
 	if absCosThO < _MICROFACET_COS_THETA_EPSILON {
@@ -109,10 +114,12 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		f := m.ComputeF(wo, wi, n)
 		// pdf = 1 / (2 * pi * |cos(th_i)| * 4 * (w_o * w_h)).
 		fDivPdf.Scale(&f, 8*math.Pi*absCosThI*woDotWh)
+		pdf = 1 / (8 * math.Pi * absCosThI * woDotWh)
 	case MICROFACET_COSINE_SAMPLING:
 		f := m.ComputeF(wo, wi, n)
 		// pdf = |cos(th_h)| / (pi * |cos(th_i)| * 4 * (w_o * w_h)).
 		fDivPdf.Scale(&f, 4*math.Pi*absCosThI*woDotWh/absCosThH)
+		pdf = absCosThH / (4 * math.Pi * absCosThI * woDotWh)
 	case MICROFACET_DISTRIBUTION_SAMPLING:
 		e := m.blinnExponent
 		G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
@@ -124,6 +131,8 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		// f / pdf = (color * (e + 2) * G * (w_o * w_h)) /
 		//   ((e + 1) * |cos(th_o)|).
 		fDivPdf.Scale(&m.color, ((e+2)*G*woDotWh)/((e+1)*absCosThO))
+		blinnD := m.computeBlinnD(absCosThH)
+		pdf = ((e + 1) * blinnD) / (4 * (e + 2) * absCosThI * woDotWh)
 	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
 		G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
 		// f = (color * D_blinn * G) / (4 * |cos(th_o) * cos(th_i)|),
@@ -133,13 +142,10 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		// so f / pdf =
 		//   (color * G * (w_o * w_h)) / (|cos(th_h) * cos(th_o)|).
 		fDivPdf.Scale(&m.color, (G*woDotWh)/(absCosThH*absCosThO))
+		blinnD := m.computeBlinnD(absCosThH)
+		pdf = (blinnD * absCosThH) / (4 * absCosThI * woDotWh)
 	}
 	return
-}
-
-func (m *MicrofacetMaterial) computeBlinnD(absCosThH float32) float32 {
-	e := m.blinnExponent
-	return (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
 }
 
 func (m *MicrofacetMaterial) ComputeF(wo, wi Vector3, n Normal3) Spectrum {
