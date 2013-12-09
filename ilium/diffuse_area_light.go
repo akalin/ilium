@@ -15,7 +15,7 @@ func MakeDiffuseAreaLight(
 
 func (d *DiffuseAreaLight) SampleLeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-	LeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	LeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray) {
 	pSurface, pSurfaceEpsilon, nSurface, pdf :=
 		d.shapeSet.SampleSurfaceFromPoint(u, v1, v2, p, pEpsilon, n)
 	if pdf == 0 {
