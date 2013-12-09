@@ -401,9 +401,9 @@ func (pt *PathTracer) SampleSensorPath(
 
 		sampleIndex := edgeCount - 1
 		u := wiSamples.GetSample(sampleIndex, rng)
-		wi, fDivPdf := intersection.Material.SampleWi(
+		wi, fDivPdf, pdf := intersection.Material.SampleWi(
 			u.U1, u.U2, wo, intersection.N)
-		if fDivPdf.IsBlack() {
+		if fDivPdf.IsBlack() || pdf == 0 {
 			break
 		}
 		if !fDivPdf.IsValid() {

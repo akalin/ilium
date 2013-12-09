@@ -31,7 +31,7 @@ func MakeDiffuseMaterial(config map[string]interface{}) *DiffuseMaterial {
 }
 
 func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
-	wi Vector3, fDivPdf Spectrum) {
+	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	if wo.DotNormal(&n) < 0 {
 		return
 	}
@@ -43,10 +43,12 @@ func (d *DiffuseMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		// f = rho / pi and pdf = 1 / (2 * pi * |cos(th)|), so
 		// f / pdf = 2 * rho * |cos(th)|.
 		fDivPdf.Scale(&d.rho, 2*absCosTh)
+		pdf = uniformHemispherePdfSolidAngle() / absCosTh
 	case DIFFUSE_MATERIAL_COSINE_SAMPLING:
 		r3 = cosineSampleHemisphere(u1, u2)
 		// f = rho / pi and pdf = 1 / pi, so f / pdf = rho.
 		fDivPdf = d.rho
+		pdf = cosineHemispherePdfProjectedSolidAngle()
 	}
 	// Convert the sampled vector to be around (i, j, k=n).
 	k := R3(n)
