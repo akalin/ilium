@@ -19,6 +19,8 @@ func MakeRenderer(config map[string]interface{}) Renderer {
 		return MakeParticleTracingRenderer(config)
 	case "TwoWayPathTracingRenderer":
 		return MakeTwoWayPathTracingRenderer(config)
+	case "BidirectionalPathTracingRenderer":
+		return MakeBidirectionalPathTracingRenderer(config)
 	default:
 		panic("unknown renderer type " + rendererType)
 	}

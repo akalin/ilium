@@ -1,0 +1,52 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "cornell_hallway_scene.json"
+        },
+        {
+          "_comment": "Camera.",
+          "type": "GeometricPrimitive",
+          "shape": {
+            "type": "Disk",
+            "center": [ 0, -0.5, 0 ],
+            "normal": [ 0, 1, 0 ],
+            "radius": 0.05
+          },
+          "material": {
+            "type": "DiffuseMaterial",
+            "samplingMethod": "cosine",
+            "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+          },
+          "sensors": [
+            {
+              "_comment": "Towards back wall.",
+              "type": "ThinLensCamera",
+              "outputPath": "cornell_hallway_bdpt.png",
+              "up": [0, 0, 1],
+              "fov": 82,
+              "frontFocalLength": 2,
+              "width": 320,
+              "height": 240,
+              "samplesPerPixel": 8
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "BidirectionalPathTracingRenderer",
+    "russianRouletteMethod": "proportional",
+    "russianRouletteStartIndex": 5,
+    "russianRouletteMaxProbability": 0.95,
+    "russianRouletteDelta": 1,
+    "maxEdgeCount": 100,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
