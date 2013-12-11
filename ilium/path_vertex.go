@@ -26,33 +26,38 @@ const (
 )
 
 type PathVertex struct {
-	vertexType pathVertexType
-	p          Point3
-	pEpsilon   float32
-	n          Normal3
-	alpha      Spectrum
+	vertexType    pathVertexType
+	transportType MaterialTransportType
+	p             Point3
+	pEpsilon      float32
+	n             Normal3
+	alpha         Spectrum
 	// Used by light and surface interaction vertices only.
 	light Light
 	// Used by surface interaction vertices only.
-	sensor Sensor
+	sensor   Sensor
+	material Material
 }
 
 func MakeLightSuperVertex() PathVertex {
 	return PathVertex{
-		vertexType: _PATH_VERTEX_LIGHT_SUPER_VERTEX,
-		alpha:      MakeConstantSpectrum(1),
+		vertexType:    _PATH_VERTEX_LIGHT_SUPER_VERTEX,
+		transportType: MATERIAL_IMPORTANCE_TRANSPORT,
+		alpha:         MakeConstantSpectrum(1),
 	}
 }
 
 func MakeSensorSuperVertex() PathVertex {
 	return PathVertex{
-		vertexType: _PATH_VERTEX_SENSOR_SUPER_VERTEX,
-		alpha:      MakeConstantSpectrum(1),
+		vertexType:    _PATH_VERTEX_SENSOR_SUPER_VERTEX,
+		transportType: MATERIAL_LIGHT_TRANSPORT,
+		alpha:         MakeConstantSpectrum(1),
 	}
 }
 
 func (pv *PathVertex) initializeSurfaceInteractionVertex(
-	context *PathContext, intersection *Intersection, alpha Spectrum) {
+	context *PathContext, pvPrev *PathVertex, intersection *Intersection,
+	alpha Spectrum) {
 	var sensor Sensor
 	for i := 0; i < len(intersection.Sensors); i++ {
 		if intersection.Sensors[i] == context.Sensor {
@@ -61,17 +66,24 @@ func (pv *PathVertex) initializeSurfaceInteractionVertex(
 		}
 	}
 	*pv = PathVertex{
-		vertexType: _PATH_VERTEX_SURFACE_INTERACTION_VERTEX,
-		p:          intersection.P,
-		pEpsilon:   intersection.PEpsilon,
-		n:          intersection.N,
-		alpha:      alpha,
-		light:      intersection.Light,
-		sensor:     sensor,
+		vertexType:    _PATH_VERTEX_SURFACE_INTERACTION_VERTEX,
+		transportType: pvPrev.transportType,
+		p:             intersection.P,
+		pEpsilon:      intersection.PEpsilon,
+		n:             intersection.N,
+		alpha:         alpha,
+		light:         intersection.Light,
+		sensor:        sensor,
+		material:      intersection.Material,
 	}
 }
 
 func validateSampledPathEdge(context *PathContext, pv, pvNext *PathVertex) {
+	if pv != nil && pv.transportType != pvNext.transportType {
+		panic(fmt.Sprintf("Sampled path edge with non-matching "+
+			"transport types %v -> %v", pv, pvNext))
+	}
+
 	switch {
 	case pv == nil:
 		if pvNext.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX {
@@ -154,12 +166,13 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		*pvNext = PathVertex{
-			vertexType: _PATH_VERTEX_LIGHT_VERTEX,
-			p:          p,
-			pEpsilon:   pEpsilon,
-			n:          n,
-			alpha:      alphaNext,
-			light:      light,
+			vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
+			transportType: pv.transportType,
+			p:             p,
+			pEpsilon:      pEpsilon,
+			n:             n,
+			alpha:         alphaNext,
+			light:         light,
 		}
 
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
@@ -177,11 +190,12 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		*pvNext = PathVertex{
-			vertexType: _PATH_VERTEX_SENSOR_VERTEX,
-			p:          p,
-			pEpsilon:   pEpsilon,
-			n:          n,
-			alpha:      alphaNext,
+			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
+			transportType: pv.transportType,
+			p:             p,
+			pEpsilon:      pEpsilon,
+			n:             n,
+			alpha:         alphaNext,
 		}
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
@@ -206,7 +220,7 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		pvNext.initializeSurfaceInteractionVertex(
-			context, &intersection, alphaNext)
+			context, pv, &intersection, alphaNext)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
 		wo, WeDirectionalDivPdf, pdfDirectional :=
@@ -231,10 +245,44 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		pvNext.initializeSurfaceInteractionVertex(
-			context, &intersection, alphaNext)
+			context, pv, &intersection, alphaNext)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		return false
+		var wo Vector3
+		wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+
+		var wiSamples Sample2DArray
+		switch pv.transportType {
+		case MATERIAL_LIGHT_TRANSPORT:
+			wiSamples = context.SensorWiSamples
+		case MATERIAL_IMPORTANCE_TRANSPORT:
+			wiSamples = context.LightWiSamples
+		}
+		// Subtract one for the super-vertex, and one for the
+		// light/sensor vertex.
+		sampleIndex := i - 2
+		sample := wiSamples.GetSample(sampleIndex, rng)
+		wi, fAbsDivPdf, pdf := pv.material.SampleWi(
+			pv.transportType, sample.U1, sample.U2, wo, pv.n)
+		if fAbsDivPdf.IsBlack() || pdf == 0 {
+			return false
+		}
+
+		albedo := &fAbsDivPdf
+		if !pv.shouldContinue(context, i, albedo, rng) {
+			return false
+		}
+
+		ray := Ray{pv.p, wi, pv.pEpsilon, infFloat32(+1)}
+		var intersection Intersection
+		if !context.Scene.Aggregate.Intersect(&ray, &intersection) {
+			return false
+		}
+
+		var alphaNext Spectrum
+		alphaNext.Mul(&pv.alpha, albedo)
+		pvNext.initializeSurfaceInteractionVertex(
+			context, pv, &intersection, alphaNext)
 
 	default:
 		panic(fmt.Sprintf(
