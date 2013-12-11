@@ -78,6 +78,20 @@ func uniformConePdfSolidAngle(cosThetaMax float32) float32 {
 	return 1 / (2 * math.Pi * (1 - cosThetaMax))
 }
 
+func computeG(p1 Point3, n1 Normal3, p2 Point3, n2 Normal3) float32 {
+	var w12 Vector3
+	r := w12.GetDirectionAndDistance(&p1, &p2)
+	var w21 Vector3
+	w21.Flip(&w12)
+	absCosTh1 := absFloat32(w12.DotNormal(&n1))
+	absCosTh2 := absFloat32(w21.DotNormal(&n2))
+	if absCosTh1 < PDF_COS_THETA_EPSILON ||
+		absCosTh2 < PDF_COS_THETA_EPSILON {
+		return 0
+	}
+	return (absCosTh1 * absCosTh2) / (r * r)
+}
+
 func computeInvG(p1 Point3, n1 Normal3, p2 Point3, n2 Normal3) float32 {
 	var w12 Vector3
 	r := w12.GetDirectionAndDistance(&p1, &p2)

@@ -359,15 +359,37 @@ func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
 			"transport type", pv, pvOther))
 	}
 
-	// TODO(akalin): Implement all cases.
 	switch {
 	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		if pvOther.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX {
+		if pvOther.vertexType != _PATH_VERTEX_SENSOR_SUPER_VERTEX &&
+			pvOther.vertexType != _PATH_VERTEX_SENSOR_VERTEX {
 			return
 		}
+
+	case pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX &&
+		pvOther.vertexType == _PATH_VERTEX_LIGHT_VERTEX:
+		// TODO(akalin): Support.
+		break
 	}
 
 	panic(fmt.Sprintf("Invalid connection %v <-> %v", pv, pvOther))
+}
+
+func (pv *PathVertex) computeF(pvPrev *PathVertex, wi Vector3) Spectrum {
+	switch pv.vertexType {
+	case _PATH_VERTEX_LIGHT_VERTEX:
+		return pv.light.ComputeLeDirectional(pv.p, pv.n, wi)
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		// TODO(akalin): Implement.
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		var wo Vector3
+		_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+		return pv.material.ComputeF(pv.transportType, wo, wi, pv.n)
+	}
+
+	panic("Not implemented")
 }
 
 // pv.vertexType >= pvOther.vertexType must hold.
@@ -382,15 +404,59 @@ func (pv *PathVertex) computeConnectionContribution(
 	// connection contribution is symmetric, this reduces the
 	// number of cases to check.
 	switch {
-	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX &&
-		pvOther.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX:
-		if pv.light == nil {
+	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		switch pvOther.vertexType {
+		case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+			if pv.light == nil {
+				return Spectrum{}
+			}
+			var wo Vector3
+			_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+			return pv.light.ComputeLe(pv.p, pv.n, wo)
+
+		case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+			// TODO(akalin): Implement.
+			panic("Not implemented")
 			return Spectrum{}
 		}
 
-		var wo Vector3
-		wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
-		return pv.light.ComputeLe(pv.p, pv.n, wo)
+		// The rest of the cases are handled below.
+
+		var wi Vector3
+		d := wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+		shadowRay := Ray{
+			pv.p, wi, pv.pEpsilon, d * (1.0 - pvOther.pEpsilon),
+		}
+		if context.Scene.Aggregate.Intersect(&shadowRay, nil) {
+			return Spectrum{}
+		}
+
+		f := pv.computeF(pvPrev, wi)
+		if f.IsBlack() {
+			return Spectrum{}
+		}
+
+		var wiOther Vector3
+		wiOther.Flip(&wi)
+		fOther := pvOther.computeF(pvOtherPrev, wiOther)
+		if fOther.IsBlack() {
+			return Spectrum{}
+		}
+
+		G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+		if G == 0 {
+			return Spectrum{}
+		}
+
+		var c Spectrum
+		c.Mul(&f, &fOther)
+		c.Scale(&c, G)
+		return c
+
+	case pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX &&
+		pvOther.vertexType == _PATH_VERTEX_LIGHT_VERTEX:
+		// TODO(akalin): Implement.
+		panic("Not implemented")
 	}
 
 	panic("Unexpectedly reached")
