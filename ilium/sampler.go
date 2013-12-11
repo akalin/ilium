@@ -38,6 +38,29 @@ type SampleConfig struct {
 	Sample2DLengths []int
 }
 
+func combineSampleArrayLengths(lengths1, lengths2 []int) []int {
+	maxLen := maxInt(len(lengths1), len(lengths2))
+	lengths := make([]int, maxLen)
+	for i := 0; i < maxLen; i++ {
+		var length1, length2 int
+		if i < len(lengths1) {
+			length1 = lengths2[i]
+		}
+		if i < len(lengths2) {
+			length2 = lengths2[i]
+		}
+		lengths[i] = maxInt(length1, length2)
+	}
+	return lengths
+}
+
+func (sc *SampleConfig) CombineWith(scOther *SampleConfig) {
+	sc.Sample1DLengths = combineSampleArrayLengths(
+		sc.Sample1DLengths, scOther.Sample1DLengths)
+	sc.Sample2DLengths = combineSampleArrayLengths(
+		sc.Sample2DLengths, scOther.Sample2DLengths)
+}
+
 type SampleStorage struct {
 	sampleBundles []SampleBundle
 }
