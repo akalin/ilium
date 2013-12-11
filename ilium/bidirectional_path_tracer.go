@@ -52,6 +52,31 @@ func (bdpt *BidirectionalPathTracer) GetSampleConfig() SampleConfig {
 	}
 }
 
+func (bdpt *BidirectionalPathTracer) generateSubpath(
+	pathContext *PathContext,
+	rng *rand.Rand, pvStart *PathVertex, maxEdgeCount int) []PathVertex {
+	var pvPrev *PathVertex
+	var pvNext PathVertex
+	subpath := []PathVertex{*pvStart}
+	// Add one for the edge from the super-vertex.
+	maxPathEdgeCount := maxEdgeCount + 1
+	for i := 0; i < maxPathEdgeCount; i++ {
+		if !subpath[len(subpath)-1].SampleNext(
+			pathContext, i, rng, pvPrev, &pvNext) {
+			break
+		}
+
+		subpath = append(subpath, pvNext)
+		pvPrev = &subpath[len(subpath)-2]
+	}
+	return subpath
+}
+
+func (bdpt *BidirectionalPathTracer) computeCk(k int,
+	pathContext *PathContext, ySubpath, zSubpath []PathVertex) Spectrum {
+	return Spectrum{}
+}
+
 func (bdpt *BidirectionalPathTracer) SamplePaths(
 	rng *rand.Rand, scene *Scene, sensor Sensor,
 	x, y int, lightBundle, sensorBundle, tracerBundle SampleBundle,
@@ -68,5 +93,56 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 
 	if len(scene.Lights) == 0 {
 		return
+	}
+
+	chooseLightSample := tracerBundle.Samples1D[0][0]
+	lightWiSamples := tracerBundle.Samples2D[0]
+	sensorWiSamples := tracerBundle.Samples2D[1]
+
+	// Note that, compared to Veach's formulation, we have extra
+	// vertices (the light and sensor "super-vertices") in our
+	// paths. Terms prefixed by path (e.g., "path edge"
+	// vs. "edge") take into account these super-vertices.
+
+	pathContext := PathContext{
+		RussianRouletteState: bdpt.russianRouletteState,
+		LightBundle:          lightBundle,
+		SensorBundle:         sensorBundle,
+		ChooseLightSample:    chooseLightSample,
+		LightWiSamples:       lightWiSamples,
+		SensorWiSamples:      sensorWiSamples,
+		Scene:                scene,
+		Sensor:               sensor,
+		X:                    x,
+		Y:                    y,
+	}
+
+	// ySubpath is the light subpath.
+	lightSuperVertex := MakeLightSuperVertex()
+	ySubpath := bdpt.generateSubpath(
+		&pathContext, rng, &lightSuperVertex, bdpt.maxEdgeCount)
+
+	// zSubpath is the sensor subpath.
+	sensorSuperVertex := MakeSensorSuperVertex()
+	zSubpath := bdpt.generateSubpath(
+		&pathContext, rng, &sensorSuperVertex, bdpt.maxEdgeCount)
+
+	// k is the number of edges (not path edges) in the combined
+	// path, including the connecting one. k must be at least one
+	// (which corresponds to having three path edges), since a
+	// single path edge connecting the two super-vertices isn't
+	// meaningful, and nor are
+	// light-super-vertex - {sensor, light} - sensor-super-vertex
+	// paths.
+	minK := 1
+	// s is the number of light vertices (not path vertices).
+	maxS := len(ySubpath) - 1
+	// t is the number of sensor vertices (not path vertices).
+	maxT := len(zSubpath) - 1
+	// Use the identity: s + t = k + 1.
+	maxK := minInt(maxS+maxT-1, bdpt.maxEdgeCount)
+	for k := minK; k <= maxK; k++ {
+		Ck := bdpt.computeCk(k, &pathContext, ySubpath, zSubpath)
+		sensorRecord.WeLiDivPdf.Add(&sensorRecord.WeLiDivPdf, &Ck)
 	}
 }
