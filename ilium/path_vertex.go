@@ -18,10 +18,11 @@ type PathContext struct {
 type pathVertexType int
 
 const (
-	_PATH_VERTEX_LIGHT_SUPER_VERTEX  pathVertexType = iota
-	_PATH_VERTEX_SENSOR_SUPER_VERTEX pathVertexType = iota
-	_PATH_VERTEX_LIGHT_VERTEX        pathVertexType = iota
-	_PATH_VERTEX_SENSOR_VERTEX       pathVertexType = iota
+	_PATH_VERTEX_LIGHT_SUPER_VERTEX         pathVertexType = iota
+	_PATH_VERTEX_SENSOR_SUPER_VERTEX        pathVertexType = iota
+	_PATH_VERTEX_LIGHT_VERTEX               pathVertexType = iota
+	_PATH_VERTEX_SENSOR_VERTEX              pathVertexType = iota
+	_PATH_VERTEX_SURFACE_INTERACTION_VERTEX pathVertexType = iota
 )
 
 type PathVertex struct {
@@ -30,8 +31,10 @@ type PathVertex struct {
 	pEpsilon   float32
 	n          Normal3
 	alpha      Spectrum
-	// Used by light vertices only.
+	// Used by light and surface interaction vertices only.
 	light Light
+	// Used by surface interaction vertices only.
+	sensor Sensor
 }
 
 func MakeLightSuperVertex() PathVertex {
@@ -70,10 +73,22 @@ func validateSampledPathEdge(context *PathContext, pv, pvNext *PathVertex) {
 		}
 
 	case pv.vertexType == _PATH_VERTEX_LIGHT_VERTEX:
-		// TODO(akalin): Implement.
+		if pvNext.vertexType ==
+			_PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+			return
+		}
 
 	case pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX:
-		// TODO(akalin): Implement.
+		if pvNext.vertexType ==
+			_PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+			return
+		}
+
+	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		if pvNext.vertexType ==
+			_PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+			return
+		}
 	}
 
 	panic(fmt.Sprintf("Invalid sampled path edge %v -> %v", pv, pvNext))
@@ -150,9 +165,47 @@ func (pv *PathVertex) SampleNext(
 		}
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
-		return false
+		wo, LeDirectionalDivPdf, pdfDirectional :=
+			pv.light.SampleDirection(
+				context.LightBundle, pv.p, pv.n)
+		if LeDirectionalDivPdf.IsBlack() || pdfDirectional == 0 {
+			return false
+		}
+
+		albedo := &LeDirectionalDivPdf
+		if !pv.shouldContinue(context, i, albedo, rng) {
+			return false
+		}
+
+		ray := Ray{pv.p, wo, pv.pEpsilon, infFloat32(+1)}
+		var intersection Intersection
+		if !context.Scene.Aggregate.Intersect(&ray, &intersection) {
+			return false
+		}
+
+		var alphaNext Spectrum
+		alphaNext.Mul(&pv.alpha, albedo)
+		var sensor Sensor
+		for i := 0; i < len(intersection.Sensors); i++ {
+			if intersection.Sensors[i] == context.Sensor {
+				sensor = context.Sensor
+				break
+			}
+		}
+		*pvNext = PathVertex{
+			vertexType: _PATH_VERTEX_SURFACE_INTERACTION_VERTEX,
+			p:          intersection.P,
+			pEpsilon:   intersection.PEpsilon,
+			n:          intersection.N,
+			alpha:      alphaNext,
+			light:      intersection.Light,
+			sensor:     sensor,
+		}
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
+		return false
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		return false
 
 	default:
@@ -186,6 +239,9 @@ func (pv *PathVertex) ComputeUnweightedContribution(
 		return Spectrum{}
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
+		return Spectrum{}
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		return Spectrum{}
 	}
 	return Spectrum{}
