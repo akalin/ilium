@@ -9,6 +9,8 @@ const (
 	IRRADIANCE_METER_COSINE_SAMPLING  IrradianceMeterSamplingMethod = iota
 )
 
+const _IRRADIANCE_METER_EPSILON_SCALE float32 = 5e-4
+
 type IrradianceMeter struct {
 	description    string
 	samplingMethod IrradianceMeterSamplingMethod
@@ -75,27 +77,62 @@ func (im *IrradianceMeter) GetSampleConfig() SampleConfig {
 	}
 }
 
-func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum, pdf float32) {
-	u1 := sampleBundle.Samples2D[0][0].U1
-	u2 := sampleBundle.Samples2D[0][0].U2
-	var r3 R3
+func (im *IrradianceMeter) SampleSurface(sampleBundle SampleBundle) (
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, WeSpatialDivPdf Spectrum, pdf float32) {
+	pSurface = im.position
+	pSurfaceEpsilon = _IRRADIANCE_METER_EPSILON_SCALE
+	nSurface = Normal3(im.k)
+	WeSpatialDivPdf = MakeConstantSpectrum(1)
+	pdf = 1
+	return
+}
+
+func (im *IrradianceMeter) sampleHemisphere(u1, u2 float32) (
+	wo Vector3, absCosTh float32) {
+	var wR3 R3
 	switch im.samplingMethod {
 	case IRRADIANCE_METER_UNIFORM_SAMPLING:
-		r3 = uniformSampleHemisphere(u1, u2)
-		absCosTh := r3.Z
+		wR3 = uniformSampleHemisphere(u1, u2)
+	case IRRADIANCE_METER_COSINE_SAMPLING:
+		wR3 = cosineSampleHemisphere(u1, u2)
+	}
+	var wR3w R3
+	wR3w.ConvertToCoordinateSystemNoAlias(&wR3, &im.i, &im.j, &im.k)
+	wo = Vector3(wR3w)
+	absCosTh = wR3.Z
+	return
+}
+
+func (im *IrradianceMeter) SampleDirection(x, y int, sampleBundle SampleBundle,
+	pSurface Point3, nSurface Normal3) (
+	wo Vector3, WeDirectionalDivPdf Spectrum, pdf float32) {
+	u1 := sampleBundle.Samples2D[0][0].U1
+	u2 := sampleBundle.Samples2D[0][0].U2
+	wo, absCosTh := im.sampleHemisphere(u1, u2)
+	switch im.samplingMethod {
+	case IRRADIANCE_METER_UNIFORM_SAMPLING:
 		// pdf = 1 / (2 * pi * |cos(th)|).
-		WeDivPdf = MakeConstantSpectrum(2 * math.Pi * absCosTh)
+		WeDirectionalDivPdf =
+			MakeConstantSpectrum(2 * math.Pi * absCosTh)
 		pdf = uniformHemispherePdfSolidAngle() / absCosTh
 	case IRRADIANCE_METER_COSINE_SAMPLING:
-		r3 = cosineSampleHemisphere(u1, u2)
 		// pdf = 1 / pi.
-		WeDivPdf = MakeConstantSpectrum(math.Pi)
+		WeDirectionalDivPdf = MakeConstantSpectrum(math.Pi)
 		pdf = cosineHemispherePdfProjectedSolidAngle()
+
 	}
-	var r3w R3
-	r3w.ConvertToCoordinateSystemNoAlias(&r3, &im.i, &im.j, &im.k)
-	ray = Ray{im.position, Vector3(r3w), 5e-4, infFloat32(+1)}
+	return
+}
+
+func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
+	wo, WeDivPdf, pdf := im.SampleDirection(
+		x, y, sampleBundle, im.position, Normal3(im.k))
+	ray = Ray{
+		im.position, wo, _IRRADIANCE_METER_EPSILON_SCALE,
+		infFloat32(+1),
+	}
 	return
 }
 
@@ -139,10 +176,22 @@ func (im *IrradianceMeter) ComputeWePdfFromPoint(
 	return r * r / (absCosThI * cosThO)
 }
 
+func (im *IrradianceMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
+	panic("Called unexpectedly")
+}
+
 func (im *IrradianceMeter) ComputeWeSpatialPdf(pSurface Point3) float32 {
 	// Since we're assuming pSurface is on the sensor, return 1
 	// even though we have a delta spatial distribution.
 	return 1
+}
+
+func (im *IrradianceMeter) ComputeWeDirectional(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
+	if wo.DotNormal(&nSurface) < 0 {
+		return Spectrum{}
+	}
+	return MakeConstantSpectrum(1)
 }
 
 func (im *IrradianceMeter) ComputeWeDirectionalPdf(

@@ -1,5 +1,7 @@
 package ilium
 
+const _RADIANCE_METER_EPSILON_SCALE float32 = 5e-4
+
 type RadianceMeter struct {
 	description string
 	ray         Ray
@@ -22,7 +24,10 @@ func MakeRadianceMeter(
 	var direction Vector3
 	direction.GetOffset(&pointShape.P, &target)
 	direction.Normalize(&direction)
-	ray := Ray{pointShape.P, direction, 5e-4, infFloat32(+1)}
+	ray := Ray{
+		pointShape.P, direction, _RADIANCE_METER_EPSILON_SCALE,
+		infFloat32(+1),
+	}
 	return &RadianceMeter{
 		description: description,
 		ray:         ray,
@@ -47,6 +52,26 @@ func (rm *RadianceMeter) GetSampleConfig() SampleConfig {
 	return SampleConfig{}
 }
 
+func (rm *RadianceMeter) SampleSurface(sampleBundle SampleBundle) (
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, WeSpatialDivPdf Spectrum, pdf float32) {
+	pSurface = rm.ray.O
+	pSurfaceEpsilon = _RADIANCE_METER_EPSILON_SCALE
+	nSurface = Normal3(rm.ray.D)
+	WeSpatialDivPdf = MakeConstantSpectrum(1)
+	pdf = 1
+	return
+}
+
+func (rm *RadianceMeter) SampleDirection(x, y int, sampleBundle SampleBundle,
+	pSurface Point3, nSurface Normal3) (
+	wo Vector3, WeDirectionalDivPdf Spectrum, pdf float32) {
+	wo = rm.ray.D
+	WeDirectionalDivPdf = MakeConstantSpectrum(1)
+	pdf = 1
+	return
+}
+
 func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	ray = rm.ray
@@ -67,10 +92,19 @@ func (rm *RadianceMeter) ComputeWePdfFromPoint(
 	panic("Called unexpectedly")
 }
 
+func (rm *RadianceMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
+	panic("Called unexpectedly")
+}
+
 func (rm *RadianceMeter) ComputeWeSpatialPdf(pSurface Point3) float32 {
 	// Since we're assuming pSurface is on the sensor, return 1
 	// even though we have a delta spatial distribution.
 	return 1
+}
+
+func (rm *RadianceMeter) ComputeWeDirectional(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
+	panic("Called unexpectedly")
 }
 
 func (rm *RadianceMeter) ComputeWeDirectionalPdf(

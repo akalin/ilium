@@ -59,6 +59,58 @@ func (fm *FluxMeter) GetSampleConfig() SampleConfig {
 	}
 }
 
+func (fm *FluxMeter) SampleSurface(sampleBundle SampleBundle) (
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, WeSpatialDivPdf Spectrum, pdf float32) {
+	u := sampleBundle.Samples1D[0][0].U
+	v1 := sampleBundle.Samples2D[0][0].U1
+	v2 := sampleBundle.Samples2D[0][0].U2
+	pSurface, pSurfaceEpsilon, nSurface, pdf =
+		fm.shapeSet.SampleSurface(u, v1, v2)
+	WeSpatial := fm.ComputeWeSpatial(pSurface)
+	WeSpatialDivPdf.ScaleInv(&WeSpatial, pdf)
+	return
+}
+
+func (fm *FluxMeter) sampleHemisphere(nSurface Normal3, u1, u2 float32) (
+	wo Vector3, absCosTh float32) {
+	var wR3 R3
+	switch fm.samplingMethod {
+	case FLUX_METER_UNIFORM_SAMPLING:
+		wR3 = uniformSampleHemisphere(u1, u2)
+	case FLUX_METER_COSINE_SAMPLING:
+		wR3 = cosineSampleHemisphere(u1, u2)
+	}
+	k := R3(nSurface)
+	var i, j R3
+	MakeCoordinateSystemNoAlias(&k, &i, &j)
+	var wR3w R3
+	wR3w.ConvertToCoordinateSystemNoAlias(&wR3, &i, &j, &k)
+	wo = Vector3(wR3w)
+	absCosTh = wR3.Z
+	return
+}
+
+func (fm *FluxMeter) SampleDirection(x, y int, sampleBundle SampleBundle,
+	pSurface Point3, nSurface Normal3) (
+	wo Vector3, WeDirectionalDivPdf Spectrum, pdf float32) {
+	w1 := sampleBundle.Samples2D[1][0].U1
+	w2 := sampleBundle.Samples2D[1][0].U2
+	wo, absCosTh := fm.sampleHemisphere(nSurface, w1, w2)
+	switch fm.samplingMethod {
+	case FLUX_METER_UNIFORM_SAMPLING:
+		// WeDirectional = 1 / pi and pdf = 1 / (2 * pi * |cos(th)|).
+		WeDirectionalDivPdf =
+			MakeConstantSpectrum(2 * absCosTh)
+		pdf = uniformHemispherePdfSolidAngle() / absCosTh
+	case FLUX_METER_COSINE_SAMPLING:
+		// WeDirectional = 1 / pi and pdf = 1 / pi.
+		WeDirectionalDivPdf = MakeConstantSpectrum(1)
+		pdf = cosineHemispherePdfProjectedSolidAngle()
+	}
+	return
+}
+
 func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	u := sampleBundle.Samples1D[0][0].U
@@ -68,28 +120,20 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	w2 := sampleBundle.Samples2D[1][0].U2
 	pSurface, pSurfaceEpsilon, nSurface, pdfSurfaceArea :=
 		fm.shapeSet.SampleSurface(u, v1, v2)
-	var r3 R3
+	wo, absCosTh := fm.sampleHemisphere(nSurface, w1, w2)
+	ray = Ray{pSurface, wo, pSurfaceEpsilon, infFloat32(+1)}
 	switch fm.samplingMethod {
 	case FLUX_METER_UNIFORM_SAMPLING:
-		r3 = uniformSampleHemisphere(w1, w2)
-		absCosTh := r3.Z
 		// pdf = pdfSurfaceArea / (2 * pi * |cos(th)|).
 		WeDivPdf = MakeConstantSpectrum(
 			2 * math.Pi * absCosTh / pdfSurfaceArea)
 		pdf = pdfSurfaceArea *
 			uniformHemispherePdfSolidAngle() / absCosTh
 	case FLUX_METER_COSINE_SAMPLING:
-		r3 = cosineSampleHemisphere(w1, w2)
 		// pdf = pdfSurfaceArea / pi.
 		WeDivPdf = MakeConstantSpectrum(math.Pi / pdfSurfaceArea)
 		pdf = pdfSurfaceArea * cosineHemispherePdfProjectedSolidAngle()
 	}
-	k := R3(nSurface)
-	var i, j R3
-	MakeCoordinateSystemNoAlias(&k, &i, &j)
-	var r3w R3
-	r3w.ConvertToCoordinateSystemNoAlias(&r3, &i, &j, &k)
-	ray = Ray{pSurface, Vector3(r3w), pSurfaceEpsilon, infFloat32(+1)}
 	return
 }
 
@@ -113,8 +157,20 @@ func (fm *FluxMeter) ComputeWePdfFromPoint(
 	return fm.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (fm *FluxMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
+	return MakeConstantSpectrum(math.Pi)
+}
+
 func (fm *FluxMeter) ComputeWeSpatialPdf(pSurface Point3) float32 {
 	return 1 / fm.shapeSet.SurfaceArea()
+}
+
+func (fm *FluxMeter) ComputeWeDirectional(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
+	if wo.DotNormal(&nSurface) < 0 {
+		return Spectrum{}
+	}
+	return MakeConstantSpectrum(1 / math.Pi)
 }
 
 func (fm *FluxMeter) ComputeWeDirectionalPdf(

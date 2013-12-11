@@ -112,6 +112,19 @@ type Sensor interface {
 	// passed into SampleRay.
 	GetSampleConfig() SampleConfig
 
+	// Returns a sampled point on the sensor and its associated
+	// inverse-pdf-weighted importance.
+	SampleSurface(sampleBundle SampleBundle) (
+		pSurface Point3, pSurfaceEpsilon float32,
+		nSurface Normal3, WeSpatialDivPdf Spectrum, pdf float32)
+
+	// Returns a sampled direction for the given pixel coordinates
+	// and point on the surface, and its associated
+	// inverse-pdf-weighted importance.
+	SampleDirection(x, y int, sampleBundle SampleBundle,
+		pSurface Point3, nSurface Normal3) (
+		wo Vector3, WeDirectionalDivPdf Spectrum, pdf float32)
+
 	// Returns a sampled ray for the given pixel coordinates over
 	// which to measure radiometric quantities, and its associated
 	// inverse-pdf-weighted importance.
@@ -158,12 +171,30 @@ type Sensor interface {
 		x, y int,
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 
+	// Given a point on the sensor, returns its importance.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularPosition() returns false.
+	ComputeWeSpatial(pSurface Point3) Spectrum
+
 	// Given a point on the sensor, returns the value of the pdf
 	// of the spatial distribution for that point.
 	//
 	// Can be assumed to only be called when pSurface is known to
 	// lie on the surface on the sensor.
 	ComputeWeSpatialPdf(pSurface Point3) float32
+
+	// Given a point and normal on the sensor and an outging
+	// direction, returns the emitted importance.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularPosition() returns false, and when pSurface is
+	// known to lie on the surface on the sensor with pixel
+	// coordinates (x, y) and normal nSurface. (However, wo can be
+	// arbitrary.)
+	ComputeWeDirectional(
+		x, y int,
+		pSurface Point3, nSurface Normal3, wo Vector3) Spectrum
 
 	// Given pixel coordinates, a point, a normal on the sensor,
 	// and an outging direction, returns the value of the pdf of

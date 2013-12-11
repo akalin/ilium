@@ -94,10 +94,17 @@ func (pc *PinholeCamera) computePdfDirectional(cosThO float32) float32 {
 		(cosThO * cosThO * cosThO * cosThO)
 }
 
-func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum, pdf float32) {
-	xC := float32(x) + sampleBundle.Samples2D[0][0].U1
-	yC := float32(y) + sampleBundle.Samples2D[0][0].U2
+func (pc *PinholeCamera) SampleSurface(sampleBundle SampleBundle) (
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, WeSpatialDivPdf Spectrum, pdf float32) {
+	pSurface = pc.position
+	nSurface = Normal3(pc.frontHat)
+	WeSpatialDivPdf = MakeConstantSpectrum(1)
+	pdf = 1
+	return
+}
+
+func (pc *PinholeCamera) xyToWo(xC, yC float32) Vector3 {
 	leftLength := 0.5*float32(pc.imageSensor.GetWidth()) - xC
 	upLength := 0.5*float32(pc.imageSensor.GetHeight()) - yC
 
@@ -108,12 +115,42 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	((*R3)(&wo)).ConvertToCoordinateSystemNoAlias(
 		&v, (*R3)(&pc.frontHat), (*R3)(&pc.leftHat), (*R3)(&pc.upHat))
 	wo.Normalize(&wo)
+	return wo
+}
 
+func (pc *PinholeCamera) SampleDirection(x, y int, sampleBundle SampleBundle,
+	pSurface Point3, nSurface Normal3) (
+	wo Vector3, WeDirectionalDivPdf Spectrum, pdf float32) {
+	xC := float32(x) + sampleBundle.Samples2D[0][0].U1
+	yC := float32(y) + sampleBundle.Samples2D[0][0].U2
+	wo = pc.xyToWo(xC, yC)
+	// WeDirectional is set so that WeDirectional/pdf = 1.
+	WeDirectionalDivPdf = MakeConstantSpectrum(1)
+	cosThO := wo.Dot(&pc.frontHat)
+	pdf = pc.computePdfDirectional(cosThO)
+	return
+}
+
+func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
+	xC := float32(x) + sampleBundle.Samples2D[0][0].U1
+	yC := float32(y) + sampleBundle.Samples2D[0][0].U2
+	wo := pc.xyToWo(xC, yC)
 	ray = Ray{pc.position, wo, 0, infFloat32(+1)}
 	// We is set so that We/pdf = 1.
 	WeDivPdf = MakeConstantSpectrum(1)
 	cosThO := wo.Dot(&pc.frontHat)
 	pdf = pc.computePdfDirectional(cosThO)
+	return
+}
+
+func (pc *PinholeCamera) woToXy(wo Vector3, cosThO float32) (xC, yC float32) {
+	// Project p onto the imaginary image plane.
+	s := pc.backFocalLength / cosThO
+	leftLength := s * wo.Dot(&pc.leftHat)
+	upLength := s * wo.Dot(&pc.upHat)
+	xC = 0.5*float32(pc.imageSensor.GetWidth()) - leftLength
+	yC = 0.5*float32(pc.imageSensor.GetHeight()) - upLength
 	return
 }
 
@@ -131,12 +168,7 @@ func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 		return
 	}
 
-	// Project p onto the imaginary image plane.
-	s := pc.backFocalLength / cosThO
-	leftLength := s * wo.Dot(&pc.leftHat)
-	upLength := s * wo.Dot(&pc.upHat)
-	xC := 0.5*float32(pc.imageSensor.GetWidth()) - leftLength
-	yC := 0.5*float32(pc.imageSensor.GetHeight()) - upLength
+	xC, yC := pc.woToXy(wo, cosThO)
 	extent := pc.GetExtent()
 	if extent.Contains(xC, yC) {
 		x = int(xC)
@@ -184,10 +216,30 @@ func (pc *PinholeCamera) ComputeWePdfFromPoint(
 	return r * r / (absCosThI * cosThO)
 }
 
+func (pc *PinholeCamera) ComputeWeSpatial(pSurface Point3) Spectrum {
+	panic("Called unexpectedly")
+}
+
 func (pc *PinholeCamera) ComputeWeSpatialPdf(pSurface Point3) float32 {
 	// Since we're assuming pSurface is on the sensor, return 1
 	// even though we have a delta spatial distribution.
 	return 1
+}
+
+func (pc *PinholeCamera) ComputeWeDirectional(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
+	cosThO := wo.Dot(&pc.frontHat)
+	if cosThO < PDF_COS_THETA_EPSILON {
+		return Spectrum{}
+	}
+
+	xC, yC := pc.woToXy(wo, cosThO)
+	extent := pc.GetExtent()
+	if !extent.Contains(xC, yC) {
+		return Spectrum{}
+	}
+
+	return MakeConstantSpectrum(pc.computePdfDirectional(cosThO))
 }
 
 func (pc *PinholeCamera) ComputeWeDirectionalPdf(

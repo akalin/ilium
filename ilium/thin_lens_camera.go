@@ -145,6 +145,37 @@ func (tlc *ThinLensCamera) computePdfDirectional(cosThC float32) float32 {
 		(cosThC * cosThC * cosThC * cosThC)
 }
 
+func (tlc *ThinLensCamera) SampleSurface(sampleBundle SampleBundle) (
+	pSurface Point3, pSurfaceEpsilon float32,
+	nSurface Normal3, WeSpatialDivPdf Spectrum, pdf float32) {
+	samples := sampleBundle.Samples2D[0]
+
+	// Find the point on the lens.
+	// TODO(akalin): Use concentric sampling.
+	pSurface, pSurfaceEpsilon, nSurface, pdf =
+		tlc.disk.SampleSurface(samples[0].U1, samples[0].U2)
+	WeSpatial := tlc.ComputeWeSpatial(pSurface)
+	WeSpatialDivPdf.ScaleInv(&WeSpatial, pdf)
+	return
+}
+
+func (tlc *ThinLensCamera) SampleDirection(x, y int, sampleBundle SampleBundle,
+	pSurface Point3, nSurface Normal3) (
+	wo Vector3, WeDirectionalDivPdf Spectrum, pdf float32) {
+	samples := sampleBundle.Samples2D[0]
+
+	xC := float32(x) + samples[1].U1
+	yC := float32(y) + samples[1].U2
+	wc := tlc.xyToWc(xC, yC, &nSurface)
+	wo = tlc.wcToWo(&wc, &pSurface, &nSurface)
+
+	// We is set so that We/pdf = 1.
+	WeDirectionalDivPdf = MakeConstantSpectrum(1)
+	cosThC := wc.DotNormal(&nSurface)
+	pdf = tlc.computePdfDirectional(cosThC)
+	return
+}
+
 func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	samples := sampleBundle.Samples2D[0]
@@ -227,8 +258,40 @@ func (tlc *ThinLensCamera) ComputeWePdfFromPoint(
 	return tlc.disk.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (tlc *ThinLensCamera) ComputeWeSpatial(pSurface Point3) Spectrum {
+	return MakeConstantSpectrum(1 / tlc.disk.SurfaceArea())
+}
+
 func (tlc *ThinLensCamera) ComputeWeSpatialPdf(pSurface Point3) float32 {
 	return 1 / tlc.disk.SurfaceArea()
+}
+
+func (tlc *ThinLensCamera) ComputeWeDirectional(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
+	// Find the point on the plane of focus.
+	var pFocus Point3
+	var w Vector3
+	w.Scale(&wo, tlc.frontFocalLength)
+	pFocus.Shift(&pSurface, &w)
+
+	// Find the direction from the center.
+	var wc Vector3
+	center := tlc.disk.GetCenter()
+	_ = wc.GetDirectionAndDistance(&center, &pFocus)
+
+	nLens := tlc.disk.GetNormal()
+	cosThC := wc.DotNormal(&nLens)
+	if cosThC < PDF_COS_THETA_EPSILON {
+		return Spectrum{}
+	}
+
+	xC, yC := tlc.wcToXy(&wc, cosThC)
+	extent := tlc.GetExtent()
+	if !extent.Contains(xC, yC) {
+		return Spectrum{}
+	}
+
+	return MakeConstantSpectrum(tlc.computePdfDirectional(cosThC))
 }
 
 func (tlc *ThinLensCamera) ComputeWeDirectionalPdf(
