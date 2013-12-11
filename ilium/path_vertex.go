@@ -51,6 +51,26 @@ func MakeSensorSuperVertex() PathVertex {
 	}
 }
 
+func (pv *PathVertex) initializeSurfaceInteractionVertex(
+	context *PathContext, intersection *Intersection, alpha Spectrum) {
+	var sensor Sensor
+	for i := 0; i < len(intersection.Sensors); i++ {
+		if intersection.Sensors[i] == context.Sensor {
+			sensor = context.Sensor
+			break
+		}
+	}
+	*pv = PathVertex{
+		vertexType: _PATH_VERTEX_SURFACE_INTERACTION_VERTEX,
+		p:          intersection.P,
+		pEpsilon:   intersection.PEpsilon,
+		n:          intersection.N,
+		alpha:      alpha,
+		light:      intersection.Light,
+		sensor:     sensor,
+	}
+}
+
 func validateSampledPathEdge(context *PathContext, pv, pvNext *PathVertex) {
 	switch {
 	case pv == nil:
@@ -185,25 +205,33 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		var sensor Sensor
-		for i := 0; i < len(intersection.Sensors); i++ {
-			if intersection.Sensors[i] == context.Sensor {
-				sensor = context.Sensor
-				break
-			}
-		}
-		*pvNext = PathVertex{
-			vertexType: _PATH_VERTEX_SURFACE_INTERACTION_VERTEX,
-			p:          intersection.P,
-			pEpsilon:   intersection.PEpsilon,
-			n:          intersection.N,
-			alpha:      alphaNext,
-			light:      intersection.Light,
-			sensor:     sensor,
-		}
+		pvNext.initializeSurfaceInteractionVertex(
+			context, &intersection, alphaNext)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
-		return false
+		wo, WeDirectionalDivPdf, pdfDirectional :=
+			context.Sensor.SampleDirection(
+				context.X, context.Y, context.SensorBundle,
+				pv.p, pv.n)
+		if WeDirectionalDivPdf.IsBlack() || pdfDirectional == 0 {
+			return false
+		}
+
+		albedo := &WeDirectionalDivPdf
+		if !pv.shouldContinue(context, i, albedo, rng) {
+			return false
+		}
+
+		ray := Ray{pv.p, wo, pv.pEpsilon, infFloat32(+1)}
+		var intersection Intersection
+		if !context.Scene.Aggregate.Intersect(&ray, &intersection) {
+			return false
+		}
+
+		var alphaNext Spectrum
+		alphaNext.Mul(&pv.alpha, albedo)
+		pvNext.initializeSurfaceInteractionVertex(
+			context, &intersection, alphaNext)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		return false
