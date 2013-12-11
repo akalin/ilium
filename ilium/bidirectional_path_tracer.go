@@ -1,5 +1,6 @@
 package ilium
 
+import "fmt"
 import "math/rand"
 
 type BidirectionalPathTracer struct {
@@ -74,7 +75,23 @@ func (bdpt *BidirectionalPathTracer) generateSubpath(
 
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
 	pathContext *PathContext, ySubpath, zSubpath []PathVertex) Spectrum {
-	return Spectrum{}
+	// TODO(akalin): Consider more than s=0 paths.
+	s := 0
+	t := k + 1
+	if t >= len(zSubpath) {
+		return Spectrum{}
+	}
+	var ysPrev *PathVertex
+	ys := &ySubpath[s]
+	ztPrev := &zSubpath[t-1]
+	zt := &zSubpath[t]
+	Ck := ys.ComputeUnweightedContribution(pathContext, ysPrev, zt, ztPrev)
+	if !Ck.IsValid() {
+		fmt.Printf("Invalid contribution %v for s=%d, t=%d\n",
+			Ck, s, t)
+		return Spectrum{}
+	}
+	return Ck
 }
 
 func (bdpt *BidirectionalPathTracer) SamplePaths(

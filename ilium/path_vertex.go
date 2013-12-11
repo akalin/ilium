@@ -203,13 +203,15 @@ func (pv *PathVertex) SampleNext(
 
 	switch pv.vertexType {
 	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
-		light, _ :=
+		light, pChooseLight :=
 			context.Scene.SampleLight(context.ChooseLightSample.U)
 		p, pEpsilon, n, LeSpatialDivPdf, pdfSpatial :=
 			light.SampleSurface(context.LightBundle)
 		if LeSpatialDivPdf.IsBlack() || pdfSpatial == 0 {
 			return false
 		}
+
+		LeSpatialDivPdf.ScaleInv(&LeSpatialDivPdf, pChooseLight)
 
 		albedo := &LeSpatialDivPdf
 		if !pv.shouldContinue(context, i, albedo, rng) {
@@ -347,31 +349,72 @@ func (pv *PathVertex) SampleNext(
 }
 
 func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
-	// TODO(akalin): Implement.
+	if pv.vertexType < pvOther.vertexType {
+		panic(fmt.Sprintf(
+			"Invalid connection order (%v, %v)", pv, pvOther))
+	}
+
+	if pv.transportType == pvOther.transportType {
+		panic(fmt.Sprintf("Invalid connection %v <-> %v with the same "+
+			"transport type", pv, pvOther))
+	}
+
+	// TODO(akalin): Implement all cases.
+	switch {
+	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		if pvOther.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX {
+			return
+		}
+	}
+
+	panic(fmt.Sprintf("Invalid connection %v <-> %v", pv, pvOther))
 }
 
-func (pv *PathVertex) ComputeUnweightedContribution(
+// pv.vertexType >= pvOther.vertexType must hold.
+func (pv *PathVertex) computeConnectionContribution(
 	context *PathContext,
 	pvPrev, pvOther, pvOtherPrev *PathVertex) Spectrum {
 	validateSampledPathEdge(context, pvPrev, pv)
 	validateSampledPathEdge(context, pvOtherPrev, pvOther)
 	validateConnectingPathEdge(context, pv, pvOther)
 
-	switch pv.vertexType {
-	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
-		return Spectrum{}
+	// Since pv.vertexType >= pvOther.vertexType and the
+	// connection contribution is symmetric, this reduces the
+	// number of cases to check.
+	switch {
+	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX &&
+		pvOther.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		if pv.light == nil {
+			return Spectrum{}
+		}
 
-	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-		return Spectrum{}
+		var wo Vector3
+		wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+		return pv.light.ComputeLe(pv.p, pv.n, wo)
+	}
 
-	case _PATH_VERTEX_LIGHT_VERTEX:
-		return Spectrum{}
+	panic("Unexpectedly reached")
+	return Spectrum{}
+}
 
-	case _PATH_VERTEX_SENSOR_VERTEX:
-		return Spectrum{}
+func (pv *PathVertex) ComputeUnweightedContribution(
+	context *PathContext,
+	pvPrev, pvOther, pvOtherPrev *PathVertex) Spectrum {
+	var c Spectrum
+	if pv.vertexType >= pvOther.vertexType {
+		c = pv.computeConnectionContribution(
+			context, pvPrev, pvOther, pvOtherPrev)
+	} else {
+		c = pvOther.computeConnectionContribution(
+			context, pvOtherPrev, pv, pvPrev)
+	}
 
-	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+	if c.IsBlack() {
 		return Spectrum{}
 	}
-	return Spectrum{}
+
+	var uC Spectrum
+	uC.Mul(&pv.alpha, &pvOther.alpha)
+	uC.Mul(&uC, &c)
+	return uC
 }
