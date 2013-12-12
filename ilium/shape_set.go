@@ -30,6 +30,13 @@ func (ss *shapeSet) SampleSurface(u, v1, v2 float32) (
 	return
 }
 
+func (ss *shapeSet) ComputePdf(pSurface Point3) float32 {
+	if ss.totalArea == 0 {
+		return 0
+	}
+	return 1 / ss.totalArea
+}
+
 func (ss *shapeSet) SampleSurfaceFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	pSurface Point3, pSurfaceEpsilon float32,
