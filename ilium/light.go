@@ -38,6 +38,7 @@ type Light interface {
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 
 	ComputeLeSpatial(pSurface Point3) Spectrum
+	ComputeLeSpatialPdf(pSurface Point3) float32
 	ComputeLeDirectional(
 		pSurface Point3, nSurface Normal3, wo Vector3) Spectrum
 	ComputeLeDirectionalPdf(
