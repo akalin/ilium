@@ -142,6 +142,10 @@ func (d *DiffuseAreaLight) ComputeLeSpatial(pSurface Point3) Spectrum {
 	return LeSpatial
 }
 
+func (d *DiffuseAreaLight) ComputeLeSpatialPdf(pSurface Point3) float32 {
+	return d.shapeSet.ComputePdf(pSurface)
+}
+
 func (d *DiffuseAreaLight) ComputeLeDirectional(
 	pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
 	if wo.DotNormal(&nSurface) < 0 {
