@@ -34,6 +34,12 @@ func (ss *shapeSet) SampleSurface(u, v1, v2 float32) (
 	return
 }
 
+// Returns the sum of the surface areas of the shapes in the shape
+// set.
+func (ss *shapeSet) SurfaceArea() float32 {
+	return ss.totalArea
+}
+
 // Samples the surface of the shape set, possible taking advantage of
 // the fact that only points directly visible from the given point
 // will be used, and returns the sampled point on the surface, an
