@@ -148,6 +148,21 @@ func (d *DiffuseAreaLight) ComputeLeDirectional(
 	return MakeConstantSpectrum(1 / math.Pi)
 }
 
+func (d *DiffuseAreaLight) ComputeLeDirectionalPdf(
+	pSurface Point3, nSurface Normal3, wo Vector3) float32 {
+	cosTh := wo.DotNormal(&nSurface)
+	if cosTh <= 0 {
+		return 0
+	}
+	switch d.samplingMethod {
+	case DAL_UNIFORM_SAMPLING:
+		return uniformHemispherePdfSolidAngle() / cosTh
+	case DAL_COSINE_SAMPLING:
+		return cosineHemispherePdfProjectedSolidAngle()
+	}
+	return 0
+}
+
 func (d *DiffuseAreaLight) ComputeLe(
 	pSurface Point3, nSurface Normal3, wo Vector3) Spectrum {
 	if wo.DotNormal(&nSurface) < 0 {
