@@ -78,11 +78,13 @@ func (bdpt *BidirectionalPathTracer) generateSubpath(
 	return subpath
 }
 
-func (bdpt *BidirectionalPathTracer) recordCkDebugInfo(
-	k int, Ck *Spectrum, debugRecords *[]TracerDebugRecord) {
+func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
+	s, t int, w float32, Cst, uCst *Spectrum,
+	debugRecords *[]TracerDebugRecord) {
 	if bdpt.debugLevel >= 1 {
 		width := widthInt(bdpt.maxEdgeCount)
 
+		k := s + t - 1
 		var tagSuffix string
 		if k <= bdpt.debugMaxEdgeCount {
 			tagSuffix = fmt.Sprintf("%0*d", width, k)
@@ -94,7 +96,7 @@ func (bdpt *BidirectionalPathTracer) recordCkDebugInfo(
 
 		debugRecord := TracerDebugRecord{
 			Tag: "C" + tagSuffix,
-			S:   *Ck,
+			S:   *Cst,
 		}
 
 		*debugRecords = append(*debugRecords, debugRecord)
@@ -104,24 +106,72 @@ func (bdpt *BidirectionalPathTracer) recordCkDebugInfo(
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
 	pathContext *PathContext, ySubpath, zSubpath []PathVertex,
 	debugRecords *[]TracerDebugRecord) Spectrum {
-	// TODO(akalin): Consider more than s=0 paths.
-	s := 0
-	t := k + 1
-	if t >= len(zSubpath) {
-		return Spectrum{}
-	}
-	var ysPrev *PathVertex
-	ys := &ySubpath[s]
-	ztPrev := &zSubpath[t-1]
-	zt := &zSubpath[t]
-	Ck := ys.ComputeUnweightedContribution(pathContext, ysPrev, zt, ztPrev)
-	if !Ck.IsValid() {
-		fmt.Printf("Invalid contribution %v for s=%d, t=%d\n",
-			Ck, s, t)
+	// For now, assume that the first two path edges of z are
+	// fixed.
+	//
+	// TODO(akalin): Remove this restriction.
+	sensorFixedPathEdgeCount := 2
+	tentativeMinT := sensorFixedPathEdgeCount
+	tentativeMaxT := minInt(k+1, len(zSubpath)-1)
+
+	if tentativeMinT > tentativeMaxT {
 		return Spectrum{}
 	}
 
-	bdpt.recordCkDebugInfo(k, &Ck, debugRecords)
+	// If s is an index into ySubpath (equivalently, the number of
+	// light vertices [not path vertices]) and t is an index into
+	// zSubpath (equivalently, the number of sensor vertices [not
+	// path vertices]), then s + t = k + 1, where k is the number
+	// of edges in the combined path.
+
+	minS := maxInt(k+1-tentativeMaxT, 0)
+	maxS := minInt(k+1-tentativeMinT, len(ySubpath)-1)
+
+	if minS > maxS {
+		return Spectrum{}
+	}
+
+	// n is the number of sampling methods using k combined edges.
+	specularVertexCount := sensorFixedPathEdgeCount
+	n := k + 2 - specularVertexCount
+	// TODO(akalin): Compute weights incrementally.
+	//
+	// TODO(akalin): Use multiple importance sampling to compute
+	// weights.
+	uniformWeight := 1 / float32(n)
+
+	var Ck Spectrum
+	for s := minS; s <= maxS; s++ {
+		t := k + 1 - s
+		var ysPrev *PathVertex
+		if s > 0 {
+			ysPrev = &ySubpath[s-1]
+		}
+		ys := &ySubpath[s]
+		// TODO(akalin): Check for t > 0 when we don't assume
+		// the first two vertices of z are fixed.
+		ztPrev := &zSubpath[t-1]
+		zt := &zSubpath[t]
+		uCst := ys.ComputeUnweightedContribution(
+			pathContext, ysPrev, zt, ztPrev)
+
+		if !uCst.IsValid() {
+			fmt.Printf("Invalid contribution %v for s=%d, t=%d\n",
+				uCst, s, t)
+			continue
+		}
+
+		if uCst.IsBlack() {
+			continue
+		}
+
+		w := uniformWeight
+		var Cst Spectrum
+		Cst.Scale(&uCst, w)
+		Ck.Add(&Ck, &Cst)
+
+		bdpt.recordCstDebugInfo(s, t, w, &Cst, &uCst, debugRecords)
+	}
 
 	return Ck
 }
