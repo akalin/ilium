@@ -185,7 +185,7 @@ func (ptr *PathTracingRenderer) processSensor(
 			sensor.AccumulateContribution(
 				pathRecords[i].x, pathRecords[i].y,
 				pathRecords[i]._WeLiDivPdf)
-			sensor.RecordAccumulatedContribution(
+			sensor.RecordAccumulatedContributions(
 				pathRecords[i].x, pathRecords[i].y)
 		}
 	}

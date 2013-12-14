@@ -141,8 +141,13 @@ func (pc *PinholeCamera) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	pc.image.AccumulateContribution(x, y, WeLiDivPdf)
 }
 
-func (pc *PinholeCamera) RecordAccumulatedContribution(x, y int) {
+func (pc *PinholeCamera) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
+	// TODO(akalin): Implement.
+}
+
+func (pc *PinholeCamera) RecordAccumulatedContributions(x, y int) {
 	pc.image.RecordAccumulatedContribution(x, y)
+	// TODO(akalin): Record accumulated debug info.
 }
 
 func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {

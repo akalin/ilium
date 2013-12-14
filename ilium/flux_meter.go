@@ -87,8 +87,13 @@ func (fm *FluxMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	fm.estimator.AccumulateSample(WeLiDivPdf)
 }
 
-func (fm *FluxMeter) RecordAccumulatedContribution(x, y int) {
+func (fm *FluxMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
+	// TODO(akalin): Implement.
+}
+
+func (fm *FluxMeter) RecordAccumulatedContributions(x, y int) {
 	fm.estimator.AddAccumulatedSample()
+	// TODO(akalin): Record accumulated debug info.
 }
 
 func (fm *FluxMeter) EmitSignal(outputDir, outputExt string) {

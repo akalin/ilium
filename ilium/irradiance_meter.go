@@ -95,8 +95,14 @@ func (im *IrradianceMeter) AccumulateContribution(
 	im.estimator.AccumulateSample(WeLiDivPdf)
 }
 
-func (im *IrradianceMeter) RecordAccumulatedContribution(x, y int) {
+func (im *IrradianceMeter) AccumulateDebugInfo(
+	tag string, x, y int, s Spectrum) {
+	// TODO(akalin): Implement.
+}
+
+func (im *IrradianceMeter) RecordAccumulatedContributions(x, y int) {
 	im.estimator.AddAccumulatedSample()
+	// TODO(akalin): Record accumulated debug info.
 }
 
 func (im *IrradianceMeter) EmitSignal(outputDir, outputExt string) {
