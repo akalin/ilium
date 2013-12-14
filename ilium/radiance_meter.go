@@ -51,8 +51,13 @@ func (rm *RadianceMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	rm.estimator.AccumulateSample(WeLiDivPdf)
 }
 
-func (rm *RadianceMeter) RecordAccumulatedContribution(x, y int) {
+func (rm *RadianceMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
+	// TODO(akalin): Implement.
+}
+
+func (rm *RadianceMeter) RecordAccumulatedContributions(x, y int) {
 	rm.estimator.AddAccumulatedSample()
+	// TODO(akalin): Record accumulated debug info.
 }
 
 func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {

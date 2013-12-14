@@ -110,9 +110,14 @@ type Sensor interface {
 	// coordinates.
 	AccumulateContribution(x, y int, WeLiDivPdf Spectrum)
 
+	// Accumulates (but does not record) the given spectrum-valued
+	// debug info for the given tag and pixel coordinates.
+	AccumulateDebugInfo(tag string, x, y int, s Spectrum)
+
 	// Records the accumulated inverse-pdf-weighted contribution
-	// for the given pixel coordinates.
-	RecordAccumulatedContribution(x, y int)
+	// and any accumulated debug info for all tags and the given
+	// pixel coordinates.
+	RecordAccumulatedContributions(x, y int)
 
 	// Converts the recorded samples to a signal and emit it
 	// (e.g., write it to a file). outputDir, if non-empty, is the
