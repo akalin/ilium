@@ -65,6 +65,11 @@ func MakePathTracingRenderer(
 
 	maxEdgeCount := int(config["maxEdgeCount"].(float64))
 
+	var debugLevel int
+	if debugLevelConfig, ok := config["debugLevel"]; ok {
+		debugLevel = int(debugLevelConfig.(float64))
+	}
+
 	var emitInterval int
 	if emitIntervalConfig, ok := config["emitInterval"]; ok {
 		emitInterval = int(emitIntervalConfig.(float64))
@@ -81,7 +86,7 @@ func MakePathTracingRenderer(
 		pathType, russianRouletteContribution,
 		russianRouletteMethod, russianRouletteStartIndex,
 		russianRouletteMaxProbability, russianRouletteDelta,
-		maxEdgeCount)
+		maxEdgeCount, debugLevel)
 	return ptr
 }
 
@@ -91,8 +96,9 @@ type pathTracingBlock struct {
 }
 
 type pathRecord struct {
-	x, y        int
-	_WeLiDivPdf Spectrum
+	x, y         int
+	_WeLiDivPdf  Spectrum
+	debugRecords []PathTracerDebugRecord
 }
 
 type processedPathTracingBlock struct {
@@ -116,7 +122,8 @@ func (ptr *PathTracingRenderer) processPixel(
 		ptr.pathTracer.SampleSensorPath(
 			rng, scene, sensor, x, y,
 			sensorBundles[i], tracerBundles[i],
-			&pathRecords[i]._WeLiDivPdf)
+			&pathRecords[i]._WeLiDivPdf,
+			&pathRecords[i].debugRecords)
 	}
 }
 
@@ -185,6 +192,13 @@ func (ptr *PathTracingRenderer) processSensor(
 			sensor.AccumulateContribution(
 				pathRecords[i].x, pathRecords[i].y,
 				pathRecords[i]._WeLiDivPdf)
+			debugRecords := pathRecords[i].debugRecords
+			for _, debugRecord := range debugRecords {
+				sensor.AccumulateDebugInfo(
+					debugRecord.Tag,
+					pathRecords[i].x, pathRecords[i].y,
+					debugRecord.S)
+			}
 			sensor.RecordAccumulatedContributions(
 				pathRecords[i].x, pathRecords[i].y)
 		}
