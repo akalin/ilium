@@ -32,6 +32,12 @@ type PathTracer struct {
 	russianRouletteMaxProbability float32
 	russianRouletteDelta          float32
 	maxEdgeCount                  int
+	debugLevel                    int
+}
+
+type PathTracerDebugRecord struct {
+	Tag string
+	S   Spectrum
 }
 
 func (pt *PathTracer) InitializePathTracer(
@@ -40,7 +46,7 @@ func (pt *PathTracer) InitializePathTracer(
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability, russianRouletteDelta float32,
-	maxEdgeCount int) {
+	maxEdgeCount, debugLevel int) {
 	pt.pathType = pathType
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
@@ -48,6 +54,7 @@ func (pt *PathTracer) InitializePathTracer(
 	pt.russianRouletteMaxProbability = russianRouletteMaxProbability
 	pt.russianRouletteDelta = russianRouletteDelta
 	pt.maxEdgeCount = maxEdgeCount
+	pt.debugLevel = debugLevel
 }
 
 func (pt *PathTracer) GetSampleConfig() SampleConfig {
@@ -108,11 +115,26 @@ func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 		pt.russianRouletteMethod))
 }
 
+func (pt *PathTracer) recordLeAlphaDebugInfo(
+	edgeCount int, LeAlpha *Spectrum,
+	debugRecords *[]PathTracerDebugRecord) {
+	if pt.debugLevel >= 1 {
+		width := widthInt(pt.maxEdgeCount)
+		tag := fmt.Sprintf("LA%0*d", width, edgeCount)
+		debugRecord := PathTracerDebugRecord{
+			Tag: tag,
+			S:   *LeAlpha,
+		}
+		*debugRecords = append(*debugRecords, debugRecord)
+	}
+}
+
 func (pt *PathTracer) sampleDirectLighting(
 	edgeCount int, rng *rand.Rand, scene *Scene, tracerBundle SampleBundle,
-	alpha *Spectrum, wo Vector3, intersection *Intersection) Spectrum {
+	alpha *Spectrum, wo Vector3, intersection *Intersection,
+	debugRecords *[]PathTracerDebugRecord) (LeAlphaNext Spectrum) {
 	if len(scene.Lights) == 0 {
-		return Spectrum{}
+		return
 	}
 
 	directLighting1DSamples := tracerBundle.Samples1D[0:2]
@@ -130,27 +152,30 @@ func (pt *PathTracer) sampleDirectLighting(
 		intersection.N)
 
 	if LeDivPdf.IsBlack() {
-		return Spectrum{}
+		return
 	}
 
 	if scene.Aggregate.Intersect(&shadowRay, nil) {
-		return Spectrum{}
+		return
 	}
 
 	f := intersection.ComputeF(wo, wi)
 
 	if f.IsBlack() {
-		return Spectrum{}
+		return
 	}
+
+	edgeCount++
 
 	LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 
 	var fAlpha Spectrum
 	fAlpha.Mul(&f, alpha)
 
-	var LeAlphaNext Spectrum
 	LeAlphaNext.Mul(&LeDivPdf, &fAlpha)
-	return LeAlphaNext
+
+	pt.recordLeAlphaDebugInfo(edgeCount, &LeAlphaNext, debugRecords)
+	return
 }
 
 // Samples a path starting from the given pixel coordinates on the
@@ -158,7 +183,8 @@ func (pt *PathTracer) sampleDirectLighting(
 // path.
 func (pt *PathTracer) SampleSensorPath(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
-	sensorBundle, tracerBundle SampleBundle, WeLiDivPdf *Spectrum) {
+	sensorBundle, tracerBundle SampleBundle, WeLiDivPdf *Spectrum,
+	debugRecords *[]PathTracerDebugRecord) {
 	*WeLiDivPdf = Spectrum{}
 	if pt.maxEdgeCount <= 0 {
 		return
@@ -217,6 +243,10 @@ func (pt *PathTracer) SampleSensorPath(
 
 			var LeAlpha Spectrum
 			LeAlpha.Mul(&Le, &alpha)
+
+			pt.recordLeAlphaDebugInfo(
+				edgeCount, &LeAlpha, debugRecords)
+
 			WeLiDivPdf.Add(WeLiDivPdf, &LeAlpha)
 		}
 
@@ -229,7 +259,7 @@ func (pt *PathTracer) SampleSensorPath(
 		if pt.pathType == PATH_TRACER_DIRECT_LIGHTING_PATH {
 			LeAlphaNext := pt.sampleDirectLighting(
 				edgeCount, rng, scene, tracerBundle,
-				&alpha, wo, &intersection)
+				&alpha, wo, &intersection, debugRecords)
 			if !LeAlphaNext.IsValid() {
 				fmt.Printf("Invalid LeAlphaNext %v returned "+
 					"for intersection %v and wo %v\n",
