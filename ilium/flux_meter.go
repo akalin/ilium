@@ -11,11 +11,12 @@ const (
 )
 
 type FluxMeter struct {
-	samplingMethod FluxMeterSamplingMethod
-	description    string
-	shapeSet       shapeSet
-	sampleCount    int
-	estimator      spectrumEstimator
+	samplingMethod  FluxMeterSamplingMethod
+	description     string
+	shapeSet        shapeSet
+	sampleCount     int
+	estimator       spectrumEstimator
+	debugEstimators spectrumEstimatorMap
 }
 
 func MakeFluxMeter(config map[string]interface{}, shapes []Shape) *FluxMeter {
@@ -33,11 +34,12 @@ func MakeFluxMeter(config map[string]interface{}, shapes []Shape) *FluxMeter {
 	shapeSet := MakeShapeSet(shapes)
 	sampleCount := int(config["sampleCount"].(float64))
 	return &FluxMeter{
-		samplingMethod: samplingMethod,
-		description:    description,
-		shapeSet:       shapeSet,
-		sampleCount:    sampleCount,
-		estimator:      spectrumEstimator{name: "Phi"},
+		samplingMethod:  samplingMethod,
+		description:     description,
+		shapeSet:        shapeSet,
+		sampleCount:     sampleCount,
+		estimator:       spectrumEstimator{name: "Phi"},
+		debugEstimators: make(spectrumEstimatorMap),
 	}
 }
 
@@ -88,14 +90,17 @@ func (fm *FluxMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 }
 
 func (fm *FluxMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
-	// TODO(akalin): Implement.
+	fm.debugEstimators.AccumulateTaggedSample("Phi", tag, s)
 }
 
 func (fm *FluxMeter) RecordAccumulatedContributions(x, y int) {
 	fm.estimator.AddAccumulatedSample()
-	// TODO(akalin): Record accumulated debug info.
+	fm.debugEstimators.AddAccumulatedTaggedSamples()
 }
 
 func (fm *FluxMeter) EmitSignal(outputDir, outputExt string) {
 	fmt.Printf("%s %s\n", &fm.estimator, fm.description)
+	for _, tag := range fm.debugEstimators.GetSortedKeys() {
+		fmt.Printf("  %s\n", fm.debugEstimators[tag])
+	}
 }
