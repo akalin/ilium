@@ -1,6 +1,7 @@
 package ilium
 
 import "fmt"
+import "sort"
 
 type spectrumEstimator struct {
 	name string
@@ -59,4 +60,32 @@ func (se *spectrumEstimator) String() string {
 	return fmt.Sprintf(
 		"<%s>=%v (s=%v) (se=%v)", se.name, se.EstimateMean(),
 		se.EstimateStandardDeviation(), se.EstimateStandardError())
+}
+
+type spectrumEstimatorMap map[string]*spectrumEstimator
+
+func (sem spectrumEstimatorMap) AccumulateTaggedSample(
+	name, tag string, s Spectrum) {
+	if sem[tag] == nil {
+		estimatorName := fmt.Sprintf("%s(%s)", name, tag)
+		sem[tag] = &spectrumEstimator{name: estimatorName}
+	}
+	sem[tag].AccumulateSample(s)
+}
+
+func (sem spectrumEstimatorMap) AddAccumulatedTaggedSamples() {
+	for _, estimator := range sem {
+		estimator.AddAccumulatedSample()
+	}
+}
+
+func (sem spectrumEstimatorMap) GetSortedKeys() []string {
+	keys := make([]string, len(sem))
+	i := 0
+	for key, _ := range sem {
+		keys[i] = key
+		i++
+	}
+	sort.Strings(keys)
+	return keys
 }

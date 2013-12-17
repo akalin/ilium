@@ -11,12 +11,13 @@ const (
 )
 
 type IrradianceMeter struct {
-	description    string
-	samplingMethod IrradianceMeterSamplingMethod
-	position       Point3
-	i, j, k        R3
-	sampleCount    int
-	estimator      spectrumEstimator
+	description     string
+	samplingMethod  IrradianceMeterSamplingMethod
+	position        Point3
+	i, j, k         R3
+	sampleCount     int
+	estimator       spectrumEstimator
+	debugEstimators spectrumEstimatorMap
 }
 
 func MakeIrradianceMeter(
@@ -46,14 +47,15 @@ func MakeIrradianceMeter(
 	MakeCoordinateSystemNoAlias(&k, &i, &j)
 	sampleCount := int(config["sampleCount"].(float64))
 	return &IrradianceMeter{
-		samplingMethod: samplingMethod,
-		description:    description,
-		position:       pointShape.P,
-		i:              i,
-		j:              j,
-		k:              k,
-		sampleCount:    sampleCount,
-		estimator:      spectrumEstimator{name: "E"},
+		samplingMethod:  samplingMethod,
+		description:     description,
+		position:        pointShape.P,
+		i:               i,
+		j:               j,
+		k:               k,
+		sampleCount:     sampleCount,
+		estimator:       spectrumEstimator{name: "E"},
+		debugEstimators: make(spectrumEstimatorMap),
 	}
 }
 
@@ -97,14 +99,17 @@ func (im *IrradianceMeter) AccumulateContribution(
 
 func (im *IrradianceMeter) AccumulateDebugInfo(
 	tag string, x, y int, s Spectrum) {
-	// TODO(akalin): Implement.
+	im.debugEstimators.AccumulateTaggedSample("E", tag, s)
 }
 
 func (im *IrradianceMeter) RecordAccumulatedContributions(x, y int) {
 	im.estimator.AddAccumulatedSample()
-	// TODO(akalin): Record accumulated debug info.
+	im.debugEstimators.AddAccumulatedTaggedSamples()
 }
 
 func (im *IrradianceMeter) EmitSignal(outputDir, outputExt string) {
 	fmt.Printf("%s %s\n", &im.estimator, im.description)
+	for _, tag := range im.debugEstimators.GetSortedKeys() {
+		fmt.Printf("  %s\n", im.debugEstimators[tag])
+	}
 }

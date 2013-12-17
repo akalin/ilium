@@ -1,14 +1,13 @@
 package ilium
 
 import "fmt"
-import "sort"
 
 type RadianceMeter struct {
 	description     string
 	ray             Ray
 	sampleCount     int
 	estimator       spectrumEstimator
-	debugEstimators map[string]*spectrumEstimator
+	debugEstimators spectrumEstimatorMap
 }
 
 func MakeRadianceMeter(
@@ -32,7 +31,7 @@ func MakeRadianceMeter(
 		ray:             ray,
 		sampleCount:     sampleCount,
 		estimator:       spectrumEstimator{name: "Li"},
-		debugEstimators: make(map[string]*spectrumEstimator),
+		debugEstimators: make(spectrumEstimatorMap),
 	}
 }
 
@@ -56,30 +55,17 @@ func (rm *RadianceMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 }
 
 func (rm *RadianceMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
-	if rm.debugEstimators[tag] == nil {
-		name := fmt.Sprintf("Li(%s)", tag)
-		rm.debugEstimators[tag] = &spectrumEstimator{name: name}
-	}
-	rm.debugEstimators[tag].AccumulateSample(s)
+	rm.debugEstimators.AccumulateTaggedSample("Li", tag, s)
 }
 
 func (rm *RadianceMeter) RecordAccumulatedContributions(x, y int) {
 	rm.estimator.AddAccumulatedSample()
-	for _, debugEstimator := range rm.debugEstimators {
-		debugEstimator.AddAccumulatedSample()
-	}
+	rm.debugEstimators.AddAccumulatedTaggedSamples()
 }
 
 func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {
 	fmt.Printf("%s %s\n", &rm.estimator, rm.description)
-	tags := make([]string, len(rm.debugEstimators))
-	i := 0
-	for tag, _ := range rm.debugEstimators {
-		tags[i] = tag
-		i++
-	}
-	sort.Strings(tags)
-	for _, tag := range tags {
+	for _, tag := range rm.debugEstimators.GetSortedKeys() {
 		fmt.Printf("  %s\n", rm.debugEstimators[tag])
 	}
 }
