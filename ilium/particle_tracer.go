@@ -10,28 +10,41 @@ const (
 	PARTICLE_TRACER_RR_ALBEDO ParticleTracerRRContribution = iota
 )
 
+type ParticleDebugRecord struct {
+	tag string
+	s   Spectrum
+}
+
 type ParticleRecord struct {
-	sensor      Sensor
-	x, y        int
-	_WeLiDivPdf Spectrum
+	sensor       Sensor
+	x, y         int
+	_WeLiDivPdf  Spectrum
+	debugRecords []ParticleDebugRecord
 }
 
 func (pr *ParticleRecord) Accumulate() {
 	pr.sensor.AccumulateLightContribution(pr.x, pr.y, pr._WeLiDivPdf)
+	for _, debugRecord := range pr.debugRecords {
+		pr.sensor.AccumulateLightDebugInfo(
+			debugRecord.tag, pr.x, pr.y, debugRecord.s)
+	}
 }
 
 type ParticleTracer struct {
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
+	debugLevel                  int
 }
 
 func (pt *ParticleTracer) InitializeParticleTracer(
 	russianRouletteContribution ParticleTracerRRContribution,
-	russianRouletteState *RussianRouletteState, maxEdgeCount int) {
+	russianRouletteState *RussianRouletteState,
+	maxEdgeCount, debugLevel int) {
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
+	pt.debugLevel = debugLevel
 }
 
 func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
@@ -52,6 +65,48 @@ func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
 		},
 		Sample2DLengths: []int{numWiSamples},
 	}
+}
+
+func (pt *ParticleTracer) makeWeAlphaDebugRecords(
+	edgeCount int, sensor Sensor, WeAlpha, f1, f2 *Spectrum,
+	f1Name, f2Name string) []ParticleDebugRecord {
+	var debugRecords []ParticleDebugRecord
+	if pt.debugLevel >= 1 {
+		width := widthInt(pt.maxEdgeCount)
+		tagSuffix := fmt.Sprintf("%0*d", width, edgeCount)
+
+		debugRecord := ParticleDebugRecord{
+			tag: "WA" + tagSuffix,
+			s:   *WeAlpha,
+		}
+		debugRecords = append(debugRecords, debugRecord)
+
+		if pt.debugLevel >= 2 {
+			f1DebugRecord := ParticleDebugRecord{
+				tag: f1Name + tagSuffix,
+				s:   *f1,
+			}
+
+			// Scale f2 by the pixel count so that it
+			// becomes visible. (Assume that this scaling
+			// factor is normally part of f1.)
+			//
+			// TODO(akalin): Remove this once we use
+			// output formats with better range.
+			sensorExtent := sensor.GetExtent()
+			scale := sensorExtent.GetPixelCount()
+			var scaledF2 Spectrum
+			scaledF2.Scale(f2, float32(scale))
+			f2DebugRecord := ParticleDebugRecord{
+				tag: f2Name + tagSuffix,
+				s:   scaledF2,
+			}
+
+			debugRecords = append(
+				debugRecords, f1DebugRecord, f2DebugRecord)
+		}
+	}
+	return debugRecords
 }
 
 func (pt *ParticleTracer) SampleLightPath(
@@ -129,11 +184,15 @@ func (pt *ParticleTracer) SampleLightPath(
 
 			var WeAlpha Spectrum
 			WeAlpha.Mul(&We, &alpha)
+			debugRecords := pt.makeWeAlphaDebugRecords(
+				edgeCount, sensor, &WeAlpha, &We, &alpha,
+				"We", "Ae")
 			particleRecord := ParticleRecord{
 				sensor,
 				x,
 				y,
 				WeAlpha,
+				debugRecords,
 			}
 			records = append(records, particleRecord)
 		}
