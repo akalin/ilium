@@ -7,14 +7,19 @@ type BidirectionalPathTracer struct {
 	russianRouletteContribution TracerRussianRouletteContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
+	debugLevel                  int
+	debugMaxEdgeCount           int
 }
 
 func (bdpt *BidirectionalPathTracer) InitializeBidirectionalPathTracer(
 	russianRouletteContribution TracerRussianRouletteContribution,
-	russianRouletteState *RussianRouletteState, maxEdgeCount int) {
+	russianRouletteState *RussianRouletteState,
+	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	bdpt.russianRouletteContribution = russianRouletteContribution
 	bdpt.russianRouletteState = russianRouletteState
 	bdpt.maxEdgeCount = maxEdgeCount
+	bdpt.debugLevel = debugLevel
+	bdpt.debugMaxEdgeCount = debugMaxEdgeCount
 }
 
 func (bdpt *BidirectionalPathTracer) hasSomethingToDo() bool {
@@ -73,8 +78,32 @@ func (bdpt *BidirectionalPathTracer) generateSubpath(
 	return subpath
 }
 
+func (bdpt *BidirectionalPathTracer) recordCkDebugInfo(
+	k int, Ck *Spectrum, debugRecords *[]TracerDebugRecord) {
+	if bdpt.debugLevel >= 1 {
+		width := widthInt(bdpt.maxEdgeCount)
+
+		var tagSuffix string
+		if k <= bdpt.debugMaxEdgeCount {
+			tagSuffix = fmt.Sprintf("%0*d", width, k)
+		} else {
+			tagSuffix = fmt.Sprintf(
+				"%0*d-%0*d", width, bdpt.debugMaxEdgeCount+1,
+				width, bdpt.maxEdgeCount)
+		}
+
+		debugRecord := TracerDebugRecord{
+			Tag: "C" + tagSuffix,
+			S:   *Ck,
+		}
+
+		*debugRecords = append(*debugRecords, debugRecord)
+	}
+}
+
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
-	pathContext *PathContext, ySubpath, zSubpath []PathVertex) Spectrum {
+	pathContext *PathContext, ySubpath, zSubpath []PathVertex,
+	debugRecords *[]TracerDebugRecord) Spectrum {
 	// TODO(akalin): Consider more than s=0 paths.
 	s := 0
 	t := k + 1
@@ -91,6 +120,9 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			Ck, s, t)
 		return Spectrum{}
 	}
+
+	bdpt.recordCkDebugInfo(k, &Ck, debugRecords)
+
 	return Ck
 }
 
@@ -159,7 +191,8 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	// Use the identity: s + t = k + 1.
 	maxK := minInt(maxS+maxT-1, bdpt.maxEdgeCount)
 	for k := minK; k <= maxK; k++ {
-		Ck := bdpt.computeCk(k, &pathContext, ySubpath, zSubpath)
+		Ck := bdpt.computeCk(k, &pathContext, ySubpath, zSubpath,
+			&sensorRecord.DebugRecords)
 		sensorRecord.WeLiDivPdf.Add(&sensorRecord.WeLiDivPdf, &Ck)
 	}
 }
