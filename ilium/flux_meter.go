@@ -1,6 +1,5 @@
 package ilium
 
-import "fmt"
 import "math"
 
 type FluxMeterSamplingMethod int
@@ -11,12 +10,11 @@ const (
 )
 
 type FluxMeter struct {
-	samplingMethod  FluxMeterSamplingMethod
-	description     string
-	shapeSet        shapeSet
-	sampleCount     int
-	estimator       spectrumEstimator
-	debugEstimators spectrumEstimatorMap
+	samplingMethod FluxMeterSamplingMethod
+	description    string
+	shapeSet       shapeSet
+	sampleCount    int
+	radiometer     Radiometer
 }
 
 func MakeFluxMeter(config map[string]interface{}, shapes []Shape) *FluxMeter {
@@ -34,12 +32,11 @@ func MakeFluxMeter(config map[string]interface{}, shapes []Shape) *FluxMeter {
 	shapeSet := MakeShapeSet(shapes)
 	sampleCount := int(config["sampleCount"].(float64))
 	return &FluxMeter{
-		samplingMethod:  samplingMethod,
-		description:     description,
-		shapeSet:        shapeSet,
-		sampleCount:     sampleCount,
-		estimator:       spectrumEstimator{name: "Phi"},
-		debugEstimators: make(spectrumEstimatorMap),
+		samplingMethod: samplingMethod,
+		description:    description,
+		shapeSet:       shapeSet,
+		sampleCount:    sampleCount,
+		radiometer:     MakeRadiometer("Phi", description),
 	}
 }
 
@@ -95,21 +92,17 @@ func (fm *FluxMeter) ComputePixelPositionAndWe(
 }
 
 func (fm *FluxMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
-	fm.estimator.AccumulateSample(WeLiDivPdf)
+	fm.radiometer.AccumulateContribution(WeLiDivPdf)
 }
 
 func (fm *FluxMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
-	fm.debugEstimators.AccumulateTaggedSample("Phi", tag, s)
+	fm.radiometer.AccumulateDebugInfo(tag, s)
 }
 
 func (fm *FluxMeter) RecordAccumulatedContributions(x, y int) {
-	fm.estimator.AddAccumulatedSample()
-	fm.debugEstimators.AddAccumulatedTaggedSamples()
+	fm.radiometer.RecordAccumulatedContributions()
 }
 
 func (fm *FluxMeter) EmitSignal(outputDir, outputExt string) {
-	fmt.Printf("%s %s\n", &fm.estimator, fm.description)
-	for _, tag := range fm.debugEstimators.GetSortedKeys() {
-		fmt.Printf("  %s\n", fm.debugEstimators[tag])
-	}
+	fm.radiometer.EmitSignal()
 }
