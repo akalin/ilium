@@ -147,7 +147,7 @@ func (pc *PinholeCamera) ComputePixelPositionAndWe(
 }
 
 func (pc *PinholeCamera) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
-	pc.image.AccumulateContribution(x, y, WeLiDivPdf)
+	pc.image.AccumulateSensorContribution(x, y, WeLiDivPdf)
 }
 
 func (pc *PinholeCamera) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
@@ -158,14 +158,11 @@ func (pc *PinholeCamera) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
 			pc.image.YStart, pc.image.YCount)
 		pc.debugImages[tag] = &debugImage
 	}
-	pc.debugImages[tag].AccumulateContribution(x, y, s)
+	pc.debugImages[tag].AccumulateSensorContribution(x, y, s)
 }
 
 func (pc *PinholeCamera) RecordAccumulatedContributions(x, y int) {
-	pc.image.RecordAccumulatedContribution(x, y)
-	for _, debugImage := range pc.debugImages {
-		debugImage.RecordAccumulatedContribution(x, y)
-	}
+	pc.image.RecordAccumulatedSensorContributions(x, y)
 }
 
 func (pc *PinholeCamera) buildOutputPath(
