@@ -1,6 +1,5 @@
 package ilium
 
-import "fmt"
 import "math"
 
 type IrradianceMeterSamplingMethod int
@@ -11,13 +10,12 @@ const (
 )
 
 type IrradianceMeter struct {
-	description     string
-	samplingMethod  IrradianceMeterSamplingMethod
-	position        Point3
-	i, j, k         R3
-	sampleCount     int
-	estimator       spectrumEstimator
-	debugEstimators spectrumEstimatorMap
+	description    string
+	samplingMethod IrradianceMeterSamplingMethod
+	position       Point3
+	i, j, k        R3
+	sampleCount    int
+	radiometer     Radiometer
 }
 
 func MakeIrradianceMeter(
@@ -47,15 +45,14 @@ func MakeIrradianceMeter(
 	MakeCoordinateSystemNoAlias(&k, &i, &j)
 	sampleCount := int(config["sampleCount"].(float64))
 	return &IrradianceMeter{
-		samplingMethod:  samplingMethod,
-		description:     description,
-		position:        pointShape.P,
-		i:               i,
-		j:               j,
-		k:               k,
-		sampleCount:     sampleCount,
-		estimator:       spectrumEstimator{name: "E"},
-		debugEstimators: make(spectrumEstimatorMap),
+		samplingMethod: samplingMethod,
+		description:    description,
+		position:       pointShape.P,
+		i:              i,
+		j:              j,
+		k:              k,
+		sampleCount:    sampleCount,
+		radiometer:     MakeRadiometer("E", description),
 	}
 }
 
@@ -100,22 +97,18 @@ func (im *IrradianceMeter) ComputePixelPositionAndWe(
 
 func (im *IrradianceMeter) AccumulateContribution(
 	x, y int, WeLiDivPdf Spectrum) {
-	im.estimator.AccumulateSample(WeLiDivPdf)
+	im.radiometer.AccumulateContribution(WeLiDivPdf)
 }
 
 func (im *IrradianceMeter) AccumulateDebugInfo(
 	tag string, x, y int, s Spectrum) {
-	im.debugEstimators.AccumulateTaggedSample("E", tag, s)
+	im.radiometer.AccumulateDebugInfo(tag, s)
 }
 
 func (im *IrradianceMeter) RecordAccumulatedContributions(x, y int) {
-	im.estimator.AddAccumulatedSample()
-	im.debugEstimators.AddAccumulatedTaggedSamples()
+	im.radiometer.RecordAccumulatedContributions()
 }
 
 func (im *IrradianceMeter) EmitSignal(outputDir, outputExt string) {
-	fmt.Printf("%s %s\n", &im.estimator, im.description)
-	for _, tag := range im.debugEstimators.GetSortedKeys() {
-		fmt.Printf("  %s\n", im.debugEstimators[tag])
-	}
+	im.radiometer.EmitSignal()
 }
