@@ -11,6 +11,10 @@ type spectrumEstimator struct {
 	m2   Spectrum
 }
 
+func (se *spectrumEstimator) HasSamples() bool {
+	return se.n > 0
+}
+
 func (se *spectrumEstimator) EstimateMean() Spectrum {
 	return se.mean
 }
@@ -62,27 +66,90 @@ func (se *spectrumEstimator) String() string {
 		se.EstimateStandardDeviation(), se.EstimateStandardError())
 }
 
-type spectrumEstimatorMap map[string]*spectrumEstimator
+type spectrumEstimatorPair struct {
+	name            string
+	sensorEstimator spectrumEstimator
+	lightEstimator  spectrumEstimator
+}
 
-func (sem spectrumEstimatorMap) AccumulateTaggedSample(
-	name, tag string, s Spectrum) {
-	if sem[tag] == nil {
+func makeSpectrumEstimatorPair(name string) spectrumEstimatorPair {
+	return spectrumEstimatorPair{
+		name:            name,
+		sensorEstimator: spectrumEstimator{name: name + "(S)"},
+		lightEstimator:  spectrumEstimator{name: name + "(L)"},
+	}
+}
+
+func (sep *spectrumEstimatorPair) AccumulateSensorSample(x Spectrum) {
+	sep.sensorEstimator.AccumulateSample(x)
+}
+
+func (sep *spectrumEstimatorPair) AddAccumulatedSensorSample() {
+	sep.sensorEstimator.AddAccumulatedSample()
+}
+
+func (sep *spectrumEstimatorPair) AccumulateLightSample(x Spectrum) {
+	sep.lightEstimator.AccumulateSample(x)
+}
+
+func (sep *spectrumEstimatorPair) AddAccumulatedLightSample() {
+	sep.lightEstimator.AddAccumulatedSample()
+}
+
+func (sep *spectrumEstimatorPair) estimateCombinedMean() Spectrum {
+	sensorMean := sep.sensorEstimator.EstimateMean()
+	lightMean := sep.lightEstimator.EstimateMean()
+	var combinedMean Spectrum
+	combinedMean.Add(&sensorMean, &lightMean)
+	return combinedMean
+}
+
+func (sep *spectrumEstimatorPair) String() string {
+	hasSensorSamples := sep.sensorEstimator.HasSamples()
+	hasLightSamples := sep.lightEstimator.HasSamples()
+
+	switch {
+	case !hasSensorSamples && !hasLightSamples:
+		return fmt.Sprintf("<%s>=0", sep.name)
+	case hasSensorSamples && !hasLightSamples:
+		return sep.sensorEstimator.String()
+	case !hasSensorSamples && hasLightSamples:
+		return sep.lightEstimator.String()
+	default:
+		return fmt.Sprintf("<%s>=%v [%s] [%s]",
+			sep.name, sep.estimateCombinedMean(),
+			&sep.sensorEstimator, &sep.lightEstimator)
+	}
+}
+
+type spectrumEstimatorPairMap map[string]*spectrumEstimatorPair
+
+func (sepm spectrumEstimatorPairMap) GetOrCreateEstimatorPair(
+	name, tag string) *spectrumEstimatorPair {
+	if sepm[tag] == nil {
 		estimatorName := fmt.Sprintf("%s(%s)", name, tag)
-		sem[tag] = &spectrumEstimator{name: estimatorName}
+		estimatorPair := makeSpectrumEstimatorPair(estimatorName)
+		sepm[tag] = &estimatorPair
 	}
-	sem[tag].AccumulateSample(s)
+	return sepm[tag]
 }
 
-func (sem spectrumEstimatorMap) AddAccumulatedTaggedSamples() {
-	for _, estimator := range sem {
-		estimator.AddAccumulatedSample()
+func (sepm spectrumEstimatorPairMap) AccumulateTaggedSensorSample(
+	name, tag string, s Spectrum) {
+	estimatorPair := sepm.GetOrCreateEstimatorPair(name, tag)
+	estimatorPair.AccumulateSensorSample(s)
+}
+
+func (sepm spectrumEstimatorPairMap) AddAccumulatedTaggedSensorSamples() {
+	for _, estimatorPair := range sepm {
+		estimatorPair.AddAccumulatedSensorSample()
 	}
 }
 
-func (sem spectrumEstimatorMap) GetSortedKeys() []string {
-	keys := make([]string, len(sem))
+func (sepm spectrumEstimatorPairMap) GetSortedKeys() []string {
+	keys := make([]string, len(sepm))
 	i := 0
-	for key, _ := range sem {
+	for key, _ := range sepm {
 		keys[i] = key
 		i++
 	}
