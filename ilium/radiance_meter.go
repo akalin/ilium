@@ -1,13 +1,10 @@
 package ilium
 
-import "fmt"
-
 type RadianceMeter struct {
-	description     string
-	ray             Ray
-	sampleCount     int
-	estimator       spectrumEstimator
-	debugEstimators spectrumEstimatorMap
+	description string
+	ray         Ray
+	sampleCount int
+	radiometer  Radiometer
 }
 
 func MakeRadianceMeter(
@@ -27,11 +24,10 @@ func MakeRadianceMeter(
 	direction.Normalize(&direction)
 	ray := Ray{pointShape.P, direction, 0, infFloat32(+1)}
 	return &RadianceMeter{
-		description:     description,
-		ray:             ray,
-		sampleCount:     sampleCount,
-		estimator:       spectrumEstimator{name: "Li"},
-		debugEstimators: make(spectrumEstimatorMap),
+		description: description,
+		ray:         ray,
+		sampleCount: sampleCount,
+		radiometer:  MakeRadiometer("Li", description),
 	}
 }
 
@@ -57,21 +53,17 @@ func (rm *RadianceMeter) ComputePixelPositionAndWe(
 }
 
 func (rm *RadianceMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
-	rm.estimator.AccumulateSample(WeLiDivPdf)
+	rm.radiometer.AccumulateContribution(WeLiDivPdf)
 }
 
 func (rm *RadianceMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
-	rm.debugEstimators.AccumulateTaggedSample("Li", tag, s)
+	rm.radiometer.AccumulateDebugInfo(tag, s)
 }
 
 func (rm *RadianceMeter) RecordAccumulatedContributions(x, y int) {
-	rm.estimator.AddAccumulatedSample()
-	rm.debugEstimators.AddAccumulatedTaggedSamples()
+	rm.radiometer.RecordAccumulatedContributions()
 }
 
 func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {
-	fmt.Printf("%s %s\n", &rm.estimator, rm.description)
-	for _, tag := range rm.debugEstimators.GetSortedKeys() {
-		fmt.Printf("  %s\n", rm.debugEstimators[tag])
-	}
+	rm.radiometer.EmitSignal()
 }
