@@ -10,46 +10,67 @@ import "io"
 import "os"
 import "strings"
 
-const _PIXEL_BYTE_SIZE = SPECTRUM_BYTE_SIZE + 4
+const _SENSOR_PIXEL_BYTE_SIZE = SPECTRUM_BYTE_SIZE + 4
 
-type pixel struct {
+type sensorPixel struct {
 	sum Spectrum
 	// Keep n as an int to avoid floating point issues when we
 	// increment it.
 	n uint32
 }
 
-func (p *pixel) SetFromBytes(bytes []byte, order binary.ByteOrder) {
-	p.sum = MakeSpectrumFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
+func (sp *sensorPixel) SetFromBytes(bytes []byte, order binary.ByteOrder) {
+	sp.sum = MakeSpectrumFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
 	nBytes := bytes[SPECTRUM_BYTE_SIZE : SPECTRUM_BYTE_SIZE+4]
-	p.n = order.Uint32(nBytes)
+	sp.n = order.Uint32(nBytes)
 }
 
-func (p *pixel) Merge(other *pixel) {
-	p.sum.Add(&p.sum, &other.sum)
-	p.n += other.n
+func (sp *sensorPixel) Merge(other *sensorPixel) {
+	sp.sum.Add(&sp.sum, &other.sum)
+	sp.n += other.n
+}
+
+const _LIGHT_PIXEL_BYTE_SIZE = SPECTRUM_BYTE_SIZE
+
+type lightPixel struct {
+	sum Spectrum
+}
+
+func (lp *lightPixel) SetFromBytes(bytes []byte, order binary.ByteOrder) {
+	lp.sum = MakeSpectrumFromBytes(bytes[0:SPECTRUM_BYTE_SIZE], order)
+}
+
+func (lp *lightPixel) Merge(other *lightPixel) {
+	lp.sum.Add(&lp.sum, &other.sum)
 }
 
 type Image struct {
-	Width  int
-	Height int
-	XStart int
-	XCount int
-	YStart int
-	YCount int
-	pixels []pixel
+	Width        int
+	Height       int
+	XStart       int
+	XCount       int
+	YStart       int
+	YCount       int
+	sensorPixels []sensorPixel
+	lightPixels  []lightPixel
+	// Keep lightN as an int to avoid floating point issues when
+	// we increment it.
+	lightN uint32
 }
 
 func MakeImage(width, height, xStart, xCount, yStart, yCount int) Image {
-	pixels := make([]pixel, xCount*yCount)
+	sensorPixels := make([]sensorPixel, xCount*yCount)
+	lightPixels := make([]lightPixel, xCount*yCount)
 	return Image{
-		Width:  width,
-		Height: height,
-		XStart: xStart,
-		XCount: xCount,
-		YStart: yStart,
-		YCount: yCount,
-		pixels: pixels,
+		Width:        width,
+		Height:       height,
+		XStart:       xStart,
+		XCount:       xCount,
+		YStart:       yStart,
+		YCount:       yCount,
+		sensorPixels: sensorPixels,
+		lightPixels:  lightPixels,
+		lightN:       0,
 	}
 }
 
@@ -79,46 +100,81 @@ func ReadImageFromBin(inputPath string) (*Image, error) {
 		return nil, err
 	}
 	count := xCount * yCount
-	pixels := make([]pixel, count)
-	buf := make([]byte, count*_PIXEL_BYTE_SIZE)
+
+	sensorPixels := make([]sensorPixel, count)
+	buf := make([]byte, count*_SENSOR_PIXEL_BYTE_SIZE)
 	if _, err := io.ReadFull(f, buf[:]); err != nil {
 		return nil, err
 	}
 	for i := int64(0); i < count; i++ {
-		byteOffset := i * _PIXEL_BYTE_SIZE
-		pixels[i].SetFromBytes(
-			buf[byteOffset:byteOffset+_PIXEL_BYTE_SIZE],
+		byteOffset := i * _SENSOR_PIXEL_BYTE_SIZE
+		sensorPixels[i].SetFromBytes(
+			buf[byteOffset:byteOffset+_SENSOR_PIXEL_BYTE_SIZE],
 			order)
 	}
+
+	lightPixels := make([]lightPixel, count)
+	buf = make([]byte, count*_LIGHT_PIXEL_BYTE_SIZE)
+	if _, err := io.ReadFull(f, buf[:]); err != nil {
+		return nil, err
+	}
+	for i := int64(0); i < count; i++ {
+		byteOffset := i * _LIGHT_PIXEL_BYTE_SIZE
+		lightPixels[i].SetFromBytes(
+			buf[byteOffset:byteOffset+_LIGHT_PIXEL_BYTE_SIZE],
+			order)
+	}
+
+	var lightN uint32
+	if err = binary.Read(f, order, &lightN); err != nil {
+		return nil, err
+	}
+
 	return &Image{
-		Width:  int(width),
-		Height: int(height),
-		XStart: int(xStart),
-		XCount: int(xCount),
-		YStart: int(yStart),
-		YCount: int(yCount),
-		pixels: pixels,
+		Width:        int(width),
+		Height:       int(height),
+		XStart:       int(xStart),
+		XCount:       int(xCount),
+		YStart:       int(yStart),
+		YCount:       int(yCount),
+		sensorPixels: sensorPixels,
+		lightPixels:  lightPixels,
+		lightN:       lightN,
 	}, nil
 }
 
-func (im *Image) getPixel(x, y int) *pixel {
+func (im *Image) getIndex(x, y int) int {
 	i := x - im.XStart
 	j := y - im.YStart
-	k := j*im.XCount + i
-	return &im.pixels[k]
+	return j*im.XCount + i
 }
 
-func (im *Image) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
+func (im *Image) AccumulateSensorContribution(x, y int, WeLiDivPdf Spectrum) {
 	if !WeLiDivPdf.IsValid() {
 		panic(fmt.Sprintf("Invalid WeLiDivPdf %v", WeLiDivPdf))
 	}
-	p := im.getPixel(x, y)
-	p.sum.Add(&p.sum, &WeLiDivPdf)
+	k := im.getIndex(x, y)
+	sp := &im.sensorPixels[k]
+	sp.sum.Add(&sp.sum, &WeLiDivPdf)
 }
 
-func (im *Image) RecordAccumulatedContribution(x, y int) {
-	p := im.getPixel(x, y)
-	p.n++
+func (im *Image) RecordAccumulatedSensorContributions(x, y int) {
+	k := im.getIndex(x, y)
+	sp := &im.sensorPixels[k]
+	sp.n++
+}
+
+func (im *Image) AccumulateLightContribution(x, y int, WeLiDivPdf Spectrum) {
+	if !WeLiDivPdf.IsValid() {
+		panic(fmt.Sprintf("Invalid WeLiDivPdf %v", WeLiDivPdf))
+	}
+	k := im.getIndex(x, y)
+	lp := &im.lightPixels[k]
+	lp.sum.Add(&lp.sum, &WeLiDivPdf)
+}
+
+func (im *Image) RecordAccumulatedLightContributions() {
+	im.lightN++
 }
 
 func (im *Image) Merge(other *Image) error {
@@ -141,8 +197,11 @@ func (im *Image) Merge(other *Image) error {
 	if im.YCount != other.YCount {
 		return errors.New("YCount mismatch")
 	}
-	for i := 0; i < len(im.pixels); i++ {
-		im.pixels[i].Merge(&other.pixels[i])
+	for i := 0; i < len(im.sensorPixels); i++ {
+		im.sensorPixels[i].Merge(&other.sensorPixels[i])
+	}
+	for i := 0; i < len(im.lightPixels); i++ {
+		im.lightPixels[i].Merge(&other.lightPixels[i])
 	}
 	return nil
 }
@@ -169,6 +228,7 @@ func scaleRGB(x float32) uint8 {
 	return uint8(xScaled)
 }
 
+// TODO(akalin): Support writing out just the sensor or light pixels.
 func (im *Image) writeToPng(outputPath string) (err error) {
 	image := image.NewNRGBA(image.Rect(0, 0, im.Width, im.Height))
 	xStart := maxInt(im.XStart, 0)
@@ -177,11 +237,22 @@ func (im *Image) writeToPng(outputPath string) (err error) {
 	yEnd := minInt(im.YStart+im.YCount, im.Height)
 	for y := yStart; y < yEnd; y++ {
 		for x := xStart; x < xEnd; x++ {
-			p := im.getPixel(x, y)
-			var L Spectrum
-			if p.n > 0 {
-				L.ScaleInv(&p.sum, float32(p.n))
+			k := im.getIndex(x, y)
+
+			var Ls Spectrum
+			sp := &im.sensorPixels[k]
+			if sp.n > 0 {
+				Ls.ScaleInv(&sp.sum, float32(sp.n))
 			}
+
+			var Lp Spectrum
+			if im.lightN > 0 {
+				lp := &im.lightPixels[k]
+				Lp.ScaleInv(&lp.sum, float32(im.lightN))
+			}
+
+			var L Spectrum
+			L.Add(&Ls, &Lp)
 			r, g, b := L.ToRGB()
 			c := color.NRGBA{
 				R: scaleRGB(r),
@@ -236,7 +307,13 @@ func (im *Image) writeToBin(outputPath string) (err error) {
 	if err = binary.Write(f, order, int64(im.YCount)); err != nil {
 		return
 	}
-	if err = binary.Write(f, order, im.pixels); err != nil {
+	if err = binary.Write(f, order, im.sensorPixels); err != nil {
+		return
+	}
+	if err = binary.Write(f, order, im.lightPixels); err != nil {
+		return
+	}
+	if err = binary.Write(f, order, im.lightN); err != nil {
 		return
 	}
 	return
