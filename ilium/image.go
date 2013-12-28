@@ -58,6 +58,15 @@ type Image struct {
 	lightN uint32
 }
 
+type ImagePixelTypes int
+
+const (
+	IM_SENSOR_PIXELS ImagePixelTypes = 1 << iota
+	IM_LIGHT_PIXELS  ImagePixelTypes = 1 << iota
+)
+
+const IM_ALL_PIXELS ImagePixelTypes = IM_SENSOR_PIXELS | IM_LIGHT_PIXELS
+
 func MakeImage(width, height, xStart, xCount, yStart, yCount int) Image {
 	sensorPixels := make([]sensorPixel, xCount*yCount)
 	lightPixels := make([]lightPixel, xCount*yCount)
@@ -206,12 +215,13 @@ func (im *Image) Merge(other *Image) error {
 	return nil
 }
 
-func (im *Image) WriteToFile(outputPath string) error {
+func (im *Image) WriteToFile(
+	pixelTypes ImagePixelTypes, outputPath string) error {
 	switch {
 	case strings.Contains(outputPath, ".png"):
-		return im.writeToPng(outputPath)
+		return im.writeToPng(pixelTypes, outputPath)
 	case strings.Contains(outputPath, ".bin"):
-		return im.writeToBin(outputPath)
+		return im.writeToBin(pixelTypes, outputPath)
 	default:
 		return errors.New("Unknown file type: " + outputPath)
 	}
@@ -228,8 +238,8 @@ func scaleRGB(x float32) uint8 {
 	return uint8(xScaled)
 }
 
-// TODO(akalin): Support writing out just the sensor or light pixels.
-func (im *Image) writeToPng(outputPath string) (err error) {
+func (im *Image) writeToPng(
+	pixelTypes ImagePixelTypes, outputPath string) (err error) {
 	image := image.NewNRGBA(image.Rect(0, 0, im.Width, im.Height))
 	xStart := maxInt(im.XStart, 0)
 	xEnd := minInt(im.XStart+im.XCount, im.Width)
@@ -240,13 +250,16 @@ func (im *Image) writeToPng(outputPath string) (err error) {
 			k := im.getIndex(x, y)
 
 			var Ls Spectrum
-			sp := &im.sensorPixels[k]
-			if sp.n > 0 {
-				Ls.ScaleInv(&sp.sum, float32(sp.n))
+			if (pixelTypes & IM_SENSOR_PIXELS) != 0 {
+				sp := &im.sensorPixels[k]
+				if sp.n > 0 {
+					Ls.ScaleInv(&sp.sum, float32(sp.n))
+				}
 			}
 
 			var Lp Spectrum
-			if im.lightN > 0 {
+			if im.lightN > 0 &&
+				(pixelTypes&IM_LIGHT_PIXELS) != 0 {
 				lp := &im.lightPixels[k]
 				Lp.ScaleInv(&lp.sum, float32(im.lightN))
 			}
@@ -278,7 +291,8 @@ func (im *Image) writeToPng(outputPath string) (err error) {
 	return
 }
 
-func (im *Image) writeToBin(outputPath string) (err error) {
+func (im *Image) writeToBin(
+	pixelTypes ImagePixelTypes, outputPath string) (err error) {
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return

@@ -7,15 +7,16 @@ import "sort"
 import "strings"
 
 type PinholeCamera struct {
-	outputPath      string
-	position        Point3
-	frontHat        Vector3
-	leftHat         Vector3
-	upHat           Vector3
-	backFocalLength float32
-	samplesPerPixel int
-	image           Image
-	debugImages     map[string]*Image
+	outputPath        string
+	position          Point3
+	frontHat          Vector3
+	leftHat           Vector3
+	upHat             Vector3
+	backFocalLength   float32
+	samplesPerPixel   int
+	image             Image
+	debugImages       map[string]*Image
+	outputSplitImages bool
 }
 
 func MakePinholeCamera(
@@ -88,16 +89,20 @@ func MakePinholeCamera(
 	}
 	yCount := yEnd - yStart
 	image := MakeImage(width, height, xStart, xCount, yStart, yCount)
+
+	outputSplitImages, _ := config["outputSplitImages"].(bool)
+
 	return &PinholeCamera{
-		outputPath:      outputPath,
-		position:        position,
-		frontHat:        frontHat,
-		leftHat:         leftHat,
-		upHat:           upHat,
-		backFocalLength: backFocalLength,
-		samplesPerPixel: samplesPerPixel,
-		image:           image,
-		debugImages:     make(map[string]*Image),
+		outputPath:        outputPath,
+		position:          position,
+		frontHat:          frontHat,
+		leftHat:           leftHat,
+		upHat:             upHat,
+		backFocalLength:   backFocalLength,
+		samplesPerPixel:   samplesPerPixel,
+		image:             image,
+		debugImages:       make(map[string]*Image),
+		outputSplitImages: outputSplitImages,
 	}
 }
 
@@ -183,12 +188,31 @@ func (pc *PinholeCamera) buildOutputPath(
 	return outputPath
 }
 
-func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {
-	outputPath := pc.buildOutputPath(outputDir, "", outputExt)
-	fmt.Printf("Writing to %s\n", outputPath)
-	if err := pc.image.WriteToFile(outputPath); err != nil {
+func (pc *PinholeCamera) writeImageOrDie(
+	image *Image, pixelTypes ImagePixelTypes,
+	linePrefix, outputPath string) {
+	fmt.Printf("%sWriting to %s\n", linePrefix, outputPath)
+	if err := image.WriteToFile(pixelTypes, outputPath); err != nil {
 		panic(err)
 	}
+}
+
+func (pc *PinholeCamera) writeImageSet(
+	image *Image, linePrefix, outputPath string) {
+	pc.writeImageOrDie(image, IM_ALL_PIXELS, linePrefix, outputPath)
+	if pc.outputSplitImages {
+		pc.writeImageOrDie(
+			image, IM_SENSOR_PIXELS, linePrefix,
+			outputPath+".sensor")
+		pc.writeImageOrDie(
+			image, IM_LIGHT_PIXELS, linePrefix,
+			outputPath+".light")
+	}
+}
+
+func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {
+	outputPath := pc.buildOutputPath(outputDir, "", outputExt)
+	pc.writeImageSet(&pc.image, "", outputPath)
 	tags := make([]string, len(pc.debugImages))
 	i := 0
 	for tag, _ := range pc.debugImages {
@@ -199,9 +223,6 @@ func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {
 	for _, tag := range tags {
 		debugImage := pc.debugImages[tag]
 		debugOutputPath := pc.buildOutputPath(outputDir, tag, outputExt)
-		fmt.Printf("  Writing to %s\n", debugOutputPath)
-		if err := debugImage.WriteToFile(debugOutputPath); err != nil {
-			panic(err)
-		}
+		pc.writeImageSet(debugImage, "  ", debugOutputPath)
 	}
 }
