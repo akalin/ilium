@@ -91,16 +91,32 @@ func (fm *FluxMeter) ComputePixelPositionAndWe(
 	return
 }
 
-func (fm *FluxMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
-	fm.radiometer.AccumulateContribution(WeLiDivPdf)
+func (fm *FluxMeter) AccumulateSensorContribution(
+	x, y int, WeLiDivPdf Spectrum) {
+	fm.radiometer.AccumulateSensorContribution(WeLiDivPdf)
 }
 
-func (fm *FluxMeter) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
-	fm.radiometer.AccumulateDebugInfo(tag, s)
+func (fm *FluxMeter) AccumulateSensorDebugInfo(
+	tag string, x, y int, s Spectrum) {
+	fm.radiometer.AccumulateSensorDebugInfo(tag, s)
 }
 
-func (fm *FluxMeter) RecordAccumulatedContributions(x, y int) {
-	fm.radiometer.RecordAccumulatedContributions()
+func (fm *FluxMeter) RecordAccumulatedSensorContributions(x, y int) {
+	fm.radiometer.RecordAccumulatedSensorContributions()
+}
+
+func (fm *FluxMeter) AccumulateLightContribution(
+	x, y int, WeLiDivPdf Spectrum) {
+	fm.radiometer.AccumulateLightContribution(WeLiDivPdf)
+}
+
+func (fm *FluxMeter) AccumulateLightDebugInfo(
+	tag string, x, y int, s Spectrum) {
+	fm.radiometer.AccumulateLightDebugInfo(tag, s)
+}
+
+func (fm *FluxMeter) RecordAccumulatedLightContributions() {
+	fm.radiometer.RecordAccumulatedLightContributions()
 }
 
 func (fm *FluxMeter) EmitSignal(outputDir, outputExt string) {
