@@ -119,16 +119,31 @@ type Sensor interface {
 
 	// Accumulates (but does not record) the given pdf-weighted
 	// contribution for the given pixel coordinates.
-	AccumulateContribution(x, y int, WeLiDivPdf Spectrum)
+	AccumulateSensorContribution(x, y int, WeLiDivPdf Spectrum)
 
 	// Accumulates (but does not record) the given spectrum-valued
 	// debug info for the given tag and pixel coordinates.
-	AccumulateDebugInfo(tag string, x, y int, s Spectrum)
+	AccumulateSensorDebugInfo(tag string, x, y int, s Spectrum)
 
 	// Records the accumulated pdf-weighted contribution and any
 	// accumulated debug info for all tags and the given pixel
 	// coordinates.
-	RecordAccumulatedContributions(x, y int)
+	RecordAccumulatedSensorContributions(x, y int)
+
+	// Accumulates (but does not record) the given pdf-weighted
+	// contribution arriving at the given pixel coordinates from a
+	// sampled light.
+	AccumulateLightContribution(x, y int, WeLiDivPdf Spectrum)
+
+	// Accumulates (but does not record) the given spectrum-valued
+	// debug info for the given tag and light-sampled pixel
+	// coordinates.
+	AccumulateLightDebugInfo(tag string, x, y int, s Spectrum)
+
+	// Records the accumulated pdf-weighted light-sampled
+	// contributions and any accumulated debug info for all tags
+	// all pixel coordinates.
+	RecordAccumulatedLightContributions()
 
 	// Converts the recorded samples to a signal and emit it
 	// (e.g., write it to a file). outputDir, if non-empty, is the
