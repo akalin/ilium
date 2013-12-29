@@ -151,11 +151,12 @@ func (pc *PinholeCamera) ComputePixelPositionAndWe(
 	panic("Called unexpectedly")
 }
 
-func (pc *PinholeCamera) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
+func (pc *PinholeCamera) AccumulateSensorContribution(
+	x, y int, WeLiDivPdf Spectrum) {
 	pc.image.AccumulateSensorContribution(x, y, WeLiDivPdf)
 }
 
-func (pc *PinholeCamera) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
+func (pc *PinholeCamera) getDebugImage(tag string) *Image {
 	if pc.debugImages[tag] == nil {
 		debugImage := MakeImage(
 			pc.image.Width, pc.image.Height,
@@ -163,11 +164,35 @@ func (pc *PinholeCamera) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
 			pc.image.YStart, pc.image.YCount)
 		pc.debugImages[tag] = &debugImage
 	}
-	pc.debugImages[tag].AccumulateSensorContribution(x, y, s)
+	return pc.debugImages[tag]
 }
 
-func (pc *PinholeCamera) RecordAccumulatedContributions(x, y int) {
+func (pc *PinholeCamera) AccumulateSensorDebugInfo(
+	tag string, x, y int, s Spectrum) {
+	debugImage := pc.getDebugImage(tag)
+	debugImage.AccumulateSensorContribution(x, y, s)
+}
+
+func (pc *PinholeCamera) RecordAccumulatedSensorContributions(x, y int) {
 	pc.image.RecordAccumulatedSensorContributions(x, y)
+}
+
+func (pc *PinholeCamera) AccumulateLightContribution(
+	x, y int, WeLiDivPdf Spectrum) {
+	pc.image.AccumulateLightContribution(x, y, WeLiDivPdf)
+}
+
+func (pc *PinholeCamera) AccumulateLightDebugInfo(
+	tag string, x, y int, s Spectrum) {
+	debugImage := pc.getDebugImage(tag)
+	debugImage.AccumulateLightContribution(x, y, s)
+}
+
+func (pc *PinholeCamera) RecordAccumulatedLightContributions() {
+	pc.image.RecordAccumulatedLightContributions()
+	for _, debugImage := range pc.debugImages {
+		debugImage.RecordAccumulatedLightContributions()
+	}
 }
 
 func (pc *PinholeCamera) buildOutputPath(
