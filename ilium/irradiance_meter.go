@@ -95,18 +95,32 @@ func (im *IrradianceMeter) ComputePixelPositionAndWe(
 	panic("Called unexpectedly")
 }
 
-func (im *IrradianceMeter) AccumulateContribution(
+func (im *IrradianceMeter) AccumulateSensorContribution(
 	x, y int, WeLiDivPdf Spectrum) {
-	im.radiometer.AccumulateContribution(WeLiDivPdf)
+	im.radiometer.AccumulateSensorContribution(WeLiDivPdf)
 }
 
-func (im *IrradianceMeter) AccumulateDebugInfo(
+func (im *IrradianceMeter) AccumulateSensorDebugInfo(
 	tag string, x, y int, s Spectrum) {
-	im.radiometer.AccumulateDebugInfo(tag, s)
+	im.radiometer.AccumulateSensorDebugInfo(tag, s)
 }
 
-func (im *IrradianceMeter) RecordAccumulatedContributions(x, y int) {
-	im.radiometer.RecordAccumulatedContributions()
+func (im *IrradianceMeter) RecordAccumulatedSensorContributions(x, y int) {
+	im.radiometer.RecordAccumulatedSensorContributions()
+}
+
+func (im *IrradianceMeter) AccumulateLightContribution(
+	x, y int, WeLiDivPdf Spectrum) {
+	im.radiometer.AccumulateLightContribution(WeLiDivPdf)
+}
+
+func (im *IrradianceMeter) AccumulateLightDebugInfo(
+	tag string, x, y int, s Spectrum) {
+	im.radiometer.AccumulateLightDebugInfo(tag, s)
+}
+
+func (im *IrradianceMeter) RecordAccumulatedLightContributions() {
+	im.radiometer.RecordAccumulatedLightContributions()
 }
 
 func (im *IrradianceMeter) EmitSignal(outputDir, outputExt string) {
