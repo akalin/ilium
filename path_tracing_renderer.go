@@ -6,8 +6,9 @@ import "math/rand"
 // A PathTracingRenderer uses samples from its sampler to trace paths
 // from a scene's sensors and calculate their contributions.
 type PathTracingRenderer struct {
-	pathTracer PathTracer
-	sampler    Sampler
+	pathTracer   PathTracer
+	emitInterval int
+	sampler      Sampler
 }
 
 func MakePathTracingRenderer(
@@ -53,11 +54,17 @@ func MakePathTracingRenderer(
 
 	maxEdgeCount := int(config["maxEdgeCount"].(float64))
 
+	var emitInterval int
+	if emitIntervalConfig, ok := config["emitInterval"]; ok {
+		emitInterval = int(emitIntervalConfig.(float64))
+	}
+
 	samplerConfig := config["sampler"].(map[string]interface{})
 	sampler := MakeSampler(samplerConfig)
 
 	ptr := &PathTracingRenderer{
-		sampler: sampler,
+		emitInterval: emitInterval,
+		sampler:      sampler,
 	}
 	ptr.pathTracer.InitializePathTracer(
 		russianRouletteContribution,
@@ -149,11 +156,20 @@ func (ptr *PathTracingRenderer) processSensor(
 	}
 
 	processed := 0
+	maybeEmit := func() {
+		if (processed == len(blocks)) ||
+			(ptr.emitInterval > 0 &&
+				processed%ptr.emitInterval == 0) {
+			sensor.EmitSignal()
+		}
+	}
+
 	for i := 0; i < len(blocks); {
 		select {
 		case processedBlock := <-processedBlockCh:
 			recordBlockSamples(processedBlock)
 			processed++
+			maybeEmit()
 		default:
 			fmt.Printf("Queueing block %d/%d\n", i+1, numBlocks)
 			blockCh <- pathTracingBlock{i, blocks[i]}
@@ -161,13 +177,12 @@ func (ptr *PathTracingRenderer) processSensor(
 		}
 	}
 
-	for processed < numBlocks {
+	for processed < len(blocks) {
 		processedBlock := <-processedBlockCh
 		recordBlockSamples(processedBlock)
 		processed++
+		maybeEmit()
 	}
-
-	sensor.EmitSignal()
 }
 
 func (ptr *PathTracingRenderer) Render(
