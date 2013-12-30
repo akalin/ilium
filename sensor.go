@@ -20,7 +20,15 @@ func (se *SensorExtent) GetSampleCount() int {
 	return se.GetPixelCount() * se.SamplesPerXY
 }
 
+type SensorExtentBlockOrder int
+
+const (
+	SENSOR_EXTENT_XYS SensorExtentBlockOrder = iota
+	SENSOR_EXTENT_SXY SensorExtentBlockOrder = iota
+)
+
 func (se *SensorExtent) Split(
+	blockOrder SensorExtentBlockOrder,
 	xBlockSize, yBlockSize, sBlockSize int) []SensorExtent {
 	xStart := se.XStart
 	xEnd := se.XEnd
@@ -40,18 +48,39 @@ func (se *SensorExtent) Split(
 	blocks := make([]SensorExtent, xBlockCount*yBlockCount*sBlockCount)
 
 	i := 0
-	for y := yStart; y < yEnd; y += yBlockSize {
-		blockYEnd := minInt(yEnd, y+yBlockSize)
-		for x := xStart; x < xEnd; x += xBlockSize {
-			blockXEnd := minInt(xEnd, x+xBlockSize)
-			for s := sStart; s < sEnd; s += sBlockSize {
-				blockSCount := minInt(sBlockSize, sEnd-s)
-				blocks[i] = SensorExtent{
-					x, blockXEnd,
-					y, blockYEnd,
-					blockSCount,
+	switch blockOrder {
+	case SENSOR_EXTENT_XYS:
+		for y := yStart; y < yEnd; y += yBlockSize {
+			blockYEnd := minInt(yEnd, y+yBlockSize)
+			for x := xStart; x < xEnd; x += xBlockSize {
+				blockXEnd := minInt(xEnd, x+xBlockSize)
+				for s := sStart; s < sEnd; s += sBlockSize {
+					blockSCount :=
+						minInt(sBlockSize, sEnd-s)
+					blocks[i] = SensorExtent{
+						x, blockXEnd,
+						y, blockYEnd,
+						blockSCount,
+					}
+					i++
 				}
-				i++
+			}
+		}
+
+	case SENSOR_EXTENT_SXY:
+		for s := sStart; s < sEnd; s += sBlockSize {
+			blockSCount := minInt(sBlockSize, sEnd-s)
+			for y := yStart; y < yEnd; y += yBlockSize {
+				blockYEnd := minInt(yEnd, y+yBlockSize)
+				for x := xStart; x < xEnd; x += xBlockSize {
+					blockXEnd := minInt(xEnd, x+xBlockSize)
+					blocks[i] = SensorExtent{
+						x, blockXEnd,
+						y, blockYEnd,
+						blockSCount,
+					}
+					i++
+				}
 			}
 		}
 	}
