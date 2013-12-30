@@ -134,7 +134,14 @@ func (ptr *PathTracingRenderer) processSensor(
 	yBlockSize := 32
 	sBlockSize := 32
 	sensorExtent := sensor.GetExtent()
-	blocks := sensorExtent.Split(xBlockSize, yBlockSize, sBlockSize)
+	var blockOrder SensorExtentBlockOrder
+	if ptr.emitInterval > 0 {
+		blockOrder = SENSOR_EXTENT_SXY
+	} else {
+		blockOrder = SENSOR_EXTENT_XYS
+	}
+	blocks := sensorExtent.Split(
+		blockOrder, xBlockSize, yBlockSize, sBlockSize)
 	for i := 0; i < numRenderJobs; i++ {
 		workerRng := rand.New(rand.NewSource(rng.Int63()))
 		go ptr.processBlocks(
