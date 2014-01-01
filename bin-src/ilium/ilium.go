@@ -1,10 +1,8 @@
 package main
 
 import "github.com/akalin/ilium/ilium"
-import "encoding/json"
 import "flag"
 import "fmt"
-import "io/ioutil"
 import "math/rand"
 import "time"
 import "os"
@@ -65,12 +63,7 @@ func main() {
 		fmt.Printf(
 			"Processing %s (%d/%d)...\n",
 			inputPath, i+1, flag.NArg())
-		configBytes, err := ioutil.ReadFile(inputPath)
-		if err != nil {
-			panic(err)
-		}
-		var config map[string]interface{}
-		err = json.Unmarshal(configBytes, &config)
+		config, err := ilium.ParseConfig(inputPath)
 		if err != nil {
 			panic(err)
 		}
