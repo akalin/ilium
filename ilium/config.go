@@ -3,6 +3,7 @@ package ilium
 import "encoding/json"
 import "errors"
 import "io/ioutil"
+import "path/filepath"
 
 func rawParseConfig(inputPath string) (
 	config map[string]interface{}, err error) {
@@ -18,7 +19,7 @@ func rawParseConfig(inputPath string) (
 	return
 }
 
-func processIncludes(config interface{}, depth int) (
+func processIncludes(dir string, config interface{}, depth int) (
 	newConfig interface{}, err error) {
 	if depth >= 10 {
 		err = errors.New("Include depth limit exceeded")
@@ -28,7 +29,8 @@ func processIncludes(config interface{}, depth int) (
 	switch typedConfig := config.(type) {
 	case map[string]interface{}:
 		if includeConfig, ok := typedConfig["_include"]; ok {
-			includePath := includeConfig.(string)
+			includePath := filepath.Join(
+				dir, includeConfig.(string))
 			newConfig, err = parseConfigRecursively(
 				includePath, depth+1)
 			if err != nil {
@@ -38,7 +40,7 @@ func processIncludes(config interface{}, depth int) (
 		}
 
 		for k, v := range typedConfig {
-			v, err = processIncludes(v, depth)
+			v, err = processIncludes(dir, v, depth)
 			if err != nil {
 				return
 			}
@@ -47,7 +49,7 @@ func processIncludes(config interface{}, depth int) (
 
 	case []interface{}:
 		for i, v := range typedConfig {
-			v, err = processIncludes(v, depth)
+			v, err = processIncludes(dir, v, depth)
 			if err != nil {
 				return
 			}
@@ -66,7 +68,14 @@ func parseConfigRecursively(inputPath string, depth int) (
 		return
 	}
 	var processedConfig interface{}
-	processedConfig, err = processIncludes(config, 0)
+	var absPath string
+	absPath, err = filepath.Abs(inputPath)
+	if err != nil {
+		config = nil
+		return
+	}
+	dir := filepath.Dir(absPath)
+	processedConfig, err = processIncludes(dir, config, 0)
 	if err != nil {
 		config = nil
 		return
