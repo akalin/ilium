@@ -19,6 +19,15 @@ type Primitive interface {
 func MakePrimitives(config map[string]interface{}) []Primitive {
 	primitiveType := config["type"].(string)
 	switch primitiveType {
+	case "InlinePrimitiveList":
+		primitiveConfigs := config["primitives"].([]interface{})
+		allPrimitives := []Primitive{}
+		for _, primitiveConfig := range primitiveConfigs {
+			primitives := MakePrimitives(
+				primitiveConfig.(map[string]interface{}))
+			allPrimitives = append(allPrimitives, primitives...)
+		}
+		return allPrimitives
 	case "PrimitiveList":
 		return []Primitive{MakePrimitiveList(config)}
 	case "GeometricPrimitive":
