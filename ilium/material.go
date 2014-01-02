@@ -7,6 +7,18 @@ const (
 	MATERIAL_IMPORTANCE_TRANSPORT MaterialTransportType = iota
 )
 
+func (t MaterialTransportType) String() string {
+	switch t {
+	case MATERIAL_LIGHT_TRANSPORT:
+		return "MATERIAL_LIGHT_TRANSPORT"
+
+	case MATERIAL_IMPORTANCE_TRANSPORT:
+		return "MATERIAL_IMPORTANCE_TRANSPORT"
+	}
+
+	return "<Unknown material transport type>"
+}
+
 type Material interface {
 	SampleWi(transportType MaterialTransportType,
 		u1, u2 float32, wo Vector3, n Normal3) (

@@ -25,6 +25,27 @@ const (
 	_PATH_VERTEX_SURFACE_INTERACTION_VERTEX pathVertexType = iota
 )
 
+func (t pathVertexType) String() string {
+	switch t {
+	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		return "LIGHT_SUPER_VERTEX"
+
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		return "SENSOR_SUPER_VERTEX"
+
+	case _PATH_VERTEX_LIGHT_VERTEX:
+		return "LIGHT_VERTEX"
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		return "SENSOR_VERTEX"
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		return "SURFACE_INTERACTION_VERTEX"
+	}
+
+	return "<Unknown path vertex type>"
+}
+
 type PathVertex struct {
 	vertexType    pathVertexType
 	transportType MaterialTransportType
@@ -76,6 +97,38 @@ func (pv *PathVertex) initializeSurfaceInteractionVertex(
 		sensor:        sensor,
 		material:      intersection.Material,
 	}
+}
+
+func (pv *PathVertex) String() string {
+	switch pv.vertexType {
+	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		return fmt.Sprintf("{%v (%v), alpha=%v}",
+			pv.vertexType, pv.transportType, pv.alpha)
+
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		return fmt.Sprintf("{%v (%v), alpha=%v}",
+			pv.vertexType, pv.transportType, pv.alpha)
+
+	case _PATH_VERTEX_LIGHT_VERTEX:
+		return fmt.Sprintf(
+			"{%v (%v), p=%v (e=%f), n=%v, alpha=%v, light=%v}",
+			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
+			pv.n, pv.alpha, pv.light)
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		return fmt.Sprintf("{%v (%v), p=%v (e=%f), n=%v, alpha=%v}",
+			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
+			pv.n, pv.alpha)
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		return fmt.Sprintf("{%v (%v), p=%v (e=%f), "+
+			"n=%v, alpha=%v, light=%v, sensor=%v, "+
+			"material=%v}",
+			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
+			pv.n, pv.alpha, pv.light, pv.sensor, pv.material)
+	}
+
+	return fmt.Sprintf("{%v}", pv.vertexType)
 }
 
 func validateSampledPathEdge(context *PathContext, pv, pvNext *PathVertex) {
