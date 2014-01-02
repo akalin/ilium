@@ -12,6 +12,15 @@ type PathTracingRenderer struct {
 
 func MakePathTracingRenderer(
 	config map[string]interface{}) *PathTracingRenderer {
+	var russianRouletteMethod RussianRouletteMethod
+	russianRouletteMethodConfig := config["russianRouletteMethod"].(string)
+	switch russianRouletteMethodConfig {
+	case "fixed":
+		russianRouletteMethod = RUSSIAN_ROULETTE_FIXED
+	default:
+		panic("unknown Russian roulette method " +
+			russianRouletteMethodConfig)
+	}
 	russianRouletteStartIndex :=
 		int(config["russianRouletteStartIndex"].(float64))
 	russianRouletteMaxProbability :=
@@ -26,8 +35,8 @@ func MakePathTracingRenderer(
 		sampler: sampler,
 	}
 	ptr.pathTracer.InitializePathTracer(
-		russianRouletteStartIndex, russianRouletteMaxProbability,
-		maxEdgeCount)
+		russianRouletteMethod, russianRouletteStartIndex,
+		russianRouletteMaxProbability, maxEdgeCount)
 	return ptr
 }
 

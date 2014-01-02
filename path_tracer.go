@@ -3,18 +3,40 @@ package main
 import "fmt"
 import "math/rand"
 
+type RussianRouletteMethod int
+
+const (
+	RUSSIAN_ROULETTE_FIXED RussianRouletteMethod = iota
+)
+
 type PathTracer struct {
+	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
 	russianRouletteMaxProbability float32
 	maxEdgeCount                  int
 }
 
 func (pt *PathTracer) InitializePathTracer(
+	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability float32, maxEdgeCount int) {
+	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
 	pt.russianRouletteMaxProbability = russianRouletteMaxProbability
 	pt.maxEdgeCount = maxEdgeCount
+}
+
+func (pt *PathTracer) getContinueProbability(i int) float32 {
+	if i < pt.russianRouletteStartIndex {
+		return 1
+	}
+
+	switch pt.russianRouletteMethod {
+	case RUSSIAN_ROULETTE_FIXED:
+		return pt.russianRouletteMaxProbability
+	}
+	panic(fmt.Sprintf("unknown Russian roulette method %d",
+		pt.russianRouletteMethod))
 }
 
 // Samples a path starting from the given pixel coordinates on the
@@ -40,19 +62,15 @@ func (pt *PathTracer) SampleSensorPath(
 	alpha := WeDivPdf
 	var edgeCount int
 	for {
-		if edgeCount >= pt.russianRouletteStartIndex {
-			// TODO(akalin): Make pContinue depend on
-			// alpha/albedo.
-			pContinue := pt.russianRouletteMaxProbability
-			if pContinue <= 0 {
+		pContinue := pt.getContinueProbability(edgeCount)
+		if pContinue <= 0 {
+			break
+		}
+		if pContinue < 1 {
+			if randFloat32(rng) > pContinue {
 				break
 			}
-			if pContinue < 1 {
-				if randFloat32(rng) > pContinue {
-					break
-				}
-				alpha.ScaleInv(&alpha, pContinue)
-			}
+			alpha.ScaleInv(&alpha, pContinue)
 		}
 		var intersection Intersection
 		if !scene.Aggregate.Intersect(&ray, &intersection) {
