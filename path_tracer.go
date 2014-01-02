@@ -4,13 +4,16 @@ import "fmt"
 import "math/rand"
 
 type PathTracer struct {
-	russianRouletteStartIndex int
-	maxEdgeCount              int
+	russianRouletteStartIndex     int
+	russianRouletteMaxProbability float32
+	maxEdgeCount                  int
 }
 
 func (pt *PathTracer) InitializePathTracer(
-	russianRouletteStartIndex, maxEdgeCount int) {
+	russianRouletteStartIndex int,
+	russianRouletteMaxProbability float32, maxEdgeCount int) {
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
+	pt.russianRouletteMaxProbability = russianRouletteMaxProbability
 	pt.maxEdgeCount = maxEdgeCount
 }
 
@@ -40,11 +43,16 @@ func (pt *PathTracer) SampleSensorPath(
 		if edgeCount >= pt.russianRouletteStartIndex {
 			// TODO(akalin): Make pContinue depend on
 			// alpha/albedo.
-			var pContinue float32 = 0.5
-			if randFloat32(rng) > pContinue {
+			pContinue := pt.russianRouletteMaxProbability
+			if pContinue <= 0 {
 				break
 			}
-			alpha.ScaleInv(&alpha, pContinue)
+			if pContinue < 1 {
+				if randFloat32(rng) > pContinue {
+					break
+				}
+				alpha.ScaleInv(&alpha, pContinue)
+			}
 		}
 		var intersection Intersection
 		if !scene.Aggregate.Intersect(&ray, &intersection) {

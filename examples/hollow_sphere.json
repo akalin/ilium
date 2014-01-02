@@ -54,8 +54,9 @@
 
   "renderer": {
     "type": "PathTracingRenderer",
-    "russianRouletteStartIndex": 10,
-    "maxEdgeCount": 10,
+    "russianRouletteStartIndex": 5,
+    "russianRouletteMaxProbability": 0.95,
+    "maxEdgeCount": 100,
     "sampler": {
       "type": "IndependentSampler"
     }
