@@ -6,27 +6,32 @@ import "math/rand"
 type RussianRouletteMethod int
 
 const (
-	RUSSIAN_ROULETTE_FIXED RussianRouletteMethod = iota
+	RUSSIAN_ROULETTE_FIXED        RussianRouletteMethod = iota
+	RUSSIAN_ROULETTE_PROPORTIONAL RussianRouletteMethod = iota
 )
 
 type PathTracer struct {
 	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
 	russianRouletteMaxProbability float32
+	russianRouletteDelta          float32
 	maxEdgeCount                  int
 }
 
 func (pt *PathTracer) InitializePathTracer(
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
-	russianRouletteMaxProbability float32, maxEdgeCount int) {
+	russianRouletteMaxProbability, russianRouletteDelta float32,
+	maxEdgeCount int) {
 	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
 	pt.russianRouletteMaxProbability = russianRouletteMaxProbability
+	pt.russianRouletteDelta = russianRouletteDelta
 	pt.maxEdgeCount = maxEdgeCount
 }
 
-func (pt *PathTracer) getContinueProbability(i int) float32 {
+func (pt *PathTracer) getContinueProbability(
+	i int, alpha *Spectrum) float32 {
 	if i < pt.russianRouletteStartIndex {
 		return 1
 	}
@@ -34,6 +39,10 @@ func (pt *PathTracer) getContinueProbability(i int) float32 {
 	switch pt.russianRouletteMethod {
 	case RUSSIAN_ROULETTE_FIXED:
 		return pt.russianRouletteMaxProbability
+	case RUSSIAN_ROULETTE_PROPORTIONAL:
+		return minFloat32(
+			pt.russianRouletteMaxProbability,
+			alpha.Y()/pt.russianRouletteDelta)
 	}
 	panic(fmt.Sprintf("unknown Russian roulette method %d",
 		pt.russianRouletteMethod))
@@ -62,7 +71,7 @@ func (pt *PathTracer) SampleSensorPath(
 	alpha := WeDivPdf
 	var edgeCount int
 	for {
-		pContinue := pt.getContinueProbability(edgeCount)
+		pContinue := pt.getContinueProbability(edgeCount, &alpha)
 		if pContinue <= 0 {
 			break
 		}
