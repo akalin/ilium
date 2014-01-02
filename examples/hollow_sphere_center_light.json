@@ -90,6 +90,7 @@
 
   "renderer": {
     "type": "PathTracingRenderer",
+    "russianRouletteMethod": "fixed",
     "russianRouletteStartIndex": 5,
     "russianRouletteMaxProbability": 0.95,
     "maxEdgeCount": 100,
