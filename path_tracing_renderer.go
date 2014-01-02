@@ -14,6 +14,9 @@ func MakePathTracingRenderer(
 	config map[string]interface{}) *PathTracingRenderer {
 	russianRouletteStartIndex :=
 		int(config["russianRouletteStartIndex"].(float64))
+	russianRouletteMaxProbability :=
+		float32(config["russianRouletteMaxProbability"].(float64))
+
 	maxEdgeCount := int(config["maxEdgeCount"].(float64))
 
 	samplerConfig := config["sampler"].(map[string]interface{})
@@ -23,7 +26,8 @@ func MakePathTracingRenderer(
 		sampler: sampler,
 	}
 	ptr.pathTracer.InitializePathTracer(
-		russianRouletteStartIndex, maxEdgeCount)
+		russianRouletteStartIndex, russianRouletteMaxProbability,
+		maxEdgeCount)
 	return ptr
 }
 
