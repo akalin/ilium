@@ -68,6 +68,10 @@ func (out *Spectrum) Sqrt(s *Spectrum) {
 	out.b = sqrtFloat32(s.b)
 }
 
+func (s *Spectrum) Y() float32 {
+	return 0.212671*s.r + 0.715160*s.g + 0.072169*s.b
+}
+
 // Returns whether the Spectrum is zeroed out.
 func (s *Spectrum) IsBlack() bool {
 	return s.r == 0 && s.g == 0 && s.b == 0
