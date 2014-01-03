@@ -62,28 +62,7 @@ func MakePathTracingRenderer(
 		russianRouletteContribution = PATH_TRACER_RR_ALPHA
 	}
 
-	var russianRouletteMethod RussianRouletteMethod
-	russianRouletteMethodConfig := config["russianRouletteMethod"].(string)
-	switch russianRouletteMethodConfig {
-	case "fixed":
-		russianRouletteMethod = RUSSIAN_ROULETTE_FIXED
-	case "proportional":
-		russianRouletteMethod = RUSSIAN_ROULETTE_PROPORTIONAL
-	default:
-		panic("unknown Russian roulette method " +
-			russianRouletteMethodConfig)
-	}
-	russianRouletteStartIndex :=
-		int(config["russianRouletteStartIndex"].(float64))
-	russianRouletteMaxProbability :=
-		float32(config["russianRouletteMaxProbability"].(float64))
-	var russianRouletteDelta float32
-	if russianRouletteDeltaConfig, ok :=
-		config["russianRouletteDelta"].(float64); ok {
-		russianRouletteDelta = float32(russianRouletteDeltaConfig)
-	} else {
-		russianRouletteDelta = 1
-	}
+	russianRouletteState := MakeRussianRouletteState(config)
 
 	maxEdgeCount := int(config["maxEdgeCount"].(float64))
 
@@ -113,9 +92,8 @@ func MakePathTracingRenderer(
 	}
 	ptr.pathTracer.InitializePathTracer(
 		pathTypes, weighingMethod, beta, russianRouletteContribution,
-		russianRouletteMethod, russianRouletteStartIndex,
-		russianRouletteMaxProbability, russianRouletteDelta,
-		maxEdgeCount, debugLevel, debugMaxEdgeCount)
+		russianRouletteState, maxEdgeCount, debugLevel,
+		debugMaxEdgeCount)
 	return ptr
 }
 
