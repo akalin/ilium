@@ -24,25 +24,15 @@ const (
 	PATH_TRACER_RR_ALBEDO PathTracerRRContribution = iota
 )
 
-type RussianRouletteMethod int
-
-const (
-	RUSSIAN_ROULETTE_FIXED        RussianRouletteMethod = iota
-	RUSSIAN_ROULETTE_PROPORTIONAL RussianRouletteMethod = iota
-)
-
 type PathTracer struct {
-	pathTypes                     PathTracerPathType
-	weighingMethod                PathTracerWeighingMethod
-	beta                          float32
-	russianRouletteContribution   PathTracerRRContribution
-	russianRouletteMethod         RussianRouletteMethod
-	russianRouletteStartIndex     int
-	russianRouletteMaxProbability float32
-	russianRouletteDelta          float32
-	maxEdgeCount                  int
-	debugLevel                    int
-	debugMaxEdgeCount             int
+	pathTypes                   PathTracerPathType
+	weighingMethod              PathTracerWeighingMethod
+	beta                        float32
+	russianRouletteContribution PathTracerRRContribution
+	russianRouletteState        *RussianRouletteState
+	maxEdgeCount                int
+	debugLevel                  int
+	debugMaxEdgeCount           int
 }
 
 type PathTracerDebugRecord struct {
@@ -54,18 +44,13 @@ func (pt *PathTracer) InitializePathTracer(
 	pathTypes PathTracerPathType,
 	weighingMethod PathTracerWeighingMethod, beta float32,
 	russianRouletteContribution PathTracerRRContribution,
-	russianRouletteMethod RussianRouletteMethod,
-	russianRouletteStartIndex int,
-	russianRouletteMaxProbability, russianRouletteDelta float32,
+	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
 	pt.weighingMethod = weighingMethod
 	pt.beta = beta
 	pt.russianRouletteContribution = russianRouletteContribution
-	pt.russianRouletteMethod = russianRouletteMethod
-	pt.russianRouletteStartIndex = russianRouletteStartIndex
-	pt.russianRouletteMaxProbability = russianRouletteMaxProbability
-	pt.russianRouletteDelta = russianRouletteDelta
+	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
 	pt.debugLevel = debugLevel
 	pt.debugMaxEdgeCount = debugMaxEdgeCount
@@ -126,35 +111,14 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	}
 }
 
-func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
-	if i < pt.russianRouletteStartIndex {
-		return 1
-	}
-
-	var pContinueRaw float32
-	switch pt.russianRouletteMethod {
-	case RUSSIAN_ROULETTE_FIXED:
-		pContinueRaw = pt.russianRouletteMaxProbability
-	case RUSSIAN_ROULETTE_PROPORTIONAL:
-		pContinueRaw = minFloat32(
-			pt.russianRouletteMaxProbability,
-			t.Y()/pt.russianRouletteDelta)
-	default:
-		panic(fmt.Sprintf("unknown Russian roulette method %d",
-			pt.russianRouletteMethod))
-	}
-
-	return minFloat32(1, maxFloat32(0, pContinueRaw))
-}
-
 func (pt *PathTracer) getContinueProbabilityFromIntersection(
 	edgeCount int, alpha, f *Spectrum, fPdf float32) float32 {
-	if edgeCount < pt.russianRouletteStartIndex || fPdf == 0 {
-		return 1
+	if fPdf == 0 {
+		return 0
 	}
 
 	var t Spectrum
-	if pt.russianRouletteMethod != RUSSIAN_ROULETTE_FIXED {
+	if !pt.russianRouletteState.IsContinueProbabilityFixed(edgeCount) {
 		var albedo Spectrum
 		albedo.ScaleInv(f, fPdf)
 		switch pt.russianRouletteContribution {
@@ -164,7 +128,7 @@ func (pt *PathTracer) getContinueProbabilityFromIntersection(
 			t = albedo
 		}
 	}
-	return pt.getContinueProbability(edgeCount, &t)
+	return pt.russianRouletteState.GetContinueProbability(edgeCount, &t)
 }
 
 func (pt *PathTracer) recordWLeAlphaDebugInfo(
@@ -401,7 +365,8 @@ func (pt *PathTracer) SampleSensorPath(
 	}
 	var edgeCount int
 	for {
-		pContinue := pt.getContinueProbability(edgeCount, t)
+		pContinue := pt.russianRouletteState.GetContinueProbability(
+			edgeCount, t)
 		if pContinue <= 0 {
 			break
 		}
