@@ -18,6 +18,8 @@ func MakePathTracingRenderer(
 		switch russianRouletteContributionConfig {
 		case "alpha":
 			russianRouletteContribution = PATH_TRACER_RR_ALPHA
+		case "albedo":
+			russianRouletteContribution = PATH_TRACER_RR_ALBEDO
 		default:
 			panic("unknown Russian roulette contribution " +
 				russianRouletteContributionConfig)
