@@ -195,4 +195,27 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 			&sensorRecord.DebugRecords)
 		sensorRecord.WeLiDivPdf.Add(&sensorRecord.WeLiDivPdf, &Ck)
 	}
+
+	if bdpt.debugLevel >= 1 {
+		// Subtract one for vertices-to-edges, then one more
+		// for the super-vertex.
+		lightEdgeCount := len(ySubpath) - 2
+		nL := float32(lightEdgeCount) / float32(bdpt.maxEdgeCount)
+		nLDebugRecord := TracerDebugRecord{
+			Tag: "nL",
+			S:   MakeConstantSpectrum(nL),
+		}
+
+		// Subtract one for vertices-to-edges, then one more
+		// for the super-vertex.
+		sensorEdgeCount := len(zSubpath) - 2
+		nS := float32(sensorEdgeCount) / float32(bdpt.maxEdgeCount)
+		nSDebugRecord := TracerDebugRecord{
+			Tag: "nS",
+			S:   MakeConstantSpectrum(nS),
+		}
+
+		sensorRecord.DebugRecords = append(sensorRecord.DebugRecords,
+			nLDebugRecord, nSDebugRecord)
+	}
 }
