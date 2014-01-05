@@ -3,6 +3,12 @@ package main
 import "fmt"
 import "math/rand"
 
+type PathTracerRRContribution int
+
+const (
+	PATH_TRACER_RR_ALPHA PathTracerRRContribution = iota
+)
+
 type RussianRouletteMethod int
 
 const (
@@ -11,6 +17,7 @@ const (
 )
 
 type PathTracer struct {
+	russianRouletteContribution   PathTracerRRContribution
 	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
 	russianRouletteMaxProbability float32
@@ -19,10 +26,12 @@ type PathTracer struct {
 }
 
 func (pt *PathTracer) InitializePathTracer(
+	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability, russianRouletteDelta float32,
 	maxEdgeCount int) {
+	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
 	pt.russianRouletteMaxProbability = russianRouletteMaxProbability
@@ -30,8 +39,7 @@ func (pt *PathTracer) InitializePathTracer(
 	pt.maxEdgeCount = maxEdgeCount
 }
 
-func (pt *PathTracer) getContinueProbability(
-	i int, alpha *Spectrum) float32 {
+func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 	if i < pt.russianRouletteStartIndex {
 		return 1
 	}
@@ -42,7 +50,7 @@ func (pt *PathTracer) getContinueProbability(
 	case RUSSIAN_ROULETTE_PROPORTIONAL:
 		return minFloat32(
 			pt.russianRouletteMaxProbability,
-			alpha.Y()/pt.russianRouletteDelta)
+			t.Y()/pt.russianRouletteDelta)
 	}
 	panic(fmt.Sprintf("unknown Russian roulette method %d",
 		pt.russianRouletteMethod))
@@ -69,9 +77,14 @@ func (pt *PathTracer) SampleSensorPath(
 	ray := initialRay
 	// alpha = We * T(path) / pdf.
 	alpha := WeDivPdf
+	var t *Spectrum
+	switch pt.russianRouletteContribution {
+	case PATH_TRACER_RR_ALPHA:
+		t = &alpha
+	}
 	var edgeCount int
 	for {
-		pContinue := pt.getContinueProbability(edgeCount, &alpha)
+		pContinue := pt.getContinueProbability(edgeCount, t)
 		if pContinue <= 0 {
 			break
 		}
