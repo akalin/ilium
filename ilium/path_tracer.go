@@ -291,6 +291,16 @@ func (pt *PathTracer) SampleSensorPath(
 		albedo = fDivPdf
 	}
 
+	if pt.debugLevel >= 1 {
+		n := MakeConstantSpectrum(
+			float32(edgeCount) / float32(pt.maxEdgeCount))
+		debugRecord := PathTracerDebugRecord{
+			Tag: "n",
+			S:   n,
+		}
+		*debugRecords = append(*debugRecords, debugRecord)
+	}
+
 	if !WeLiDivPdf.IsValid() {
 		fmt.Printf("Invalid weighted Li %v for ray %v\n",
 			*WeLiDivPdf, initialRay)
