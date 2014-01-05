@@ -12,6 +12,20 @@ type PathTracingRenderer struct {
 
 func MakePathTracingRenderer(
 	config map[string]interface{}) *PathTracingRenderer {
+	var russianRouletteContribution PathTracerRRContribution
+	if russianRouletteContributionConfig, ok :=
+		config["russianRouletteContribution"].(string); ok {
+		switch russianRouletteContributionConfig {
+		case "alpha":
+			russianRouletteContribution = PATH_TRACER_RR_ALPHA
+		default:
+			panic("unknown Russian roulette contribution " +
+				russianRouletteContributionConfig)
+		}
+	} else {
+		russianRouletteContribution = PATH_TRACER_RR_ALPHA
+	}
+
 	var russianRouletteMethod RussianRouletteMethod
 	russianRouletteMethodConfig := config["russianRouletteMethod"].(string)
 	switch russianRouletteMethodConfig {
@@ -44,6 +58,7 @@ func MakePathTracingRenderer(
 		sampler: sampler,
 	}
 	ptr.pathTracer.InitializePathTracer(
+		russianRouletteContribution,
 		russianRouletteMethod, russianRouletteStartIndex,
 		russianRouletteMaxProbability, russianRouletteDelta,
 		maxEdgeCount)
