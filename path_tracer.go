@@ -6,7 +6,8 @@ import "math/rand"
 type PathTracerRRContribution int
 
 const (
-	PATH_TRACER_RR_ALPHA PathTracerRRContribution = iota
+	PATH_TRACER_RR_ALPHA  PathTracerRRContribution = iota
+	PATH_TRACER_RR_ALBEDO PathTracerRRContribution = iota
 )
 
 type RussianRouletteMethod int
@@ -77,10 +78,13 @@ func (pt *PathTracer) SampleSensorPath(
 	ray := initialRay
 	// alpha = We * T(path) / pdf.
 	alpha := WeDivPdf
+	albedo := WeDivPdf
 	var t *Spectrum
 	switch pt.russianRouletteContribution {
 	case PATH_TRACER_RR_ALPHA:
 		t = &alpha
+	case PATH_TRACER_RR_ALBEDO:
+		t = &albedo
 	}
 	var edgeCount int
 	for {
@@ -137,6 +141,7 @@ func (pt *PathTracer) SampleSensorPath(
 			intersection.PEpsilon, infFloat32(+1),
 		}
 		alpha.Mul(&alpha, &fDivPdf)
+		albedo = fDivPdf
 	}
 
 	if !WeLiDivPdf.IsValid() {
