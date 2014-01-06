@@ -1,0 +1,53 @@
+{
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_include": "cornell_box_room_scene.json"
+    },
+
+    {
+      "_comment": "Top light (pointing up).",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "TriangleMesh",
+        "vertices": [
+          -0.4, 4.0, 2.3,
+          -0.4, 3.5, 2.3,
+           0.4, 4.0, 2.3,
+           0.4, 3.5, 2.3
+        ],
+        "indices": [
+          1, 2, 0,
+          3, 2, 1
+        ]
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "color": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 16, "g": 14.7, "b": 12.9 }
+      }
+    },
+
+    {
+      "_comment": "Sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0, 3, 0.1 ],
+        "radius": 0.6
+      },
+      "material": {
+        "type": "MicrofacetMaterial",
+        "samplingMethod": "distributionCosine",
+        "color": { "type": "rgb", "r": 0.6, "g": 0.8, "b": 0.7 },
+        "blinnExponent": 2000
+      }
+    }
+  ]
+}
