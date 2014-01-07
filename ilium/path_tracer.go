@@ -260,8 +260,7 @@ func (pt *PathTracer) sampleDirectLighting(
 	v := directLighting1DSamples[1].GetSample(sampleIndex, rng)
 	w := directLighting2DSamples[0].GetSample(sampleIndex, rng)
 
-	i, pChooseLight := scene.LightDistribution.SampleDiscrete(u.U)
-	light := scene.Lights[i]
+	light, pChooseLight := scene.SampleLight(u.U)
 
 	n := intersection.N
 
