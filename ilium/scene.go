@@ -23,3 +23,9 @@ func MakeScene(config map[string]interface{}) Scene {
 	lightsDistribution := MakeDistribution1D(lightWeights)
 	return Scene{aggregate, lights, lightsDistribution}
 }
+
+func (scene *Scene) SampleLight(u float32) (light Light, pChooseLight float32) {
+	i, pChooseLight := scene.LightDistribution.SampleDiscrete(u)
+	light = scene.Lights[i]
+	return
+}
