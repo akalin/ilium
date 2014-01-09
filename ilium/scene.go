@@ -29,3 +29,12 @@ func (scene *Scene) SampleLight(u float32) (light Light, pChooseLight float32) {
 	light = scene.Lights[i]
 	return
 }
+
+func (scene *Scene) ComputeLightPdf(light Light) float32 {
+	for i := 0; i < len(scene.Lights); i++ {
+		if scene.Lights[i] == light {
+			return scene.LightDistribution.ComputeDiscretePdf(i)
+		}
+	}
+	return 0
+}
