@@ -139,6 +139,18 @@ type Sensor interface {
 		x, y int,
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 
+	// Given pixel coordinates, a point, a normal on the sensor,
+	// and an outging direction, returns the value of the pdf of
+	// the directional distribution for that direction.
+	//
+	// Can be assumed to only be called when pSurface is known to
+	// lie on the surface on the sensor with pixel coordinates (x,
+	// y) and normal nSurface, and wo is an outgoing direction
+	// with non-zero importance.
+	ComputeWeDirectionalPdf(
+		x, y int,
+		pSurface Point3, nSurface Normal3, wo Vector3) float32
+
 	// Given a point and normal on the sensor and an outgoing
 	// direction, returns the corresponding pixel coordinates and
 	// emitted importance.

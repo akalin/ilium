@@ -112,6 +112,18 @@ func (fm *FluxMeter) ComputeWePdfFromPoint(
 	return fm.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (fm *FluxMeter) ComputeWeDirectionalPdf(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
+	switch fm.samplingMethod {
+	case FLUX_METER_UNIFORM_SAMPLING:
+		cosTh := wo.DotNormal(&nSurface)
+		return uniformHemispherePdfSolidAngle() / cosTh
+	case FLUX_METER_COSINE_SAMPLING:
+		return cosineHemispherePdfProjectedSolidAngle()
+	}
+	return 0
+}
+
 func (fm *FluxMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
