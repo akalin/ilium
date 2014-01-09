@@ -224,6 +224,11 @@ func (tlc *ThinLensCamera) ComputeWePdfFromPoint(
 	return tlc.disk.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (tlc *ThinLensCamera) ComputeWeSpatialPdf(
+	x, y int, pSurface Point3) float32 {
+	return 1 / tlc.disk.SurfaceArea()
+}
+
 func (tlc *ThinLensCamera) ComputeWeDirectionalPdf(
 	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
 	nLens := tlc.disk.GetNormal()
