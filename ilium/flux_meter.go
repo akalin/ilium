@@ -112,6 +112,10 @@ func (fm *FluxMeter) ComputeWePdfFromPoint(
 	return fm.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (fm *FluxMeter) ComputeWeSpatialPdf(x, y int, pSurface Point3) float32 {
+	return fm.shapeSet.ComputePdf(pSurface)
+}
+
 func (fm *FluxMeter) ComputeWeDirectionalPdf(
 	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
 	switch fm.samplingMethod {
