@@ -15,6 +15,10 @@ func (d *Distribution1D) SampleDiscrete(u float32) (i int, p float32) {
 	return
 }
 
+func (d *Distribution1D) ComputeDiscretePdf(i int) float32 {
+	return d.cdf[i+1] - d.cdf[i]
+}
+
 func MakeDistribution1D(f []float32) Distribution1D {
 	n := len(f)
 	cdf := make([]float32, n+1)
