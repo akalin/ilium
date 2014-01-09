@@ -66,6 +66,13 @@ func (rm *RadianceMeter) ComputeWePdfFromPoint(
 	panic("Called unexpectedly")
 }
 
+func (rm *RadianceMeter) ComputeWeDirectionalPdf(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
+	// Since we're assuming all parameters are valid, return 1
+	// even though we have a delta directional distribution.
+	return 1
+}
+
 func (rm *RadianceMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
