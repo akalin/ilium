@@ -136,6 +136,18 @@ func (im *IrradianceMeter) ComputeWePdfFromPoint(
 	return r * r / (absCosThI * cosThO)
 }
 
+func (im *IrradianceMeter) ComputeWeDirectionalPdf(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
+	switch im.samplingMethod {
+	case IRRADIANCE_METER_UNIFORM_SAMPLING:
+		cosTh := wo.DotNormal(&nSurface)
+		return uniformHemispherePdfSolidAngle() / cosTh
+	case IRRADIANCE_METER_COSINE_SAMPLING:
+		return cosineHemispherePdfProjectedSolidAngle()
+	}
+	return 0
+}
+
 func (im *IrradianceMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {

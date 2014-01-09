@@ -181,6 +181,12 @@ func (pc *PinholeCamera) ComputeWePdfFromPoint(
 	return r * r / (absCosThI * cosThO)
 }
 
+func (pc *PinholeCamera) ComputeWeDirectionalPdf(
+	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
+	cosThO := wo.Dot(&pc.frontHat)
+	return pc.computePdfDirectional(cosThO)
+}
+
 func (pc *PinholeCamera) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
