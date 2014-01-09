@@ -139,6 +139,15 @@ type Sensor interface {
 		x, y int,
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 
+	// Given pixel coordinates and a point on the sensor, returns
+	// the value of the pdf of the spatial distribution for that
+	// point with those pixel coordinates.
+	//
+	// Can be assumed to only be called when pSurface is known to
+	// lie on the surface on the sensor with pixel coordinates (x,
+	// y).
+	ComputeWeSpatialPdf(x, y int, pSurface Point3) float32
+
 	// Given pixel coordinates, a point, a normal on the sensor,
 	// and an outging direction, returns the value of the pdf of
 	// the directional distribution for that direction.

@@ -181,6 +181,13 @@ func (pc *PinholeCamera) ComputeWePdfFromPoint(
 	return r * r / (absCosThI * cosThO)
 }
 
+func (pc *PinholeCamera) ComputeWeSpatialPdf(
+	x, y int, pSurface Point3) float32 {
+	// Since we're assuming pSurface is on the sensor, return 1
+	// even though we have a delta spatial distribution.
+	return 1
+}
+
 func (pc *PinholeCamera) ComputeWeDirectionalPdf(
 	x, y int, pSurface Point3, nSurface Normal3, wo Vector3) float32 {
 	cosThO := wo.Dot(&pc.frontHat)
