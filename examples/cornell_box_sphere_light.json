@@ -30,7 +30,7 @@
           "type": "GeometricPrimitive",
           "shape": {
             "type": "Sphere",
-            "samplingMethod": "visible",
+            "samplingMethod": "visibleFast",
             "center": [ 0, 3.75, 2.3 ],
             "radius": 0.1
           },
