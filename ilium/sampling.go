@@ -38,10 +38,10 @@ func uniformSampleTriangle(u1, u2 float32) (b1, b2 float32) {
 }
 
 // cosThetaMax is cos(theta_max), not cos(theta)_max.
-func uniformSampleCone(u1, u2, cosThetaMax float32) R3 {
-	cosTheta := (1 - u1) + u1*cosThetaMax
-	phi := 2 * math.Pi * u2
-	return MakeSphericalDirection(cosTheta, phi)
+func uniformSampleCone(u1, u2, cosThetaMax float32) (cosTheta, phi float32) {
+	cosTheta = (1 - u1) + u1*cosThetaMax
+	phi = u2 * 2 * math.Pi
+	return
 }
 
 // cosThetaMax is cos(theta_max), not cos(theta)_max.

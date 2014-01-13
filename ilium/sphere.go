@@ -5,8 +5,9 @@ import "math"
 type SphereSamplingMethod int
 
 const (
-	SPHERE_SAMPLE_ENTIRE  SphereSamplingMethod = iota
-	SPHERE_SAMPLE_VISIBLE SphereSamplingMethod = iota
+	SPHERE_SAMPLE_ENTIRE       SphereSamplingMethod = iota
+	SPHERE_SAMPLE_VISIBLE      SphereSamplingMethod = iota
+	SPHERE_SAMPLE_VISIBLE_FAST SphereSamplingMethod = iota
 )
 
 type Sphere struct {
@@ -24,6 +25,8 @@ func MakeSphere(config map[string]interface{}) *Sphere {
 		samplingMethod = SPHERE_SAMPLE_ENTIRE
 	case "visible":
 		samplingMethod = SPHERE_SAMPLE_VISIBLE
+	case "visibleFast":
+		samplingMethod = SPHERE_SAMPLE_VISIBLE_FAST
 	default:
 		panic("unknown sampling method " + samplingMethodConfig)
 	}
@@ -90,17 +93,34 @@ func (s *Sphere) SurfaceArea() float32 {
 	return 4 * math.Pi * s.radius * s.radius
 }
 
+func (s *Sphere) solidAngleToPoint(w R3) Point3 {
+	w.Scale(&w, s.radius)
+	var p Point3
+	p.Shift(&s.center, (*Vector3)(&w))
+	return p
+}
+
 func (s *Sphere) SampleSurface(u1, u2 float32) (
 	pSurface Point3, nSurface Normal3, pdfSurfaceArea float32) {
 	w := uniformSampleSphere(u1, u2)
-	v := Vector3(w)
-	v.Scale(&v, s.radius)
-	pSurface.Shift(&s.center, &v)
+	pSurface = s.solidAngleToPoint(w)
 	nSurface = Normal3(w)
 	if s.flipNormal {
 		nSurface.Flip(&nSurface)
 	}
 	pdfSurfaceArea = 1 / s.SurfaceArea()
+	return
+}
+
+func (s *Sphere) shouldSampleEntireSphere(d float32) bool {
+	return (d*d - s.radius*s.radius) < 1e-4
+}
+
+// {sin,cos}ThetaConeMax is {sin,cos}(theta_cone_max).
+func (s *Sphere) computeThetaConeMax(d float32) (
+	sinThetaConeMax, cosThetaConeMax float32) {
+	sinThetaConeMax = s.radius / d
+	cosThetaConeMax = sinToCos(sinThetaConeMax)
 	return
 }
 
@@ -113,18 +133,15 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 	case SPHERE_SAMPLE_VISIBLE:
 		var wcZ Vector3
 		d := wcZ.GetDirectionAndDistance(&p, &s.center)
-		dSq := d * d
-		rSq := s.radius * s.radius
-		if (dSq - rSq) < 1e-4 {
+		if s.shouldSampleEntireSphere(d) {
 			return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
 		}
 
-		// sinThetaConeMaxSq is sin^2(theta_cone_max).
-		sinThetaConeMaxSq := rSq / dSq
-		// cosThetaConeMax is cos(theta_cone_max).
-		cosThetaConeMax := sinToCos(sinThetaConeMaxSq)
+		_, cosThetaConeMax := s.computeThetaConeMax(d)
 
-		r3Canonical := uniformSampleCone(u1, u2, cosThetaConeMax)
+		cosThetaCone, phiCone :=
+			uniformSampleCone(u1, u2, cosThetaConeMax)
+		r3Canonical := MakeSphericalDirection(cosThetaCone, phiCone)
 		var wcX, wcY R3
 		MakeCoordinateSystemNoAlias((*R3)(&wcZ), &wcX, &wcY)
 		var wi R3
@@ -152,6 +169,56 @@ func (s *Sphere) SampleSurfaceFromPoint(u1, u2 float32, p Point3, n Normal3) (
 		if s.flipNormal {
 			nSurface.Flip(&nSurface)
 		}
+		pdfSolidAngle := uniformConePdfSolidAngle(cosThetaConeMax)
+		pdfProjectedSolidAngle = pdfSolidAngle / absCosTh
+		return
+
+	case SPHERE_SAMPLE_VISIBLE_FAST:
+		var wpZ Vector3
+		d := wpZ.GetDirectionAndDistance(&s.center, &p)
+		if s.shouldSampleEntireSphere(d) {
+			return SampleEntireSurfaceFromPoint(s, u1, u2, p, n)
+		}
+
+		sinThetaConeMax, cosThetaConeMax := s.computeThetaConeMax(d)
+
+		cosThetaCone, phi := uniformSampleCone(u1, u2, cosThetaConeMax)
+		sinThetaCone := cosToSin(cosThetaCone)
+		sinThetaConeSq := sinThetaCone * sinThetaCone
+
+		// Map theta_cone (the angle from p) to alpha (the angle
+		// from the center of the sphere).
+		D := 1 - d*d*sinThetaConeSq/(s.radius*s.radius)
+		var cosAlpha float32
+		if D <= 0 {
+			cosAlpha = sinThetaConeMax
+		} else {
+			cosAlpha = sinThetaConeSq*d/s.radius +
+				cosThetaCone*sqrtFloat32(D)
+		}
+
+		r3Canonical := MakeSphericalDirection(cosAlpha, phi)
+		var wpX, wpY R3
+		MakeCoordinateSystemNoAlias((*R3)(&wpZ), &wpX, &wpY)
+		var w R3
+		w.ConvertToCoordinateSystemNoAlias(
+			&r3Canonical, &wpX, &wpY, ((*R3)(&wpZ)))
+
+		pSurface = s.solidAngleToPoint(w)
+		nSurface = Normal3(w)
+		if s.flipNormal {
+			nSurface.Flip(&nSurface)
+		}
+
+		var wi Vector3
+		_ = wi.GetDirectionAndDistance(&p, &pSurface)
+		absCosTh := absFloat32(wi.DotNormal(&n))
+		if absCosTh < PDF_COS_THETA_EPSILON {
+			pSurface = Point3{}
+			nSurface = Normal3{}
+			return
+		}
+
 		pdfSolidAngle := uniformConePdfSolidAngle(cosThetaConeMax)
 		pdfProjectedSolidAngle = pdfSolidAngle / absCosTh
 		return
