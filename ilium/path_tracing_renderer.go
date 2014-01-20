@@ -34,6 +34,8 @@ func MakePathTracingRenderer(
 	switch weighingMethodConfig {
 	case "uniform":
 		weighingMethod = PATH_TRACER_UNIFORM_WEIGHTS
+	case "balanced":
+		weighingMethod = PATH_TRACER_BALANCED_WEIGHTS
 	default:
 		panic("unknown weighing method " + weighingMethodConfig)
 	}
