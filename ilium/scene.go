@@ -1,8 +1,9 @@
 package ilium
 
 type Scene struct {
-	Aggregate Primitive
-	Lights    []Light
+	Aggregate         Primitive
+	Lights            []Light
+	LightDistribution Distribution1D
 }
 
 func MakeScene(config map[string]interface{}) Scene {
@@ -12,5 +13,13 @@ func MakeScene(config map[string]interface{}) Scene {
 		panic("aggregate must be a single primitive")
 	}
 	aggregate := primitives[0]
-	return Scene{aggregate, aggregate.GetLights()}
+	lights := aggregate.GetLights()
+	lightWeights := make([]float32, len(lights))
+	// TODO(akalin): Use better weights, like each light's
+	// estimated power.
+	for i := 0; i < len(lights); i++ {
+		lightWeights[i] = 1
+	}
+	lightsDistribution := MakeDistribution1D(lightWeights)
+	return Scene{aggregate, lights, lightsDistribution}
 }
