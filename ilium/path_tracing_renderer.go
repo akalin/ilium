@@ -18,6 +18,8 @@ func MakePathTracingRenderer(
 	switch pathTypeConfig {
 	case "emittedLight":
 		pathType = PATH_TRACER_EMITTED_LIGHT_PATH
+	case "directLighting":
+		pathType = PATH_TRACER_DIRECT_LIGHTING_PATH
 	default:
 		panic("unknown path type " + pathTypeConfig)
 	}
