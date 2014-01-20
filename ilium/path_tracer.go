@@ -6,8 +6,8 @@ import "math/rand"
 type PathTracerPathType int
 
 const (
-	PATH_TRACER_EMITTED_LIGHT_PATH   PathTracerPathType = iota
-	PATH_TRACER_DIRECT_LIGHTING_PATH PathTracerPathType = iota
+	PATH_TRACER_EMITTED_LIGHT_PATH   PathTracerPathType = 1 << iota
+	PATH_TRACER_DIRECT_LIGHTING_PATH PathTracerPathType = 1 << iota
 )
 
 type PathTracerRRContribution int
@@ -25,7 +25,7 @@ const (
 )
 
 type PathTracer struct {
-	pathType                      PathTracerPathType
+	pathTypes                     PathTracerPathType
 	russianRouletteContribution   PathTracerRRContribution
 	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
@@ -42,13 +42,13 @@ type PathTracerDebugRecord struct {
 }
 
 func (pt *PathTracer) InitializePathTracer(
-	pathType PathTracerPathType,
+	pathTypes PathTracerPathType,
 	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability, russianRouletteDelta float32,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
-	pt.pathType = pathType
+	pt.pathTypes = pathTypes
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
@@ -59,8 +59,24 @@ func (pt *PathTracer) InitializePathTracer(
 	pt.debugMaxEdgeCount = debugMaxEdgeCount
 }
 
-func (pt *PathTracer) GetSampleConfig() SampleConfig {
+func (pt *PathTracer) hasSomethingToDo() bool {
 	if pt.maxEdgeCount <= 0 {
+		return false
+	}
+
+	if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
+		return true
+	}
+
+	if (pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0 {
+		return true
+	}
+
+	return false
+}
+
+func (pt *PathTracer) GetSampleConfig() SampleConfig {
+	if !pt.hasSomethingToDo() {
 		return SampleConfig{}
 	}
 
@@ -70,34 +86,32 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	// Sample wi for each interior vertex to build the next edge
 	// of the path.
 	numWiSamples := minInt(3, maxInteriorVertexCount)
-	switch pt.pathType {
-	case PATH_TRACER_EMITTED_LIGHT_PATH:
-		return SampleConfig{
-			Sample1DLengths: []int{},
-			Sample2DLengths: []int{numWiSamples},
-		}
-	case PATH_TRACER_DIRECT_LIGHTING_PATH:
+
+	var sample1DLengths []int
+	sample2DLengths := []int{numWiSamples}
+
+	if (pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0 {
 		// Sample direct lighting for each interior vertex;
 		// don't do it from the first vertex since that will
 		// most likely end up on a different pixel, and don't
 		// do it from the last vertex since that would add an
 		// extra edge.
 		numDirectLightingSamples := minInt(3, maxInteriorVertexCount)
-		return SampleConfig{
-			Sample1DLengths: []int{
-				// One to pick the light.
-				numDirectLightingSamples,
-				// One to sample the light.
-				numDirectLightingSamples,
-			},
-			Sample2DLengths: []int{
-				numWiSamples,
-				// One to sample the light.
-				numDirectLightingSamples,
-			},
+		sample1DLengths = []int{
+			// One to pick the light.
+			numDirectLightingSamples,
+			// One to sample the light.
+			numDirectLightingSamples,
 		}
+		// One to sample the light.
+		sample2DLengths = append(
+			sample2DLengths, numDirectLightingSamples)
 	}
-	return SampleConfig{}
+
+	return SampleConfig{
+		Sample1DLengths: sample1DLengths,
+		Sample2DLengths: sample2DLengths,
+	}
 }
 
 func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
@@ -117,9 +131,9 @@ func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 		pt.russianRouletteMethod))
 }
 
-func (pt *PathTracer) recordLeAlphaDebugInfo(
-	edgeCount int, LeAlpha, f1, f2 *Spectrum, f1Name, f2Name string,
-	debugRecords *[]PathTracerDebugRecord) {
+func (pt *PathTracer) recordWLeAlphaDebugInfo(
+	edgeCount int, w float32, wLeAlpha, f1, f2 *Spectrum,
+	f1Name, f2Name string, debugRecords *[]PathTracerDebugRecord) {
 	if pt.debugLevel >= 1 {
 		width := widthInt(pt.debugMaxEdgeCount)
 		var tagSuffix string
@@ -132,8 +146,8 @@ func (pt *PathTracer) recordLeAlphaDebugInfo(
 		}
 
 		debugRecord := PathTracerDebugRecord{
-			Tag: "LA" + tagSuffix,
-			S:   *LeAlpha,
+			Tag: "wLA" + tagSuffix,
+			S:   *wLeAlpha,
 		}
 		*debugRecords = append(*debugRecords, debugRecord)
 
@@ -154,10 +168,37 @@ func (pt *PathTracer) recordLeAlphaDebugInfo(
 	}
 }
 
+func (pt *PathTracer) computeEmittedLight(
+	edgeCount int, alpha *Spectrum, wo Vector3, intersection *Intersection,
+	debugRecords *[]PathTracerDebugRecord) (wLeAlpha Spectrum) {
+	Le := intersection.ComputeLe(wo)
+
+	if Le.IsBlack() {
+		return
+	}
+
+	// TODO(akalin): Implement multiple importance sampling.
+	var invW float32 = 1
+	// No other path type handles the first edge.
+	if edgeCount > 1 &&
+		((pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0) {
+		invW++
+	}
+	w := 1 / invW
+
+	var wLe Spectrum
+	wLe.Scale(&Le, w)
+	wLeAlpha.Mul(&wLe, alpha)
+
+	pt.recordWLeAlphaDebugInfo(
+		edgeCount, w, &wLeAlpha, &Le, alpha, "Le", "Ae", debugRecords)
+	return
+}
+
 func (pt *PathTracer) sampleDirectLighting(
 	edgeCount int, rng *rand.Rand, scene *Scene, tracerBundle SampleBundle,
 	alpha *Spectrum, wo Vector3, intersection *Intersection,
-	debugRecords *[]PathTracerDebugRecord) (LeAlphaNext Spectrum) {
+	debugRecords *[]PathTracerDebugRecord) (wLeAlphaNext Spectrum) {
 	if len(scene.Lights) == 0 {
 		return
 	}
@@ -194,14 +235,24 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 
+	// TODO(akalin): Implement multiple importance sampling.
+	var invW float32 = 1
+	if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
+		invW++
+	}
+	weight := 1 / invW
+
+	var wLeDivPdf Spectrum
+	wLeDivPdf.Scale(&LeDivPdf, weight)
+
 	var fAlpha Spectrum
 	fAlpha.Mul(&f, alpha)
 
-	LeAlphaNext.Mul(&LeDivPdf, &fAlpha)
+	wLeAlphaNext.Mul(&wLeDivPdf, &fAlpha)
 
-	pt.recordLeAlphaDebugInfo(
-		edgeCount, &LeAlphaNext, &LeDivPdf, &fAlpha,
-		"Ld", "Ad", debugRecords)
+	pt.recordWLeAlphaDebugInfo(
+		edgeCount, weight, &wLeAlphaNext, &LeDivPdf,
+		&fAlpha, "Ld", "Ad", debugRecords)
 	return
 }
 
@@ -213,7 +264,7 @@ func (pt *PathTracer) SampleSensorPath(
 	sensorBundle, tracerBundle SampleBundle, WeLiDivPdf *Spectrum,
 	debugRecords *[]PathTracerDebugRecord) {
 	*WeLiDivPdf = Spectrum{}
-	if pt.maxEdgeCount <= 0 {
+	if !pt.hasSomethingToDo() {
 		return
 	}
 
@@ -256,26 +307,22 @@ func (pt *PathTracer) SampleSensorPath(
 		var wo Vector3
 		wo.Flip(&ray.D)
 
-		// Always calculate emitted light for the first edge
-		// since direct lighting does not handle it.
-		if edgeCount == 1 ||
-			pt.pathType == PATH_TRACER_EMITTED_LIGHT_PATH {
-			Le := intersection.ComputeLe(wo)
-			if !Le.IsValid() {
-				fmt.Printf("Invalid Le %v returned for "+
+		// NOTE: If emitted light paths are turned off, then
+		// no light will reach the sensor directly from the
+		// light (since direct lighting doesn't handle the
+		// first edge).
+		if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
+			wLeAlpha := pt.computeEmittedLight(
+				edgeCount, &alpha, wo, &intersection,
+				debugRecords)
+			if !wLeAlpha.IsValid() {
+				fmt.Printf("Invalid wLeAlpha %v returned for "+
 					"intersection %v and wo %v\n",
-					Le, intersection, wo)
-				Le = Spectrum{}
+					wLeAlpha, intersection, wo)
+				wLeAlpha = Spectrum{}
 			}
 
-			var LeAlpha Spectrum
-			LeAlpha.Mul(&Le, &alpha)
-
-			pt.recordLeAlphaDebugInfo(
-				edgeCount, &LeAlpha, &Le, &alpha,
-				"Le", "Ae", debugRecords)
-
-			WeLiDivPdf.Add(WeLiDivPdf, &LeAlpha)
+			WeLiDivPdf.Add(WeLiDivPdf, &wLeAlpha)
 		}
 
 		if edgeCount >= pt.maxEdgeCount {
@@ -284,18 +331,18 @@ func (pt *PathTracer) SampleSensorPath(
 
 		// Don't sample direct lighting for the last edge,
 		// since the process adds an extra edge.
-		if pt.pathType == PATH_TRACER_DIRECT_LIGHTING_PATH {
-			LeAlphaNext := pt.sampleDirectLighting(
+		if (pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0 {
+			wLeAlphaNext := pt.sampleDirectLighting(
 				edgeCount, rng, scene, tracerBundle,
 				&alpha, wo, &intersection, debugRecords)
-			if !LeAlphaNext.IsValid() {
-				fmt.Printf("Invalid LeAlphaNext %v returned "+
+			if !wLeAlphaNext.IsValid() {
+				fmt.Printf("Invalid wLeAlphaNext %v returned "+
 					"for intersection %v and wo %v\n",
-					LeAlphaNext, intersection, wo)
-				LeAlphaNext = Spectrum{}
+					wLeAlphaNext, intersection, wo)
+				wLeAlphaNext = Spectrum{}
 			}
 
-			WeLiDivPdf.Add(WeLiDivPdf, &LeAlphaNext)
+			WeLiDivPdf.Add(WeLiDivPdf, &wLeAlphaNext)
 		}
 
 		sampleIndex := edgeCount - 1

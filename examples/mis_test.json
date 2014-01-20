@@ -242,7 +242,7 @@
 
   "renderer": {
     "type": "PathTracingRenderer",
-    "pathType": "directLighting",
+    "pathTypes": [ "emittedLight", "directLighting" ],
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,
     "russianRouletteMaxProbability": 0.95,
