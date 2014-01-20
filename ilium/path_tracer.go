@@ -13,7 +13,9 @@ const (
 type PathTracerWeighingMethod int
 
 const (
-	PATH_TRACER_UNIFORM_WEIGHTS PathTracerWeighingMethod = iota
+	PATH_TRACER_UNIFORM_WEIGHTS  PathTracerWeighingMethod = iota
+	PATH_TRACER_BALANCED_WEIGHTS PathTracerWeighingMethod = iota
+	// TODO(akalin): Also support power heuristic (with beta=2).
 )
 
 type PathTracerRRContribution int
@@ -210,7 +212,9 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 }
 
 func (pt *PathTracer) computeEmittedLight(
-	edgeCount int, alpha *Spectrum, wo Vector3, intersection *Intersection,
+	edgeCount int, scene *Scene, alpha *Spectrum, bsdfPdfPrev float32,
+	pPrev Point3, pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
+	intersection *Intersection,
 	debugRecords *[]PathTracerDebugRecord) (wLeAlpha Spectrum) {
 	light := intersection.Light
 
@@ -224,7 +228,6 @@ func (pt *PathTracer) computeEmittedLight(
 		return
 	}
 
-	// TODO(akalin): Implement multiple importance sampling.
 	var invW float32 = 1
 	// No other path type handles the first edge.
 	if edgeCount > 1 &&
@@ -232,9 +235,22 @@ func (pt *PathTracer) computeEmittedLight(
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
+		case PATH_TRACER_BALANCED_WEIGHTS:
+			// TODO(akalin): Take Russian roulette
+			// probability into account.
+			pChooseLight := scene.ComputeLightPdf(light)
+			directLightingPdf :=
+				light.ComputeLePdfFromPoint(
+					pPrev, pEpsilonPrev, nPrev, wiPrev)
+			invW += pChooseLight * directLightingPdf / bsdfPdfPrev
 		}
 	}
 	w := 1 / invW
+	if !isFiniteFloat32(w) {
+		fmt.Printf("Invalid weight %v returned for intersection %v "+
+			"and wo %v\n", w, intersection, wo)
+		return
+	}
 
 	var wLe Spectrum
 	wLe.Scale(&Le, w)
@@ -263,6 +279,7 @@ func (pt *PathTracer) sampleDirectLighting(
 	light, pChooseLight := scene.SampleLight(u.U)
 
 	n := intersection.N
+	material := intersection.Material
 
 	LeDivPdf, pdf, wi, shadowRay := light.SampleLeFromPoint(
 		v.U, w.U1, w.U2, intersection.P, intersection.PEpsilon, n)
@@ -275,7 +292,7 @@ func (pt *PathTracer) sampleDirectLighting(
 		return
 	}
 
-	f := intersection.Material.ComputeF(wo, wi, n)
+	f := material.ComputeF(wo, wi, n)
 
 	if f.IsBlack() {
 		return
@@ -285,15 +302,24 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 
-	// TODO(akalin): Implement multiple importance sampling.
 	var invW float32 = 1
 	if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
+		case PATH_TRACER_BALANCED_WEIGHTS:
+			// TODO(akalin): Take Russian roulette
+			// probability into account.
+			emittedPdf := material.ComputePdf(wo, wi, n)
+			invW += emittedPdf / (pChooseLight * pdf)
 		}
 	}
 	weight := 1 / invW
+	if !isFiniteFloat32(weight) {
+		fmt.Printf("Invalid weight %v returned for intersection %v "+
+			"and wo %v\n", weight, intersection, wo)
+		return
+	}
 
 	var wLeDivPdf Spectrum
 	wLeDivPdf.Scale(&LeDivPdf, weight)
@@ -328,6 +354,13 @@ func (pt *PathTracer) SampleSensorPath(
 
 	wiSamples := tracerBundle.Samples2D[0]
 	ray := initialRay
+
+	// It's okay to leave n and bsdfPdfPrev uninitialized for the
+	// first iteration of the loop below since
+	// pt.computeEmittedLight() uses them only when edgeCount > 1.
+	var n Normal3
+	var bsdfPdfPrev float32
+
 	// alpha = We * T(path) / pdf.
 	alpha := WeDivPdf
 	albedo := WeDivPdf
@@ -366,7 +399,8 @@ func (pt *PathTracer) SampleSensorPath(
 		// first edge).
 		if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
 			wLeAlpha := pt.computeEmittedLight(
-				edgeCount, &alpha, wo, &intersection,
+				edgeCount, scene, &alpha, bsdfPdfPrev, ray.O,
+				ray.MinT, n, ray.D, wo, &intersection,
 				debugRecords)
 			if !wLeAlpha.IsValid() {
 				fmt.Printf("Invalid wLeAlpha %v returned for "+
@@ -416,6 +450,8 @@ func (pt *PathTracer) SampleSensorPath(
 			intersection.P, wi,
 			intersection.PEpsilon, infFloat32(+1),
 		}
+		n = intersection.N
+		bsdfPdfPrev = pdf
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
