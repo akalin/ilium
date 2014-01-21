@@ -13,9 +13,8 @@ const (
 type PathTracerWeighingMethod int
 
 const (
-	PATH_TRACER_UNIFORM_WEIGHTS  PathTracerWeighingMethod = iota
-	PATH_TRACER_BALANCED_WEIGHTS PathTracerWeighingMethod = iota
-	// TODO(akalin): Also support power heuristic (with beta=2).
+	PATH_TRACER_UNIFORM_WEIGHTS PathTracerWeighingMethod = iota
+	PATH_TRACER_POWER_WEIGHTS   PathTracerWeighingMethod = iota
 )
 
 type PathTracerRRContribution int
@@ -35,6 +34,7 @@ const (
 type PathTracer struct {
 	pathTypes                     PathTracerPathType
 	weighingMethod                PathTracerWeighingMethod
+	beta                          float32
 	russianRouletteContribution   PathTracerRRContribution
 	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
@@ -52,7 +52,7 @@ type PathTracerDebugRecord struct {
 
 func (pt *PathTracer) InitializePathTracer(
 	pathTypes PathTracerPathType,
-	weighingMethod PathTracerWeighingMethod,
+	weighingMethod PathTracerWeighingMethod, beta float32,
 	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
@@ -60,6 +60,7 @@ func (pt *PathTracer) InitializePathTracer(
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
 	pt.weighingMethod = weighingMethod
+	pt.beta = beta
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
@@ -259,13 +260,15 @@ func (pt *PathTracer) computeEmittedLight(
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
-		case PATH_TRACER_BALANCED_WEIGHTS:
+		case PATH_TRACER_POWER_WEIGHTS:
 			pChooseLight := scene.ComputeLightPdf(light)
 			directLightingPdf :=
 				light.ComputeLePdfFromPoint(
 					pPrev, pEpsilonPrev, nPrev, wiPrev)
-			invW += pChooseLight * directLightingPdf /
-				continueBsdfPdfPrev
+			pdfRatio :=
+				pChooseLight * directLightingPdf /
+					continueBsdfPdfPrev
+			invW += powFloat32(pdfRatio, pt.beta)
 		}
 	}
 	w := 1 / invW
@@ -330,11 +333,13 @@ func (pt *PathTracer) sampleDirectLighting(
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
-		case PATH_TRACER_BALANCED_WEIGHTS:
+		case PATH_TRACER_POWER_WEIGHTS:
 			emittedPdf := material.ComputePdf(wo, wi, n)
 			pContinue := pt.getContinueProbabilityFromIntersection(
 				edgeCount-1, alpha, &f, emittedPdf)
-			invW += (pContinue * emittedPdf) / (pChooseLight * pdf)
+			pdfRatio :=
+				(pContinue * emittedPdf) / (pChooseLight * pdf)
+			invW += powFloat32(pdfRatio, pt.beta)
 		}
 	}
 	weight := 1 / invW
