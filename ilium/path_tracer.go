@@ -130,16 +130,40 @@ func (pt *PathTracer) getContinueProbability(i int, t *Spectrum) float32 {
 		return 1
 	}
 
+	var pContinueRaw float32
 	switch pt.russianRouletteMethod {
 	case RUSSIAN_ROULETTE_FIXED:
-		return pt.russianRouletteMaxProbability
+		pContinueRaw = pt.russianRouletteMaxProbability
 	case RUSSIAN_ROULETTE_PROPORTIONAL:
-		return minFloat32(
+		pContinueRaw = minFloat32(
 			pt.russianRouletteMaxProbability,
 			t.Y()/pt.russianRouletteDelta)
+	default:
+		panic(fmt.Sprintf("unknown Russian roulette method %d",
+			pt.russianRouletteMethod))
 	}
-	panic(fmt.Sprintf("unknown Russian roulette method %d",
-		pt.russianRouletteMethod))
+
+	return minFloat32(1, maxFloat32(0, pContinueRaw))
+}
+
+func (pt *PathTracer) getContinueProbabilityFromIntersection(
+	edgeCount int, alpha, f *Spectrum, fPdf float32) float32 {
+	if edgeCount < pt.russianRouletteStartIndex || fPdf == 0 {
+		return 1
+	}
+
+	var t Spectrum
+	if pt.russianRouletteMethod != RUSSIAN_ROULETTE_FIXED {
+		var albedo Spectrum
+		albedo.ScaleInv(f, fPdf)
+		switch pt.russianRouletteContribution {
+		case PATH_TRACER_RR_ALPHA:
+			t.Mul(alpha, &albedo)
+		case PATH_TRACER_RR_ALBEDO:
+			t = albedo
+		}
+	}
+	return pt.getContinueProbability(edgeCount, &t)
 }
 
 func (pt *PathTracer) recordWLeAlphaDebugInfo(
@@ -212,9 +236,9 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 }
 
 func (pt *PathTracer) computeEmittedLight(
-	edgeCount int, scene *Scene, alpha *Spectrum, bsdfPdfPrev float32,
-	pPrev Point3, pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
-	intersection *Intersection,
+	edgeCount int, scene *Scene, alpha *Spectrum,
+	continueBsdfPdfPrev float32, pPrev Point3, pEpsilonPrev float32,
+	nPrev Normal3, wiPrev, wo Vector3, intersection *Intersection,
 	debugRecords *[]PathTracerDebugRecord) (wLeAlpha Spectrum) {
 	light := intersection.Light
 
@@ -236,13 +260,12 @@ func (pt *PathTracer) computeEmittedLight(
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
 		case PATH_TRACER_BALANCED_WEIGHTS:
-			// TODO(akalin): Take Russian roulette
-			// probability into account.
 			pChooseLight := scene.ComputeLightPdf(light)
 			directLightingPdf :=
 				light.ComputeLePdfFromPoint(
 					pPrev, pEpsilonPrev, nPrev, wiPrev)
-			invW += pChooseLight * directLightingPdf / bsdfPdfPrev
+			invW += pChooseLight * directLightingPdf /
+				continueBsdfPdfPrev
 		}
 	}
 	w := 1 / invW
@@ -306,10 +329,10 @@ func (pt *PathTracer) sampleDirectLighting(
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
 		case PATH_TRACER_BALANCED_WEIGHTS:
-			// TODO(akalin): Take Russian roulette
-			// probability into account.
 			emittedPdf := material.ComputePdf(wo, wi, n)
-			invW += emittedPdf / (pChooseLight * pdf)
+			pContinue := pt.getContinueProbabilityFromIntersection(
+				edgeCount-1, alpha, &f, emittedPdf)
+			invW += (pContinue * emittedPdf) / (pChooseLight * pdf)
 		}
 	}
 	weight := 1 / invW
@@ -353,11 +376,11 @@ func (pt *PathTracer) SampleSensorPath(
 	wiSamples := tracerBundle.Samples2D[0]
 	ray := initialRay
 
-	// It's okay to leave n and bsdfPdfPrev uninitialized for the
-	// first iteration of the loop below since
+	// It's okay to leave n and continueBsdfPdfPrev uninitialized
+	// for the first iteration of the loop below since
 	// pt.computeEmittedLight() uses them only when edgeCount > 1.
 	var n Normal3
-	var bsdfPdfPrev float32
+	var continueBsdfPdfPrev float32
 
 	// alpha = We * T(path) / pdf.
 	alpha := WeDivPdf
@@ -397,8 +420,8 @@ func (pt *PathTracer) SampleSensorPath(
 		// first edge).
 		if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
 			wLeAlpha := pt.computeEmittedLight(
-				edgeCount, scene, &alpha, bsdfPdfPrev, ray.O,
-				ray.MinT, n, ray.D, wo, &intersection,
+				edgeCount, scene, &alpha, continueBsdfPdfPrev,
+				ray.O, ray.MinT, n, ray.D, wo, &intersection,
 				debugRecords)
 			if !wLeAlpha.IsValid() {
 				fmt.Printf("Invalid wLeAlpha %v returned for "+
@@ -449,7 +472,7 @@ func (pt *PathTracer) SampleSensorPath(
 			intersection.PEpsilon, infFloat32(+1),
 		}
 		n = intersection.N
-		bsdfPdfPrev = pdf
+		continueBsdfPdfPrev = pContinue * pdf
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
