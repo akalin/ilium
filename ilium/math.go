@@ -17,6 +17,15 @@ func minInt(x, y int) int {
 	return y
 }
 
+// Returns the number of decimal digits in n.
+func widthInt(n int) int {
+	width := 1
+	if n < -9 || n > 9 {
+		width = int(math.Floor(math.Log10(math.Abs(float64(n))) + 1))
+	}
+	return width
+}
+
 // float32 equivalents of math functions.
 
 func absFloat32(x float32) float32 {
