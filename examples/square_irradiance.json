@@ -97,6 +97,7 @@
   "renderer": {
     "type": "PathTracingRenderer",
     "pathTypes": [ "emittedLight", "directLighting" ],
+    "weighingMethod": "uniform",
     "russianRouletteMethod": "fixed",
     "russianRouletteStartIndex": 2,
     "russianRouletteMaxProbability": 1,

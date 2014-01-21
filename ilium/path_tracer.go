@@ -10,6 +10,12 @@ const (
 	PATH_TRACER_DIRECT_LIGHTING_PATH PathTracerPathType = 1 << iota
 )
 
+type PathTracerWeighingMethod int
+
+const (
+	PATH_TRACER_UNIFORM_WEIGHTS PathTracerWeighingMethod = iota
+)
+
 type PathTracerRRContribution int
 
 const (
@@ -26,6 +32,7 @@ const (
 
 type PathTracer struct {
 	pathTypes                     PathTracerPathType
+	weighingMethod                PathTracerWeighingMethod
 	russianRouletteContribution   PathTracerRRContribution
 	russianRouletteMethod         RussianRouletteMethod
 	russianRouletteStartIndex     int
@@ -43,12 +50,14 @@ type PathTracerDebugRecord struct {
 
 func (pt *PathTracer) InitializePathTracer(
 	pathTypes PathTracerPathType,
+	weighingMethod PathTracerWeighingMethod,
 	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability, russianRouletteDelta float32,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
+	pt.weighingMethod = weighingMethod
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
 	pt.russianRouletteStartIndex = russianRouletteStartIndex
@@ -214,7 +223,10 @@ func (pt *PathTracer) computeEmittedLight(
 	// No other path type handles the first edge.
 	if edgeCount > 1 &&
 		((pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0) {
-		invW++
+		switch pt.weighingMethod {
+		case PATH_TRACER_UNIFORM_WEIGHTS:
+			invW++
+		}
 	}
 	w := 1 / invW
 
@@ -270,7 +282,10 @@ func (pt *PathTracer) sampleDirectLighting(
 	// TODO(akalin): Implement multiple importance sampling.
 	var invW float32 = 1
 	if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
-		invW++
+		switch pt.weighingMethod {
+		case PATH_TRACER_UNIFORM_WEIGHTS:
+			invW++
+		}
 	}
 	weight := 1 / invW
 

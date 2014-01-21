@@ -29,6 +29,15 @@ func MakePathTracingRenderer(
 		pathTypes |= pathType
 	}
 
+	weighingMethodConfig := config["weighingMethod"].(string)
+	var weighingMethod PathTracerWeighingMethod
+	switch weighingMethodConfig {
+	case "uniform":
+		weighingMethod = PATH_TRACER_UNIFORM_WEIGHTS
+	default:
+		panic("unknown weighing method " + weighingMethodConfig)
+	}
+
 	var russianRouletteContribution PathTracerRRContribution
 	if russianRouletteContributionConfig, ok :=
 		config["russianRouletteContribution"].(string); ok {
@@ -95,7 +104,7 @@ func MakePathTracingRenderer(
 		sampler:      sampler,
 	}
 	ptr.pathTracer.InitializePathTracer(
-		pathTypes, russianRouletteContribution,
+		pathTypes, weighingMethod, russianRouletteContribution,
 		russianRouletteMethod, russianRouletteStartIndex,
 		russianRouletteMaxProbability, russianRouletteDelta,
 		maxEdgeCount, debugLevel, debugMaxEdgeCount)
