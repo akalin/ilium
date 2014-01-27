@@ -20,6 +20,11 @@ func (se *SensorExtent) GetSampleCount() int {
 	return se.GetPixelCount() * se.SamplesPerXY
 }
 
+func (se *SensorExtent) Contains(x, y float32) bool {
+	return x >= float32(se.XStart) && x < float32(se.XEnd) &&
+		y >= float32(se.YStart) && y < float32(se.YEnd)
+}
+
 type SensorExtentBlockOrder int
 
 const (

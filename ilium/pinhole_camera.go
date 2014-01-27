@@ -116,8 +116,7 @@ func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 	xC := 0.5*float32(pc.imageSensor.GetWidth()) - leftLength
 	yC := 0.5*float32(pc.imageSensor.GetHeight()) - upLength
 	extent := pc.GetExtent()
-	if xC >= float32(extent.XStart) && xC < float32(extent.XEnd) &&
-		yC >= float32(extent.YStart) && yC < float32(extent.YEnd) {
+	if extent.Contains(xC, yC) {
 		x = int(xC)
 		y = int(yC)
 		// To compute We, recall that We is set so that We/p = 1,
