@@ -1,15 +1,20 @@
 package ilium
 
 type ThinLensCamera struct {
+	imageSensor *ImageSensor
 }
 
 func MakeThinLensCamera(
 	config map[string]interface{}, shapes []Shape) *ThinLensCamera {
-	return &ThinLensCamera{}
+	imageSensor := MakeImageSensor(config)
+
+	return &ThinLensCamera{
+		imageSensor: imageSensor,
+	}
 }
 
 func (tlc *ThinLensCamera) GetExtent() SensorExtent {
-	return SensorExtent{}
+	return tlc.imageSensor.GetExtent()
 }
 
 func (tlc *ThinLensCamera) GetSampleConfig() SampleConfig {
@@ -35,25 +40,32 @@ func (tlc *ThinLensCamera) ComputePixelPositionAndWe(
 
 func (tlc *ThinLensCamera) AccumulateSensorContribution(
 	x, y int, WeLiDivPdf Spectrum) {
+	tlc.imageSensor.AccumulateSensorContribution(x, y, WeLiDivPdf)
 }
 
 func (tlc *ThinLensCamera) AccumulateSensorDebugInfo(
 	tag string, x, y int, s Spectrum) {
+	tlc.imageSensor.AccumulateSensorDebugInfo(tag, x, y, s)
 }
 
 func (tlc *ThinLensCamera) RecordAccumulatedSensorContributions(x, y int) {
+	tlc.imageSensor.RecordAccumulatedSensorContributions(x, y)
 }
 
 func (tlc *ThinLensCamera) AccumulateLightContribution(
 	x, y int, WeLiDivPdf Spectrum) {
+	tlc.imageSensor.AccumulateLightContribution(x, y, WeLiDivPdf)
 }
 
 func (tlc *ThinLensCamera) AccumulateLightDebugInfo(
 	tag string, x, y int, s Spectrum) {
+	tlc.imageSensor.AccumulateLightDebugInfo(tag, x, y, s)
 }
 
 func (tlc *ThinLensCamera) RecordAccumulatedLightContributions() {
+	tlc.imageSensor.RecordAccumulatedLightContributions()
 }
 
 func (tlc *ThinLensCamera) EmitSignal(outputDir, outputExt string) {
+	tlc.imageSensor.EmitSignal(outputDir, outputExt)
 }
