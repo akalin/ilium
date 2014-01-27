@@ -1,15 +1,67 @@
 package ilium
 
+import "math"
+
 type ThinLensCamera struct {
-	imageSensor *ImageSensor
+	imageSensor      *ImageSensor
+	disk             *Disk
+	leftHat          Vector3
+	upHat            Vector3
+	backFocalLength  float32
+	frontFocalLength float32
 }
 
 func MakeThinLensCamera(
 	config map[string]interface{}, shapes []Shape) *ThinLensCamera {
+	if len(shapes) != 1 {
+		panic("Thin lens camera must have exactly one Disk shape")
+	}
+	disk, ok := shapes[0].(*Disk)
+	if !ok {
+		panic("Thin lens camera must have exactly one Disk shape")
+	}
+
 	imageSensor := MakeImageSensor(config)
 
+	up := MakeVector3FromConfig(config["up"])
+
+	nLens := Vector3(disk.GetNormal())
+
+	// Assume nLens is constant and use it to build a coordinate
+	// system.
+
+	var leftHat Vector3
+	leftHat.CrossNoAlias(&up, &nLens)
+	leftHat.Normalize(&leftHat)
+
+	var upHat Vector3
+	upHat.CrossNoAlias(&nLens, &leftHat)
+
+	fov := float32(config["fov"].(float64))
+	fovRadians := fov * (math.Pi / 180)
+	width := imageSensor.GetWidth()
+	height := imageSensor.GetHeight()
+	var maxDimension float32
+	if width > height {
+		maxDimension = float32(width)
+	} else {
+		maxDimension = float32(height)
+	}
+	// The distance from the aperture center to the imaginary
+	// image plane behind the aperture (i.e., along -nLens).
+	backFocalLength := 0.5 * maxDimension / tanFloat32(0.5*fovRadians)
+
+	// The distance from the aperture center to the plane of focus
+	// in front of the aperture (i.e., along +nLens).
+	frontFocalLength := float32(config["frontFocalLength"].(float64))
+
 	return &ThinLensCamera{
-		imageSensor: imageSensor,
+		imageSensor:      imageSensor,
+		disk:             disk,
+		leftHat:          leftHat,
+		upHat:            upHat,
+		backFocalLength:  backFocalLength,
+		frontFocalLength: frontFocalLength,
 	}
 }
 

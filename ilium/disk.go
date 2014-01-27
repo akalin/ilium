@@ -23,6 +23,14 @@ func MakeDisk(config map[string]interface{}) *Disk {
 	return &Disk{center, i, j, k, radius}
 }
 
+func (d *Disk) GetCenter() Point3 {
+	return d.center
+}
+
+func (d *Disk) GetNormal() Normal3 {
+	return Normal3(d.k)
+}
+
 func (d *Disk) Intersect(ray *Ray, intersection *Intersection) bool {
 	dZ := ((*R3)(&ray.D)).Dot(&d.k)
 	if absFloat32(dZ) < 1e-7 {
