@@ -191,6 +191,8 @@ func MakeSensor(config map[string]interface{}, shapes []Shape) Sensor {
 		return MakeFluxMeter(config, shapes)
 	case "PinholeCamera":
 		return MakePinholeCamera(config, shapes)
+	case "ThinLensCamera":
+		return MakeThinLensCamera(config, shapes)
 	default:
 		panic("unknown sensor type " + sensorType)
 	}
