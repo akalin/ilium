@@ -98,6 +98,18 @@ func (tlc *ThinLensCamera) xyToWc(xC, yC float32, nLens *Normal3) Vector3 {
 	return wc
 }
 
+func (tlc *ThinLensCamera) wcToXy(wc *Vector3, cosThC float32) (
+	xC, yC float32) {
+	// Reflect wc backwards across the aperture center to the
+	// imaginary image plane.
+	s := tlc.backFocalLength / cosThC
+	leftLength := s * wc.Dot(&tlc.leftHat)
+	upLength := s * wc.Dot(&tlc.upHat)
+	xC = 0.5*float32(tlc.imageSensor.GetWidth()) - leftLength
+	yC = 0.5*float32(tlc.imageSensor.GetHeight()) - upLength
+	return
+}
+
 func (tlc *ThinLensCamera) wcToWo(
 	wc *Vector3, pLens *Point3, nLens *Normal3) Vector3 {
 	// Find the point on the plane of focus.
@@ -110,6 +122,20 @@ func (tlc *ThinLensCamera) wcToWo(
 	var wo Vector3
 	_ = wo.GetDirectionAndDistance(pLens, &pFocus)
 	return wo
+}
+
+func (tlc *ThinLensCamera) woToWc(
+	wo *Vector3, pLens *Point3, nLens *Normal3) Vector3 {
+	// Find the point on the plane of focus.
+	var pFocus Point3
+	var w Vector3
+	w.Scale(wo, tlc.frontFocalLength/wo.DotNormal(nLens))
+	pFocus.Shift(pLens, &w)
+
+	var wc Vector3
+	center := tlc.disk.GetCenter()
+	_ = wc.GetDirectionAndDistance(&center, &pFocus)
+	return wc
 }
 
 func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
@@ -142,6 +168,28 @@ func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 func (tlc *ThinLensCamera) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
+	nLens := tlc.disk.GetNormal()
+	wc := tlc.woToWc(&wo, &pSurface, &nLens)
+	cosThC := wc.DotNormal(&nLens)
+	if cosThC < PDF_COS_THETA_EPSILON {
+		return
+	}
+
+	xC, yC := tlc.wcToXy(&wc, cosThC)
+	extent := tlc.GetExtent()
+	if extent.Contains(xC, yC) {
+		x = int(xC)
+		y = int(yC)
+		// This calculation is similar to the one in
+		// PinholeCamera.SamplePixelPositionAndWeFromPoint(),
+		// except now there's an extra term in the pdf for
+		// sampling the point on the lens surface.
+		We = MakeConstantSpectrum(
+			(tlc.backFocalLength * tlc.backFocalLength) /
+				(tlc.disk.SurfaceArea() * cosThC *
+					cosThC * cosThC * cosThC))
+	}
+
 	return
 }
 
