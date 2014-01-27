@@ -78,11 +78,58 @@ func (tlc *ThinLensCamera) GetExtent() SensorExtent {
 }
 
 func (tlc *ThinLensCamera) GetSampleConfig() SampleConfig {
-	return SampleConfig{}
+	return SampleConfig{
+		Sample1DLengths: []int{},
+		Sample2DLengths: []int{2},
+	}
+}
+
+func (tlc *ThinLensCamera) xyToWc(xC, yC float32, nLens *Normal3) Vector3 {
+	leftLength := 0.5*float32(tlc.imageSensor.GetWidth()) - xC
+	upLength := 0.5*float32(tlc.imageSensor.GetHeight()) - yC
+
+	// Reflect the vector {backFocalLength, leftLength, upLength}
+	// to the imaginary image plane across the aperture center.
+	v := R3{tlc.backFocalLength, leftLength, upLength}
+	var wc Vector3
+	((*R3)(&wc)).ConvertToCoordinateSystemNoAlias(
+		&v, (*R3)(nLens), (*R3)(&tlc.leftHat), (*R3)(&tlc.upHat))
+	wc.Normalize(&wc)
+	return wc
+}
+
+func (tlc *ThinLensCamera) wcToWo(
+	wc *Vector3, pLens *Point3, nLens *Normal3) Vector3 {
+	// Find the point on the plane of focus.
+	var pFocus Point3
+	var w Vector3
+	w.Scale(wc, tlc.frontFocalLength/wc.DotNormal(nLens))
+	center := tlc.disk.GetCenter()
+	pFocus.Shift(&center, &w)
+
+	var wo Vector3
+	_ = wo.GetDirectionAndDistance(pLens, &pFocus)
+	return wo
 }
 
 func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	ray Ray, WeDivPdf Spectrum) {
+	samples := sampleBundle.Samples2D[0]
+
+	// Find the point on the lens.
+	// TODO(akalin): Use concentric sampling.
+	pLens, pLensEpsilon, nLens, _ :=
+		tlc.disk.SampleSurface(samples[0].U1, samples[0].U2)
+
+	xC := float32(x) + samples[1].U1
+	yC := float32(y) + samples[1].U2
+	wc := tlc.xyToWc(xC, yC, &nLens)
+	wo := tlc.wcToWo(&wc, &pLens, &nLens)
+
+	ray = Ray{pLens, wo, pLensEpsilon, infFloat32(+1)}
+	// There's a bit of subtlety here; the pdf isn't trivial, but
+	// We is set so that We/pdf = 1.
+	WeDivPdf = MakeConstantSpectrum(1)
 	return
 }
 
