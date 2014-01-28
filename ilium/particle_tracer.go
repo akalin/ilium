@@ -6,8 +6,8 @@ import "math/rand"
 type ParticleTracerPathType int
 
 const (
-	PARTICLE_TRACER_EMITTED_W_PATH     ParticleTracerPathType = iota
-	PARTICLE_TRACER_DIRECT_SENSOR_PATH ParticleTracerPathType = iota
+	PARTICLE_TRACER_EMITTED_W_PATH     ParticleTracerPathType = 1 << iota
+	PARTICLE_TRACER_DIRECT_SENSOR_PATH ParticleTracerPathType = 1 << iota
 )
 
 type ParticleTracerRRContribution int
@@ -38,7 +38,7 @@ func (pr *ParticleRecord) Accumulate() {
 }
 
 type ParticleTracer struct {
-	pathType                    ParticleTracerPathType
+	pathTypes                   ParticleTracerPathType
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
@@ -47,11 +47,11 @@ type ParticleTracer struct {
 }
 
 func (pt *ParticleTracer) InitializeParticleTracer(
-	pathType ParticleTracerPathType,
+	pathTypes ParticleTracerPathType,
 	russianRouletteContribution ParticleTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
-	pt.pathType = pathType
+	pt.pathTypes = pathTypes
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
@@ -59,8 +59,24 @@ func (pt *ParticleTracer) InitializeParticleTracer(
 	pt.debugMaxEdgeCount = debugMaxEdgeCount
 }
 
-func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
+func (pt *ParticleTracer) hasSomethingToDo() bool {
 	if pt.maxEdgeCount <= 0 {
+		return false
+	}
+
+	if (pt.pathTypes & PARTICLE_TRACER_EMITTED_W_PATH) != 0 {
+		return true
+	}
+
+	if (pt.pathTypes & PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 {
+		return true
+	}
+
+	return false
+}
+
+func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
+	if !pt.hasSomethingToDo() {
 		return SampleConfig{}
 	}
 
@@ -70,16 +86,13 @@ func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
 	// Sample wi for each interior vertex to build the next edge
 	// of the path.
 	numWiSamples := minInt(3, maxInteriorVertexCount)
-	switch pt.pathType {
-	case PARTICLE_TRACER_EMITTED_W_PATH:
-		return SampleConfig{
-			Sample1DLengths: []int{
-				// One to pick the light.
-				1,
-			},
-			Sample2DLengths: []int{numWiSamples},
-		}
-	case PARTICLE_TRACER_DIRECT_SENSOR_PATH:
+	sample1DLengths := []int{
+		// One to pick the light.
+		1,
+	}
+	sample2DLengths := []int{numWiSamples}
+
+	if (pt.pathTypes & PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 {
 		// Do direct sensor sampling for the first vertex and
 		// each interior vertex; don't do it from the last
 		// vertex since that would add an extra edge.
@@ -89,20 +102,20 @@ func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
 		for i := 0; i < len(directSensorSampleLengths); i++ {
 			directSensorSampleLengths[i] = numDirectSensorSamples
 		}
-		sample1DLengths := append(
-			[]int{1}, directSensorSampleLengths...)
-		sample2DLengths := append(
-			[]int{numWiSamples}, directSensorSampleLengths...)
-		return SampleConfig{
-			Sample1DLengths: sample1DLengths,
-			Sample2DLengths: sample2DLengths,
-		}
+		sample1DLengths = append(
+			sample1DLengths, directSensorSampleLengths...)
+		sample2DLengths = append(
+			sample2DLengths, directSensorSampleLengths...)
 	}
-	return SampleConfig{}
+
+	return SampleConfig{
+		Sample1DLengths: sample1DLengths,
+		Sample2DLengths: sample2DLengths,
+	}
 }
 
-func (pt *ParticleTracer) makeWeAlphaDebugRecords(
-	edgeCount int, sensor Sensor, WeAlpha, f1, f2 *Spectrum,
+func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
+	edgeCount int, sensor Sensor, w float32, wWeAlpha, f1, f2 *Spectrum,
 	f1Name, f2Name string) []ParticleDebugRecord {
 	var debugRecords []ParticleDebugRecord
 	if pt.debugLevel >= 1 {
@@ -117,8 +130,8 @@ func (pt *ParticleTracer) makeWeAlphaDebugRecords(
 		}
 
 		debugRecord := ParticleDebugRecord{
-			tag: "WA" + tagSuffix,
-			s:   *WeAlpha,
+			tag: "wWA" + tagSuffix,
+			s:   *wWeAlpha,
 		}
 		debugRecords = append(debugRecords, debugRecord)
 
@@ -168,16 +181,26 @@ func (pt *ParticleTracer) computeEmittedImportance(
 			continue
 		}
 
-		var WeAlpha Spectrum
-		WeAlpha.Mul(&We, alpha)
-		debugRecords := pt.makeWeAlphaDebugRecords(
-			edgeCount, sensor, &WeAlpha, &We, alpha,
-			"We", "Ae")
+		// TODO(akalin): Implement multiple importance sampling.
+		var invW float32 = 1
+		if (pt.pathTypes&PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 &&
+			!sensor.HasSpecularDirection() {
+			invW++
+		}
+		w := 1 / invW
+
+		var wWe Spectrum
+		wWe.Scale(&We, w)
+
+		var wWeAlpha Spectrum
+		wWeAlpha.Mul(&wWe, alpha)
+		debugRecords := pt.makeWWeAlphaDebugRecords(
+			edgeCount, sensor, w, &wWeAlpha, &We, alpha, "We", "Ae")
 		particleRecord := ParticleRecord{
 			sensor,
 			x,
 			y,
-			WeAlpha,
+			wWeAlpha,
 			debugRecords,
 		}
 		records = append(records, particleRecord)
@@ -225,19 +248,30 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		sensorEdgeCount := currentEdgeCount + 1
 
+		// TODO(akalin): Implement multiple importance sampling.
+		var invW float32 = 1
+		if (pt.pathTypes&PARTICLE_TRACER_EMITTED_W_PATH) != 0 &&
+			!sensor.HasSpecularPosition() {
+			invW++
+		}
+		w := 1 / invW
+
+		var wWeDivPdf Spectrum
+		wWeDivPdf.Scale(&WeDivPdf, w)
+
 		var fAlpha Spectrum
 		fAlpha.Mul(&f, alpha)
 
-		var WeAlphaNext Spectrum
-		WeAlphaNext.Mul(&WeDivPdf, &fAlpha)
-		debugRecords := pt.makeWeAlphaDebugRecords(
-			sensorEdgeCount, sensor, &WeAlphaNext, &WeDivPdf,
+		var wWeAlphaNext Spectrum
+		wWeAlphaNext.Mul(&wWeDivPdf, &fAlpha)
+		debugRecords := pt.makeWWeAlphaDebugRecords(
+			sensorEdgeCount, sensor, w, &wWeAlphaNext, &WeDivPdf,
 			&fAlpha, "Wd", "Ad")
 		particleRecord := ParticleRecord{
 			sensor,
 			x,
 			y,
-			WeAlphaNext,
+			wWeAlphaNext,
 			debugRecords,
 		}
 		records = append(records, particleRecord)
@@ -271,7 +305,7 @@ func (lm *lightMaterial) ComputePdf(transportType MaterialTransportType,
 func (pt *ParticleTracer) SampleLightPath(
 	rng *rand.Rand, scene *Scene, sensors []Sensor,
 	lightBundle, tracerBundle SampleBundle) []ParticleRecord {
-	if pt.maxEdgeCount <= 0 {
+	if !pt.hasSomethingToDo() {
 		return []ParticleRecord{}
 	}
 
@@ -289,7 +323,7 @@ func (pt *ParticleTracer) SampleLightPath(
 	var albedo Spectrum
 	var records []ParticleRecord
 
-	if pt.pathType == PARTICLE_TRACER_EMITTED_W_PATH {
+	if pt.pathTypes == PARTICLE_TRACER_EMITTED_W_PATH {
 		// No need to sample the spatial and directional
 		// components separately.
 		initialRay, LeDivPdf := light.SampleRay(lightBundle)
@@ -301,7 +335,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		ray = initialRay
 		alpha = LeDivPdf
 		albedo = LeDivPdf
-	} else {
+	} else if (pt.pathTypes & PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 {
 		pSurface, pSurfaceEpsilon, nSurface, LeSpatialDivPdf :=
 			light.SampleSurface(lightBundle)
 		if LeSpatialDivPdf.IsBlack() {
@@ -357,7 +391,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		var wo Vector3
 		wo.Flip(&ray.D)
 
-		if pt.pathType == PARTICLE_TRACER_EMITTED_W_PATH {
+		if (pt.pathTypes & PARTICLE_TRACER_EMITTED_W_PATH) != 0 {
 			records = pt.computeEmittedImportance(
 				edgeCount, &alpha, wo, &intersection,
 				records)
@@ -374,7 +408,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		// Don't direct-sample sensors for the last edge,
 		// since the process adds an extra edge.
-		if pt.pathType == PARTICLE_TRACER_DIRECT_SENSOR_PATH {
+		if (pt.pathTypes & PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 {
 			records = pt.directSampleSensors(
 				edgeCount, rng, scene, sensors, tracerBundle,
 				&alpha, p, pEpsilon, n, wo, material, records)
