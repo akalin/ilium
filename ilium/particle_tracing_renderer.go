@@ -13,15 +13,20 @@ type ParticleTracingRenderer struct {
 
 func MakeParticleTracingRenderer(
 	config map[string]interface{}) *ParticleTracingRenderer {
-	var pathType ParticleTracerPathType
-	pathTypeConfig := config["pathType"].(string)
-	switch pathTypeConfig {
-	case "emittedImportance":
-		pathType = PARTICLE_TRACER_EMITTED_W_PATH
-	case "directSensor":
-		pathType = PARTICLE_TRACER_DIRECT_SENSOR_PATH
-	default:
-		panic("unknown path type " + pathTypeConfig)
+	pathTypesConfig := config["pathTypes"].([]interface{})
+	var pathTypes ParticleTracerPathType
+	for _, pathTypeConfig := range pathTypesConfig {
+		pathTypeString := pathTypeConfig.(string)
+		var pathType ParticleTracerPathType
+		switch pathTypeConfig {
+		case "emittedImportance":
+			pathType = PARTICLE_TRACER_EMITTED_W_PATH
+		case "directSensor":
+			pathType = PARTICLE_TRACER_DIRECT_SENSOR_PATH
+		default:
+			panic("unknown path type " + pathTypeString)
+		}
+		pathTypes |= pathType
 	}
 
 	var russianRouletteContribution ParticleTracerRRContribution
@@ -69,7 +74,7 @@ func MakeParticleTracingRenderer(
 		sampler:      sampler,
 	}
 	ptr.particleTracer.InitializeParticleTracer(
-		pathType, russianRouletteContribution, russianRouletteState,
+		pathTypes, russianRouletteContribution, russianRouletteState,
 		maxEdgeCount, debugLevel, debugMaxEdgeCount)
 	return ptr
 }
