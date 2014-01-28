@@ -31,6 +31,14 @@ func MakeRadianceMeter(
 	}
 }
 
+func (rm *RadianceMeter) HasSpecularPosition() bool {
+	return true
+}
+
+func (rm *RadianceMeter) HasSpecularDirection() bool {
+	return true
+}
+
 func (rm *RadianceMeter) GetExtent() SensorExtent {
 	return SensorExtent{0, 1, 0, 1, rm.sampleCount}
 }

@@ -40,6 +40,14 @@ func MakeFluxMeter(config map[string]interface{}, shapes []Shape) *FluxMeter {
 	}
 }
 
+func (fm *FluxMeter) HasSpecularPosition() bool {
+	return false
+}
+
+func (fm *FluxMeter) HasSpecularDirection() bool {
+	return false
+}
+
 func (fm *FluxMeter) GetExtent() SensorExtent {
 	return SensorExtent{0, 1, 0, 1, fm.sampleCount}
 }
