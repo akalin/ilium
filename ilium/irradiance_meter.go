@@ -56,6 +56,14 @@ func MakeIrradianceMeter(
 	}
 }
 
+func (im *IrradianceMeter) HasSpecularPosition() bool {
+	return true
+}
+
+func (im *IrradianceMeter) HasSpecularDirection() bool {
+	return false
+}
+
 func (im *IrradianceMeter) GetExtent() SensorExtent {
 	return SensorExtent{0, 1, 0, 1, im.sampleCount}
 }

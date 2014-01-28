@@ -62,6 +62,14 @@ func MakePinholeCamera(
 	}
 }
 
+func (pc *PinholeCamera) HasSpecularPosition() bool {
+	return true
+}
+
+func (pc *PinholeCamera) HasSpecularDirection() bool {
+	return false
+}
+
 func (pc *PinholeCamera) GetExtent() SensorExtent {
 	return pc.imageSensor.GetExtent()
 }
