@@ -65,6 +65,14 @@ func MakeThinLensCamera(
 	}
 }
 
+func (tc *ThinLensCamera) HasSpecularPosition() bool {
+	return false
+}
+
+func (tc *ThinLensCamera) HasSpecularDirection() bool {
+	return false
+}
+
 func (tlc *ThinLensCamera) GetExtent() SensorExtent {
 	return tlc.imageSensor.GetExtent()
 }

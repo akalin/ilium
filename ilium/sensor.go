@@ -97,6 +97,14 @@ func (se *SensorExtent) Split(
 // radiometric quantities and convert them to a signal (e.g.,
 // cameras).
 type Sensor interface {
+	// Returns whether or not this sensor has a specular position
+	// (e.g., it consists of a single point).
+	HasSpecularPosition() bool
+
+	// Returns whether or not this sensor has a specular direction
+	// (e.g., it senses only from a single direction).
+	HasSpecularDirection() bool
+
 	// Returns this sensor's extent in pixel coordinates.
 	GetExtent() SensorExtent
 
