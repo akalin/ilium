@@ -162,6 +162,49 @@ func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	// Find the point on the lens.
+	// TODO(akalin): Use concentric sampling.
+	pLens, pLensEpsilon, nLens, _ := tlc.disk.SampleSurface(v1, v2)
+
+	var wo Vector3
+	r := wo.GetDirectionAndDistance(&pLens, &p)
+	cosThO := wo.DotNormal(&nLens)
+
+	wi.Flip(&wo)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+
+	wc := tlc.woToWc(&wo, &pLens, &nLens)
+	cosThC := wc.DotNormal(&nLens)
+
+	if absCosThI < PDF_COS_THETA_EPSILON ||
+		cosThO < PDF_COS_THETA_EPSILON ||
+		cosThC < PDF_COS_THETA_EPSILON ||
+		r < PDF_R_EPSILON {
+		return
+	}
+
+	xC, yC := tlc.wcToXy(&wc, cosThC)
+	extent := tlc.GetExtent()
+	if extent.Contains(xC, yC) {
+		x = int(xC)
+		y = int(yC)
+
+		// We = backFocalLength^2 / (Area(disk) * cos^4(thC))
+		// (see ComputePixelPositionAndWe() below).
+		//
+		// The pdf w.r.t. surface area is just 1 / Area(disk),
+		// so pdf = 1 / (Area(disk) * G(p <-> im.position)) =
+		// r^2 / (Area(disk) * |cos(thI) * cos(thO)|).
+		//
+		// Putting it all together, we get
+		// We/pdf = backFocalLength^2 * |cos(thI) * cos(thO)| /
+		//          (r^2 * cos^4(thC)).
+		WeDivPdf = MakeConstantSpectrum(
+			(tlc.backFocalLength * tlc.backFocalLength *
+				absCosThI * cosThO) /
+				(r * r * cosThC * cosThC * cosThC * cosThC))
+		shadowRay = Ray{p, wi, pEpsilon, r * (1 - pLensEpsilon)}
+	}
 	return
 }
 
