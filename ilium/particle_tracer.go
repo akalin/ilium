@@ -35,16 +35,18 @@ type ParticleTracer struct {
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
 	debugLevel                  int
+	debugMaxEdgeCount           int
 }
 
 func (pt *ParticleTracer) InitializeParticleTracer(
 	russianRouletteContribution ParticleTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
-	maxEdgeCount, debugLevel int) {
+	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
 	pt.debugLevel = debugLevel
+	pt.debugMaxEdgeCount = debugMaxEdgeCount
 }
 
 func (pt *ParticleTracer) GetSampleConfig() SampleConfig {
@@ -72,8 +74,15 @@ func (pt *ParticleTracer) makeWeAlphaDebugRecords(
 	f1Name, f2Name string) []ParticleDebugRecord {
 	var debugRecords []ParticleDebugRecord
 	if pt.debugLevel >= 1 {
-		width := widthInt(pt.maxEdgeCount)
-		tagSuffix := fmt.Sprintf("%0*d", width, edgeCount)
+		width := widthInt(pt.debugMaxEdgeCount)
+		var tagSuffix string
+		if edgeCount <= pt.debugMaxEdgeCount {
+			tagSuffix = fmt.Sprintf("%0*d", width, edgeCount)
+		} else {
+			tagSuffix = fmt.Sprintf(
+				"%0*d-%0*d", width, pt.debugMaxEdgeCount+1,
+				width, pt.maxEdgeCount)
+		}
 
 		debugRecord := ParticleDebugRecord{
 			tag: "WA" + tagSuffix,
