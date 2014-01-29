@@ -138,7 +138,8 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 }
 
 func (pc *PinholeCamera) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
-	pc.image.RecordContribution(x, y, WeLiDivPdf)
+	pc.image.AccumulateContribution(x, y, WeLiDivPdf)
+	pc.image.RecordAccumulatedContribution(x, y)
 }
 
 func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {

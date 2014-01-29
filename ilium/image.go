@@ -108,12 +108,16 @@ func (im *Image) getPixel(x, y int) *pixel {
 	return &im.pixels[k]
 }
 
-func (im *Image) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
+func (im *Image) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	if !WeLiDivPdf.IsValid() {
 		panic(fmt.Sprintf("Invalid WeLiDivPdf %v", WeLiDivPdf))
 	}
 	p := im.getPixel(x, y)
 	p.sum.Add(&p.sum, &WeLiDivPdf)
+}
+
+func (im *Image) RecordAccumulatedContribution(x, y int) {
+	p := im.getPixel(x, y)
 	p.n++
 }
 
