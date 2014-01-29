@@ -83,8 +83,11 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
-func (fm *FluxMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
+func (fm *FluxMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	fm.estimator.AccumulateSample(WeLiDivPdf)
+}
+
+func (fm *FluxMeter) RecordAccumulatedContribution(x, y int) {
 	fm.estimator.AddAccumulatedSample()
 }
 

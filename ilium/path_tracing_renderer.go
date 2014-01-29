@@ -182,9 +182,11 @@ func (ptr *PathTracingRenderer) processSensor(
 			block.blockNumber+1, numBlocks)
 		pathRecords := processedBlock.pathRecords
 		for i := 0; i < len(pathRecords); i++ {
-			sensor.RecordContribution(
+			sensor.AccumulateContribution(
 				pathRecords[i].x, pathRecords[i].y,
 				pathRecords[i]._WeLiDivPdf)
+			sensor.RecordAccumulatedContribution(
+				pathRecords[i].x, pathRecords[i].y)
 		}
 	}
 

@@ -47,8 +47,11 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
-func (rm *RadianceMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
+func (rm *RadianceMeter) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	rm.estimator.AccumulateSample(WeLiDivPdf)
+}
+
+func (rm *RadianceMeter) RecordAccumulatedContribution(x, y int) {
 	rm.estimator.AddAccumulatedSample()
 }
 

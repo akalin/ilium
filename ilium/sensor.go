@@ -105,9 +105,13 @@ type Sensor interface {
 	SampleRay(x, y int, sampleBundle SampleBundle) (
 		ray Ray, WeDivPdf Spectrum)
 
-	// Records the given pdf-weighted contribution for the given
-	// pixel coordinates.
-	RecordContribution(x, y int, WeLiDivPdf Spectrum)
+	// Accumulates (but does not record) the given pdf-weighted
+	// contribution for the given pixel coordinates.
+	AccumulateContribution(x, y int, WeLiDivPdf Spectrum)
+
+	// Records the accumulated pdf-weighted contribution for the
+	// given pixel coordinates.
+	RecordAccumulatedContribution(x, y int)
 
 	// Converts the recorded samples to a signal and emit it
 	// (e.g., write it to a file). outputDir, if non-empty, is the
