@@ -33,6 +33,7 @@ type PathTracer struct {
 	russianRouletteDelta          float32
 	maxEdgeCount                  int
 	debugLevel                    int
+	debugMaxEdgeCount             int
 }
 
 type PathTracerDebugRecord struct {
@@ -46,7 +47,7 @@ func (pt *PathTracer) InitializePathTracer(
 	russianRouletteMethod RussianRouletteMethod,
 	russianRouletteStartIndex int,
 	russianRouletteMaxProbability, russianRouletteDelta float32,
-	maxEdgeCount, debugLevel int) {
+	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathType = pathType
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteMethod = russianRouletteMethod
@@ -55,6 +56,7 @@ func (pt *PathTracer) InitializePathTracer(
 	pt.russianRouletteDelta = russianRouletteDelta
 	pt.maxEdgeCount = maxEdgeCount
 	pt.debugLevel = debugLevel
+	pt.debugMaxEdgeCount = debugMaxEdgeCount
 }
 
 func (pt *PathTracer) GetSampleConfig() SampleConfig {
@@ -119,8 +121,15 @@ func (pt *PathTracer) recordLeAlphaDebugInfo(
 	edgeCount int, LeAlpha, f1, f2 *Spectrum, f1Name, f2Name string,
 	debugRecords *[]PathTracerDebugRecord) {
 	if pt.debugLevel >= 1 {
-		width := widthInt(pt.maxEdgeCount)
-		tagSuffix := fmt.Sprintf("%0*d", width, edgeCount)
+		width := widthInt(pt.debugMaxEdgeCount)
+		var tagSuffix string
+		if edgeCount <= pt.debugMaxEdgeCount {
+			tagSuffix = fmt.Sprintf("%0*d", width, edgeCount)
+		} else {
+			tagSuffix = fmt.Sprintf(
+				"%0*d-%0*d", width, pt.debugMaxEdgeCount+1,
+				width, pt.maxEdgeCount)
+		}
 
 		debugRecord := PathTracerDebugRecord{
 			Tag: "LA" + tagSuffix,
@@ -311,11 +320,10 @@ func (pt *PathTracer) SampleSensorPath(
 	}
 
 	if pt.debugLevel >= 1 {
-		n := MakeConstantSpectrum(
-			float32(edgeCount) / float32(pt.maxEdgeCount))
+		n := float32(edgeCount) / float32(pt.maxEdgeCount)
 		debugRecord := PathTracerDebugRecord{
 			Tag: "n",
-			S:   n,
+			S:   MakeConstantSpectrum(n),
 		}
 		*debugRecords = append(*debugRecords, debugRecord)
 	}
