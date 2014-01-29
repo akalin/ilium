@@ -91,7 +91,8 @@ func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 }
 
 func (im *IrradianceMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
-	im.estimator.AddSample(WeLiDivPdf)
+	im.estimator.AccumulateSample(WeLiDivPdf)
+	im.estimator.AddAccumulatedSample()
 }
 
 func (im *IrradianceMeter) EmitSignal(outputDir, outputExt string) {
