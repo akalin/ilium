@@ -38,6 +38,13 @@ func MakeParticleTracingRenderer(
 		debugLevel = int(debugLevelConfig.(float64))
 	}
 
+	var debugMaxEdgeCount int
+	if debugMaxEdgeCountConfig, ok := config["debugMaxEdgeCount"]; ok {
+		debugMaxEdgeCount = int(debugMaxEdgeCountConfig.(float64))
+	} else {
+		debugMaxEdgeCount = 10
+	}
+
 	var emitInterval int
 	if emitIntervalConfig, ok := config["emitInterval"]; ok {
 		emitInterval = int(emitIntervalConfig.(float64))
@@ -52,7 +59,7 @@ func MakeParticleTracingRenderer(
 	}
 	ptr.particleTracer.InitializeParticleTracer(
 		russianRouletteContribution, russianRouletteState,
-		maxEdgeCount, debugLevel)
+		maxEdgeCount, debugLevel, debugMaxEdgeCount)
 	return ptr
 }
 
