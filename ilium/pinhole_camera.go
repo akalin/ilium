@@ -3,6 +3,7 @@ package ilium
 import "fmt"
 import "math"
 import "path/filepath"
+import "sort"
 import "strings"
 
 type PinholeCamera struct {
@@ -14,6 +15,7 @@ type PinholeCamera struct {
 	backFocalLength float32
 	samplesPerPixel int
 	image           Image
+	debugImages     map[string]*Image
 }
 
 func MakePinholeCamera(
@@ -95,6 +97,7 @@ func MakePinholeCamera(
 		backFocalLength: backFocalLength,
 		samplesPerPixel: samplesPerPixel,
 		image:           image,
+		debugImages:     make(map[string]*Image),
 	}
 }
 
@@ -142,26 +145,60 @@ func (pc *PinholeCamera) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 }
 
 func (pc *PinholeCamera) AccumulateDebugInfo(tag string, x, y int, s Spectrum) {
-	// TODO(akalin): Implement.
+	if pc.debugImages[tag] == nil {
+		debugImage := MakeImage(
+			pc.image.Width, pc.image.Height,
+			pc.image.XStart, pc.image.XCount,
+			pc.image.YStart, pc.image.YCount)
+		pc.debugImages[tag] = &debugImage
+	}
+	pc.debugImages[tag].AccumulateContribution(x, y, s)
 }
 
 func (pc *PinholeCamera) RecordAccumulatedContributions(x, y int) {
 	pc.image.RecordAccumulatedContribution(x, y)
-	// TODO(akalin): Record accumulated debug info.
+	for _, debugImage := range pc.debugImages {
+		debugImage.RecordAccumulatedContribution(x, y)
+	}
 }
 
-func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {
+func (pc *PinholeCamera) buildOutputPath(
+	outputDir, tag, outputExt string) string {
 	outputPath := pc.outputPath
 	if len(outputDir) > 0 && !filepath.IsAbs(outputPath) {
 		outputPath = filepath.Join(outputDir, outputPath)
 	}
-	if len(outputExt) > 0 {
-		realExt := filepath.Ext(outputPath)
-		outputPath = strings.TrimSuffix(outputPath, realExt)
-		outputPath += "." + outputExt + realExt
+	realExt := filepath.Ext(outputPath)
+	outputPath = strings.TrimSuffix(outputPath, realExt)
+	if len(tag) > 0 {
+		outputPath += "." + tag
 	}
+	if len(outputExt) > 0 {
+		outputPath += "." + outputExt
+	}
+	outputPath += realExt
+	return outputPath
+}
+
+func (pc *PinholeCamera) EmitSignal(outputDir, outputExt string) {
+	outputPath := pc.buildOutputPath(outputDir, "", outputExt)
 	fmt.Printf("Writing to %s\n", outputPath)
 	if err := pc.image.WriteToFile(outputPath); err != nil {
 		panic(err)
+	}
+	tags := make([]string, len(pc.debugImages))
+	i := 0
+	for tag, _ := range pc.debugImages {
+		tags[i] = tag
+		i++
+	}
+	sort.Strings(tags)
+	for _, tag := range tags {
+		debugImage := pc.debugImages[tag]
+		debugOutputPath := pc.buildOutputPath(outputDir, tag, outputExt)
+		fmt.Printf("  Writing to %s\n", debugOutputPath)
+		if err := debugImage.WriteToFile(debugOutputPath); err != nil {
+			panic(err)
+		}
 	}
 }
