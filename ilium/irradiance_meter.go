@@ -90,8 +90,12 @@ func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
-func (im *IrradianceMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
+func (im *IrradianceMeter) AccumulateContribution(
+	x, y int, WeLiDivPdf Spectrum) {
 	im.estimator.AccumulateSample(WeLiDivPdf)
+}
+
+func (im *IrradianceMeter) RecordAccumulatedContribution(x, y int) {
 	im.estimator.AddAccumulatedSample()
 }
 

@@ -137,8 +137,11 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
-func (pc *PinholeCamera) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
+func (pc *PinholeCamera) AccumulateContribution(x, y int, WeLiDivPdf Spectrum) {
 	pc.image.AccumulateContribution(x, y, WeLiDivPdf)
+}
+
+func (pc *PinholeCamera) RecordAccumulatedContribution(x, y int) {
 	pc.image.RecordAccumulatedContribution(x, y)
 }
 
