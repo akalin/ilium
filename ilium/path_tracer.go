@@ -136,6 +136,23 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 	f1Name, f2Name string, debugRecords *[]PathTracerDebugRecord) {
 	if pt.debugLevel >= 1 {
 		width := widthInt(pt.debugMaxEdgeCount)
+
+		var f1F2 Spectrum
+		f1F2.Mul(f1, f2)
+
+		f1F2TotalDebugRecord := PathTracerDebugRecord{
+			Tag: f1Name + f2Name,
+			S:   f1F2,
+		}
+
+		wF1F2TotalDebugRecord := PathTracerDebugRecord{
+			Tag: "w" + f1Name + f2Name,
+			S:   *wLeAlpha,
+		}
+
+		*debugRecords = append(*debugRecords,
+			f1F2TotalDebugRecord, wF1F2TotalDebugRecord)
+
 		var tagSuffix string
 		if edgeCount <= pt.debugMaxEdgeCount {
 			tagSuffix = fmt.Sprintf("%0*d", width, edgeCount)
@@ -145,13 +162,28 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 				width, pt.maxEdgeCount)
 		}
 
-		debugRecord := PathTracerDebugRecord{
-			Tag: "wLA" + tagSuffix,
-			S:   *wLeAlpha,
-		}
-		*debugRecords = append(*debugRecords, debugRecord)
-
 		if pt.debugLevel >= 2 {
+			wLeAlphaDebugRecord := PathTracerDebugRecord{
+				Tag: "wLA" + tagSuffix,
+				S:   *wLeAlpha,
+			}
+
+			f1F2DebugRecord := PathTracerDebugRecord{
+				Tag: f1Name + f2Name + tagSuffix,
+				S:   f1F2,
+			}
+
+			wF1F2DebugRecord := PathTracerDebugRecord{
+				Tag: "w" + f1Name + f2Name + tagSuffix,
+				S:   *wLeAlpha,
+			}
+
+			*debugRecords = append(
+				*debugRecords, wLeAlphaDebugRecord,
+				f1F2DebugRecord, wF1F2DebugRecord)
+		}
+
+		if pt.debugLevel >= 3 {
 			f1DebugRecord := PathTracerDebugRecord{
 				Tag: f1Name + tagSuffix,
 				S:   *f1,
