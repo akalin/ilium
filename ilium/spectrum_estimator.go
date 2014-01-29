@@ -5,6 +5,7 @@ import "fmt"
 type spectrumEstimator struct {
 	name string
 	n    int
+	x    Spectrum
 	mean Spectrum
 	m2   Spectrum
 }
@@ -29,23 +30,29 @@ func (se *spectrumEstimator) EstimateStandardError() Spectrum {
 	return stdError
 }
 
-func (se *spectrumEstimator) AddSample(x Spectrum) {
+func (se *spectrumEstimator) AccumulateSample(x Spectrum) {
 	if !x.IsValid() {
 		panic(fmt.Sprintf("Invalid sample %v", x))
 	}
+	se.x.Add(&se.x, &x)
+}
+
+func (se *spectrumEstimator) AddAccumulatedSample() {
 	se.n++
 	// delta = x - mean
 	var delta Spectrum
-	delta.Sub(&x, &se.mean)
+	delta.Sub(&se.x, &se.mean)
 	// mean = mean + delta/n
 	var deltaOverN Spectrum
 	deltaOverN.ScaleInv(&delta, float32(se.n))
 	se.mean.Add(&se.mean, &deltaOverN)
 	// M2 = M2 + delta*(x - mean)
 	var t Spectrum
-	t.Sub(&x, &se.mean)
+	t.Sub(&se.x, &se.mean)
 	t.Mul(&t, &delta)
 	se.m2.Add(&se.m2, &t)
+	// Clear accumulator.
+	se.x = Spectrum{}
 }
 
 func (se *spectrumEstimator) String() string {

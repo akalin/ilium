@@ -48,7 +48,8 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 }
 
 func (rm *RadianceMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
-	rm.estimator.AddSample(WeLiDivPdf)
+	rm.estimator.AccumulateSample(WeLiDivPdf)
+	rm.estimator.AddAccumulatedSample()
 }
 
 func (rm *RadianceMeter) EmitSignal(outputDir, outputExt string) {

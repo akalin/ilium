@@ -84,7 +84,8 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 }
 
 func (fm *FluxMeter) RecordContribution(x, y int, WeLiDivPdf Spectrum) {
-	fm.estimator.AddSample(WeLiDivPdf)
+	fm.estimator.AccumulateSample(WeLiDivPdf)
+	fm.estimator.AddAccumulatedSample()
 }
 
 func (fm *FluxMeter) EmitSignal(outputDir, outputExt string) {
