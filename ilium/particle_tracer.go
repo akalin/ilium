@@ -120,6 +120,23 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 	var debugRecords []ParticleDebugRecord
 	if pt.debugLevel >= 1 {
 		width := widthInt(pt.debugMaxEdgeCount)
+
+		var f1F2 Spectrum
+		f1F2.Mul(f1, f2)
+
+		f1F2TotalDebugRecord := ParticleDebugRecord{
+			tag: f1Name + f2Name,
+			s:   f1F2,
+		}
+
+		wF1F2TotalDebugRecord := ParticleDebugRecord{
+			tag: "w" + f1Name + f2Name,
+			s:   *wWeAlpha,
+		}
+
+		debugRecords = append(debugRecords,
+			f1F2TotalDebugRecord, wF1F2TotalDebugRecord)
+
 		var tagSuffix string
 		if edgeCount <= pt.debugMaxEdgeCount {
 			tagSuffix = fmt.Sprintf("%0*d", width, edgeCount)
@@ -129,13 +146,28 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 				width, pt.maxEdgeCount)
 		}
 
-		debugRecord := ParticleDebugRecord{
-			tag: "wWA" + tagSuffix,
-			s:   *wWeAlpha,
-		}
-		debugRecords = append(debugRecords, debugRecord)
-
 		if pt.debugLevel >= 2 {
+			wWeAlphaDebugRecord := ParticleDebugRecord{
+				tag: "wWA" + tagSuffix,
+				s:   *wWeAlpha,
+			}
+
+			f1F2DebugRecord := ParticleDebugRecord{
+				tag: f1Name + f2Name + tagSuffix,
+				s:   f1F2,
+			}
+
+			wF1F2DebugRecord := ParticleDebugRecord{
+				tag: "w" + f1Name + f2Name + tagSuffix,
+				s:   *wWeAlpha,
+			}
+
+			debugRecords = append(debugRecords,
+				wWeAlphaDebugRecord, f1F2DebugRecord,
+				wF1F2DebugRecord)
+		}
+
+		if pt.debugLevel >= 3 {
 			f1DebugRecord := ParticleDebugRecord{
 				tag: f1Name + tagSuffix,
 				s:   *f1,
