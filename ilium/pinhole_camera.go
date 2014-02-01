@@ -106,7 +106,7 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 
 func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray) {
 	var wo Vector3
 	r := wo.GetDirectionAndDistance(&pc.position, &p)
 	wi.Flip(&wo)
@@ -147,6 +147,7 @@ func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 		WeDivPdf = MakeConstantSpectrum(
 			(pc.backFocalLength * pc.backFocalLength * absCosThI) /
 				(r * r * cosThO * cosThO * cosThO))
+		pdf = (r * r) / (absCosThI * cosThO)
 		shadowRay = Ray{p, wi, pEpsilon, r * (1 - 5e-4)}
 	}
 	return

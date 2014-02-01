@@ -56,7 +56,7 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 
 func (rm *RadianceMeter) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray) {
 	panic("Called unexpectedly")
 }
 

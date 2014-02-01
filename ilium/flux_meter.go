@@ -92,7 +92,7 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 
 func (fm *FluxMeter) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray) {
 	pSurface, pSurfaceEpsilon, nSurface, pdf :=
 		fm.shapeSet.SampleSurfaceFromPoint(u, v1, v2, p, pEpsilon, n)
 	r := wi.GetDirectionAndDistance(&p, &pSurface)
