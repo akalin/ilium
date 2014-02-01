@@ -60,6 +60,11 @@ func (rm *RadianceMeter) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
+func (rm *RadianceMeter) ComputeWePdfFromPoint(
+	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	panic("Called unexpectedly")
+}
+
 func (rm *RadianceMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {

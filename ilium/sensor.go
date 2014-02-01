@@ -125,6 +125,18 @@ type Sensor interface {
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 		x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray)
 
+	// Given pixel coordinates, a point, and a direction, returns
+	// the value of the pdf used by
+	// SamplePixelPositionAndWeFromPoint() for those parameters.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularPosition() and HasSpecularDirection() both
+	// return false, and when wi is known to intersect the sensor
+	// from p with pixel coordinates (x, y).
+	ComputeWePdfFromPoint(
+		x, y int,
+		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
+
 	// Given a point and normal on the sensor and an outgoing
 	// direction, returns the corresponding pixel coordinates and
 	// emitted importance.
