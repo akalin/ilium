@@ -42,7 +42,7 @@
   "renderer": {
     "type": "ParticleTracingRenderer",
     "pathTypes": [ "emittedImportance", "directSensor" ],
-    "weighingMethod": "uniform",
+    "weighingMethod": "balanced",
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,
     "russianRouletteMaxProbability": 0.95,
