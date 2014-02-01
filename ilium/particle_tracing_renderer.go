@@ -34,6 +34,8 @@ func MakeParticleTracingRenderer(
 	switch weighingMethodConfig {
 	case "uniform":
 		weighingMethod = PARTICLE_TRACER_UNIFORM_WEIGHTS
+	case "balanced":
+		weighingMethod = PARTICLE_TRACER_BALANCED_WEIGHTS
 	default:
 		panic("unknown weighing method " + weighingMethodConfig)
 	}

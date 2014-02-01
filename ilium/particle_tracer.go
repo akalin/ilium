@@ -13,7 +13,9 @@ const (
 type ParticleTracerWeighingMethod int
 
 const (
-	PARTICLE_TRACER_UNIFORM_WEIGHTS ParticleTracerWeighingMethod = iota
+	PARTICLE_TRACER_UNIFORM_WEIGHTS  ParticleTracerWeighingMethod = iota
+	PARTICLE_TRACER_BALANCED_WEIGHTS                              = iota
+	// TOOD(akalin): Also support power heuristic (with beta=2).
 )
 
 type ParticleTracerRRContribution int
@@ -208,8 +210,9 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 }
 
 func (pt *ParticleTracer) computeEmittedImportance(
-	edgeCount int, alpha *Spectrum, wo Vector3, intersection *Intersection,
-	records []ParticleRecord) []ParticleRecord {
+	edgeCount int, alpha *Spectrum, bsdfPdfPrev float32, pPrev Point3,
+	pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
+	intersection *Intersection, records []ParticleRecord) []ParticleRecord {
 	for _, sensor := range intersection.Sensors {
 		x, y, We := sensor.ComputePixelPositionAndWe(
 			intersection.P, intersection.N, wo)
@@ -225,16 +228,29 @@ func (pt *ParticleTracer) computeEmittedImportance(
 			continue
 		}
 
-		// TODO(akalin): Implement multiple importance sampling.
 		var invW float32 = 1
 		if (pt.pathTypes&PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 &&
 			!sensor.HasSpecularDirection() {
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
+			case PARTICLE_TRACER_BALANCED_WEIGHTS:
+				// TODO(akalin): Take Russian roulette
+				// probability into account.
+				directSensorPdf :=
+					sensor.ComputeWePdfFromPoint(
+						x, y, pPrev, pEpsilonPrev,
+						nPrev, wiPrev)
+				invW += directSensorPdf / bsdfPdfPrev
 			}
 		}
 		w := 1 / invW
+		if !isFiniteFloat32(w) {
+			fmt.Printf("Invalid weight %v returned for "+
+				"intersection %v and wo %v and sensor %v\n",
+				w, intersection, wo, sensor)
+			continue
+		}
 
 		var wWe Spectrum
 		wWe.Scale(&We, w)
@@ -299,16 +315,28 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		sensorEdgeCount := currentEdgeCount + 1
 
-		// TODO(akalin): Implement multiple importance sampling.
 		var invW float32 = 1
 		if (pt.pathTypes&PARTICLE_TRACER_EMITTED_W_PATH) != 0 &&
 			!sensor.HasSpecularPosition() {
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
+			case PARTICLE_TRACER_BALANCED_WEIGHTS:
+				// TODO(akalin): Take Russian roulette
+				// probability into account.
+				emittedPdf := material.ComputePdf(
+					MATERIAL_IMPORTANCE_TRANSPORT,
+					wo, wi, n)
+				invW += emittedPdf / pdf
 			}
 		}
 		w := 1 / invW
+		if !isFiniteFloat32(w) {
+			fmt.Printf("Invalid weight %v returned for "+
+				"point %v and sensor %v\n",
+				w, p, sensor)
+			continue
+		}
 
 		var wWeDivPdf Spectrum
 		wWeDivPdf.Scale(&WeDivPdf, w)
@@ -353,7 +381,7 @@ func (lm *lightMaterial) ComputeF(transportType MaterialTransportType,
 
 func (lm *lightMaterial) ComputePdf(transportType MaterialTransportType,
 	wo, wi Vector3, n Normal3) float32 {
-	panic("called unexpectedly")
+	return lm.light.ComputeLeDirectionalPdf(lm.pSurface, n, wi)
 }
 
 func (pt *ParticleTracer) SampleLightPath(
@@ -372,6 +400,8 @@ func (pt *ParticleTracer) SampleLightPath(
 
 	var edgeCount int
 	var ray Ray
+	var n Normal3
+	var bsdfPdfPrev float32
 	// alpha = Le * T(path) / pdf.
 	var alpha Spectrum
 	var albedo Spectrum
@@ -387,6 +417,9 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 		ray = initialRay
+		// It's okay to leave n and bsdfPdfPrev uninitialized
+		// since pt.computeEmittedImportance() uses them only
+		// when there are multiple paths.
 		alpha = LeDivPdf
 		albedo = LeDivPdf
 	} else if (pt.pathTypes & PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 {
@@ -411,6 +444,8 @@ func (pt *ParticleTracer) SampleLightPath(
 		}
 
 		ray = Ray{pSurface, wo, pSurfaceEpsilon, infFloat32(+1)}
+		n = nSurface
+		bsdfPdfPrev = pdf
 		alpha.Mul(&alpha, &LeDirectionalDivPdf)
 		albedo = alpha
 	}
@@ -447,7 +482,8 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		if (pt.pathTypes & PARTICLE_TRACER_EMITTED_W_PATH) != 0 {
 			records = pt.computeEmittedImportance(
-				edgeCount, &alpha, wo, &intersection,
+				edgeCount, &alpha, bsdfPdfPrev, ray.O,
+				ray.MinT, n, ray.D, wo, &intersection,
 				records)
 		}
 
@@ -457,7 +493,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		p := intersection.P
 		pEpsilon := intersection.PEpsilon
-		n := intersection.N
+		n = intersection.N
 		material := intersection.Material
 
 		// Don't direct-sample sensors for the last edge,
@@ -483,6 +519,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		}
 
 		ray = Ray{p, wi, pEpsilon, infFloat32(+1)}
+		bsdfPdfPrev = pdf
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
