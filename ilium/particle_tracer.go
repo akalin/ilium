@@ -265,7 +265,7 @@ func (pt *ParticleTracer) directSampleSensors(
 	for i, sensor := range sensors {
 		u := directSensor1DSamples[i].GetSample(sampleIndex, rng)
 		v := directSensor2DSamples[i].GetSample(sampleIndex, rng)
-		x, y, WeDivPdf, wi, shadowRay :=
+		x, y, WeDivPdf, _, wi, shadowRay :=
 			sensor.SamplePixelPositionAndWeFromPoint(
 				u.U, v.U1, v.U2, p, pEpsilon, n)
 
