@@ -74,7 +74,7 @@ func (d *DiffuseAreaLight) sampleHemisphere(nSurface Normal3, u1, u2 float32) (
 
 func (d *DiffuseAreaLight) SampleDirection(
 	sampleBundle SampleBundle, pSurface Point3, nSurface Normal3) (
-	wo Vector3, LeDirectionalDivPdf Spectrum) {
+	wo Vector3, LeDirectionalDivPdf Spectrum, pdf float32) {
 	w1 := sampleBundle.Samples2D[1][0].U1
 	w2 := sampleBundle.Samples2D[1][0].U2
 	wo, absCosTh := d.sampleHemisphere(nSurface, w1, w2)
@@ -82,9 +82,11 @@ func (d *DiffuseAreaLight) SampleDirection(
 	case DAL_UNIFORM_SAMPLING:
 		// LeDirectional = 1 / pi and pdf = 1 / (2 * pi * |cos(th)|).
 		LeDirectionalDivPdf = MakeConstantSpectrum(2 * absCosTh)
+		pdf = uniformHemispherePdfSolidAngle() / absCosTh
 	case DAL_COSINE_SAMPLING:
 		// LeDirectional = 1 / pi and pdf = 1 / pi.
 		LeDirectionalDivPdf = MakeConstantSpectrum(1)
+		pdf = cosineHemispherePdfProjectedSolidAngle()
 	}
 	return
 }
