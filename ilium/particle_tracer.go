@@ -10,6 +10,12 @@ const (
 	PARTICLE_TRACER_DIRECT_SENSOR_PATH ParticleTracerPathType = 1 << iota
 )
 
+type ParticleTracerWeighingMethod int
+
+const (
+	PARTICLE_TRACER_UNIFORM_WEIGHTS ParticleTracerWeighingMethod = iota
+)
+
 type ParticleTracerRRContribution int
 
 const (
@@ -39,6 +45,7 @@ func (pr *ParticleRecord) Accumulate() {
 
 type ParticleTracer struct {
 	pathTypes                   ParticleTracerPathType
+	weighingMethod              ParticleTracerWeighingMethod
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
@@ -48,10 +55,12 @@ type ParticleTracer struct {
 
 func (pt *ParticleTracer) InitializeParticleTracer(
 	pathTypes ParticleTracerPathType,
+	weighingMethod ParticleTracerWeighingMethod,
 	russianRouletteContribution ParticleTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
+	pt.weighingMethod = weighingMethod
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
@@ -217,7 +226,10 @@ func (pt *ParticleTracer) computeEmittedImportance(
 		var invW float32 = 1
 		if (pt.pathTypes&PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 &&
 			!sensor.HasSpecularDirection() {
-			invW++
+			switch pt.weighingMethod {
+			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
+				invW++
+			}
 		}
 		w := 1 / invW
 
@@ -284,7 +296,10 @@ func (pt *ParticleTracer) directSampleSensors(
 		var invW float32 = 1
 		if (pt.pathTypes&PARTICLE_TRACER_EMITTED_W_PATH) != 0 &&
 			!sensor.HasSpecularPosition() {
-			invW++
+			switch pt.weighingMethod {
+			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
+				invW++
+			}
 		}
 		w := 1 / invW
 
