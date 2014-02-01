@@ -128,6 +128,26 @@ func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
 	}
 }
 
+func (pt *ParticleTracer) getContinueProbabilityFromIntersection(
+	edgeCount int, alpha, f *Spectrum, fPdf float32) float32 {
+	if fPdf == 0 {
+		return 0
+	}
+
+	var t Spectrum
+	if !pt.russianRouletteState.IsContinueProbabilityFixed(edgeCount) {
+		var albedo Spectrum
+		albedo.ScaleInv(f, fPdf)
+		switch pt.russianRouletteContribution {
+		case PARTICLE_TRACER_RR_ALPHA:
+			t.Mul(alpha, &albedo)
+		case PARTICLE_TRACER_RR_ALBEDO:
+			t = albedo
+		}
+	}
+	return pt.russianRouletteState.GetContinueProbability(edgeCount, &t)
+}
+
 func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 	edgeCount int, sensor Sensor, w float32, wWeAlpha, f1, f2 *Spectrum,
 	f1Name, f2Name string) []ParticleDebugRecord {
@@ -210,8 +230,8 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 }
 
 func (pt *ParticleTracer) computeEmittedImportance(
-	edgeCount int, alpha *Spectrum, bsdfPdfPrev float32, pPrev Point3,
-	pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
+	edgeCount int, alpha *Spectrum, continueBsdfPdfPrev float32,
+	pPrev Point3, pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
 	intersection *Intersection, records []ParticleRecord) []ParticleRecord {
 	for _, sensor := range intersection.Sensors {
 		x, y, We := sensor.ComputePixelPositionAndWe(
@@ -235,13 +255,11 @@ func (pt *ParticleTracer) computeEmittedImportance(
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
 			case PARTICLE_TRACER_BALANCED_WEIGHTS:
-				// TODO(akalin): Take Russian roulette
-				// probability into account.
 				directSensorPdf :=
 					sensor.ComputeWePdfFromPoint(
 						x, y, pPrev, pEpsilonPrev,
 						nPrev, wiPrev)
-				invW += directSensorPdf / bsdfPdfPrev
+				invW += directSensorPdf / continueBsdfPdfPrev
 			}
 		}
 		w := 1 / invW
@@ -322,12 +340,14 @@ func (pt *ParticleTracer) directSampleSensors(
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
 			case PARTICLE_TRACER_BALANCED_WEIGHTS:
-				// TODO(akalin): Take Russian roulette
-				// probability into account.
 				emittedPdf := material.ComputePdf(
 					MATERIAL_IMPORTANCE_TRANSPORT,
 					wo, wi, n)
-				invW += emittedPdf / pdf
+				pContinue := pt.
+					getContinueProbabilityFromIntersection(
+					sensorEdgeCount-1, alpha, &f,
+					emittedPdf)
+				invW += (pContinue * emittedPdf) / pdf
 			}
 		}
 		w := 1 / invW
@@ -401,7 +421,7 @@ func (pt *ParticleTracer) SampleLightPath(
 	var edgeCount int
 	var ray Ray
 	var n Normal3
-	var bsdfPdfPrev float32
+	var continueBsdfPdfPrev float32
 	// alpha = Le * T(path) / pdf.
 	var alpha Spectrum
 	var albedo Spectrum
@@ -417,9 +437,9 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 		ray = initialRay
-		// It's okay to leave n and bsdfPdfPrev uninitialized
-		// since pt.computeEmittedImportance() uses them only
-		// when there are multiple paths.
+		// It's okay to leave n and continueBsdfPdfPrev
+		// uninitialized since pt.computeEmittedImportance()
+		// uses them only when there are multiple paths.
 		alpha = LeDivPdf
 		albedo = LeDivPdf
 	} else if (pt.pathTypes & PARTICLE_TRACER_DIRECT_SENSOR_PATH) != 0 {
@@ -445,7 +465,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		ray = Ray{pSurface, wo, pSurfaceEpsilon, infFloat32(+1)}
 		n = nSurface
-		bsdfPdfPrev = pdf
+		continueBsdfPdfPrev = pdf
 		alpha.Mul(&alpha, &LeDirectionalDivPdf)
 		albedo = alpha
 	}
@@ -482,7 +502,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		if (pt.pathTypes & PARTICLE_TRACER_EMITTED_W_PATH) != 0 {
 			records = pt.computeEmittedImportance(
-				edgeCount, &alpha, bsdfPdfPrev, ray.O,
+				edgeCount, &alpha, continueBsdfPdfPrev, ray.O,
 				ray.MinT, n, ray.D, wo, &intersection,
 				records)
 		}
@@ -519,7 +539,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		}
 
 		ray = Ray{p, wi, pEpsilon, infFloat32(+1)}
-		bsdfPdfPrev = pdf
+		continueBsdfPdfPrev = pContinue * pdf
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
