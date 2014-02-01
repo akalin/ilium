@@ -208,6 +208,13 @@ func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
+func (tlc *ThinLensCamera) ComputeWePdfFromPoint(
+	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	// Since wi is known to intersect this sensor from p, no need
+	// to do any checking.
+	return tlc.disk.ComputePdfFromPoint(p, pEpsilon, n, wi)
+}
+
 func (tlc *ThinLensCamera) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {

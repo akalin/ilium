@@ -137,6 +137,24 @@ type Sensor interface {
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 		x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray)
 
+	// Returns the value of the pdf of the distribution used by
+	// SamplePixelPositionAndWeFromPoint() with respect to
+	// projected solid angle at the closest intersection point on
+	// the sensor from the ray (p, wi), or 0 if no such point
+	// exists.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularPosition() and HasSpecularDirection() both
+	// return false, and when wi is known to intersect the sensor
+	// from p with pixel coordinates (x, y).
+	//
+	// Note that even if (p, wi) is expected to intersect this
+	// light, 0 may still be returned due to floating point
+	// inaccuracies.
+	ComputeWePdfFromPoint(
+		x, y int,
+		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
+
 	// Given a point and normal on the sensor and an outgoing
 	// direction, returns the corresponding pixel coordinates and
 	// emitted importance.

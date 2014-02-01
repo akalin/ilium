@@ -118,6 +118,11 @@ func (im *IrradianceMeter) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
+func (im *IrradianceMeter) ComputeWePdfFromPoint(
+	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	panic("Called unexpectedly")
+}
+
 func (im *IrradianceMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
