@@ -404,9 +404,9 @@ func (pt *ParticleTracer) SampleLightPath(
 			&alpha, pSurface, pSurfaceEpsilon, nSurface,
 			Vector3{}, &lightMaterial{light, pSurface}, records)
 
-		wo, LeDirectionalDivPdf := light.SampleDirection(
+		wo, LeDirectionalDivPdf, pdf := light.SampleDirection(
 			lightBundle, pSurface, nSurface)
-		if LeDirectionalDivPdf.IsBlack() {
+		if LeDirectionalDivPdf.IsBlack() || pdf == 0 {
 			return records
 		}
 
