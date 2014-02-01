@@ -29,6 +29,15 @@ func MakeParticleTracingRenderer(
 		pathTypes |= pathType
 	}
 
+	weighingMethodConfig := config["weighingMethod"].(string)
+	var weighingMethod ParticleTracerWeighingMethod
+	switch weighingMethodConfig {
+	case "uniform":
+		weighingMethod = PARTICLE_TRACER_UNIFORM_WEIGHTS
+	default:
+		panic("unknown weighing method " + weighingMethodConfig)
+	}
+
 	var russianRouletteContribution ParticleTracerRRContribution
 	if russianRouletteContributionConfig, ok :=
 		config["russianRouletteContribution"].(string); ok {
@@ -74,8 +83,9 @@ func MakeParticleTracingRenderer(
 		sampler:      sampler,
 	}
 	ptr.particleTracer.InitializeParticleTracer(
-		pathTypes, russianRouletteContribution, russianRouletteState,
-		maxEdgeCount, debugLevel, debugMaxEdgeCount)
+		pathTypes, weighingMethod, russianRouletteContribution,
+		russianRouletteState, maxEdgeCount, debugLevel,
+		debugMaxEdgeCount)
 	return ptr
 }
 
