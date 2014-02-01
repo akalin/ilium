@@ -161,7 +161,7 @@ func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 
 func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-	x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray) {
+	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray) {
 	// Find the point on the lens.
 	// TODO(akalin): Use concentric sampling.
 	pLens, pLensEpsilon, nLens, _ := tlc.disk.SampleSurface(v1, v2)
@@ -203,6 +203,7 @@ func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 			(tlc.backFocalLength * tlc.backFocalLength *
 				absCosThI * cosThO) /
 				(r * r * cosThC * cosThC * cosThC * cosThC))
+		pdf = (r * r) / (tlc.disk.SurfaceArea() * absCosThI * cosThO)
 		shadowRay = Ray{p, wi, pEpsilon, r * (1 - pLensEpsilon)}
 	}
 	return

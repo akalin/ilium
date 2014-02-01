@@ -119,11 +119,12 @@ type Sensor interface {
 		ray Ray, WeDivPdf Spectrum)
 
 	// Given a point, samples a point on the sensor and returns
-	// its pixel coordinates, pdf-weighted importance, direction,
-	// and shadow ray.
+	// its pixel coordinates, pdf-weighted importance, pdf,
+	// direction, and shadow ray.
 	SamplePixelPositionAndWeFromPoint(
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-		x, y int, WeDivPdf Spectrum, wi Vector3, shadowRay Ray)
+		x, y int, WeDivPdf Spectrum, pdf float32,
+		wi Vector3, shadowRay Ray)
 
 	// Given pixel coordinates, a point, and a direction, returns
 	// the value of the pdf used by
