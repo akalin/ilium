@@ -152,6 +152,11 @@ func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
+func (pc *PinholeCamera) ComputeWePdfFromPoint(
+	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	panic("Called unexpectedly")
+}
+
 func (pc *PinholeCamera) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {

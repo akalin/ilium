@@ -104,6 +104,11 @@ func (fm *FluxMeter) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
+func (fm *FluxMeter) ComputeWePdfFromPoint(
+	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
+	return fm.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
+}
+
 func (fm *FluxMeter) ComputePixelPositionAndWe(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	x, y int, We Spectrum) {
