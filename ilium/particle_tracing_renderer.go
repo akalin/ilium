@@ -31,11 +31,17 @@ func MakeParticleTracingRenderer(
 
 	weighingMethodConfig := config["weighingMethod"].(string)
 	var weighingMethod ParticleTracerWeighingMethod
+	var beta float32
 	switch weighingMethodConfig {
 	case "uniform":
 		weighingMethod = PARTICLE_TRACER_UNIFORM_WEIGHTS
+		beta = 1
 	case "balanced":
-		weighingMethod = PARTICLE_TRACER_BALANCED_WEIGHTS
+		weighingMethod = PARTICLE_TRACER_POWER_WEIGHTS
+		beta = 1
+	case "power":
+		weighingMethod = PARTICLE_TRACER_POWER_WEIGHTS
+		beta = 2
 	default:
 		panic("unknown weighing method " + weighingMethodConfig)
 	}
@@ -85,7 +91,7 @@ func MakeParticleTracingRenderer(
 		sampler:      sampler,
 	}
 	ptr.particleTracer.InitializeParticleTracer(
-		pathTypes, weighingMethod, russianRouletteContribution,
+		pathTypes, weighingMethod, beta, russianRouletteContribution,
 		russianRouletteState, maxEdgeCount, debugLevel,
 		debugMaxEdgeCount)
 	return ptr

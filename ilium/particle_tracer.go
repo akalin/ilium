@@ -13,9 +13,8 @@ const (
 type ParticleTracerWeighingMethod int
 
 const (
-	PARTICLE_TRACER_UNIFORM_WEIGHTS  ParticleTracerWeighingMethod = iota
-	PARTICLE_TRACER_BALANCED_WEIGHTS                              = iota
-	// TOOD(akalin): Also support power heuristic (with beta=2).
+	PARTICLE_TRACER_UNIFORM_WEIGHTS ParticleTracerWeighingMethod = iota
+	PARTICLE_TRACER_POWER_WEIGHTS                                = iota
 )
 
 type ParticleTracerRRContribution int
@@ -48,6 +47,7 @@ func (pr *ParticleRecord) Accumulate() {
 type ParticleTracer struct {
 	pathTypes                   ParticleTracerPathType
 	weighingMethod              ParticleTracerWeighingMethod
+	beta                        float32
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
@@ -57,12 +57,13 @@ type ParticleTracer struct {
 
 func (pt *ParticleTracer) InitializeParticleTracer(
 	pathTypes ParticleTracerPathType,
-	weighingMethod ParticleTracerWeighingMethod,
+	weighingMethod ParticleTracerWeighingMethod, beta float32,
 	russianRouletteContribution ParticleTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
 	pt.weighingMethod = weighingMethod
+	pt.beta = beta
 	pt.russianRouletteContribution = russianRouletteContribution
 	pt.russianRouletteState = russianRouletteState
 	pt.maxEdgeCount = maxEdgeCount
@@ -254,12 +255,14 @@ func (pt *ParticleTracer) computeEmittedImportance(
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
-			case PARTICLE_TRACER_BALANCED_WEIGHTS:
+			case PARTICLE_TRACER_POWER_WEIGHTS:
 				directSensorPdf :=
 					sensor.ComputeWePdfFromPoint(
 						x, y, pPrev, pEpsilonPrev,
 						nPrev, wiPrev)
-				invW += directSensorPdf / continueBsdfPdfPrev
+				pdfRatio :=
+					directSensorPdf / continueBsdfPdfPrev
+				invW += powFloat32(pdfRatio, pt.beta)
 			}
 		}
 		w := 1 / invW
@@ -339,7 +342,7 @@ func (pt *ParticleTracer) directSampleSensors(
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
-			case PARTICLE_TRACER_BALANCED_WEIGHTS:
+			case PARTICLE_TRACER_POWER_WEIGHTS:
 				emittedPdf := material.ComputePdf(
 					MATERIAL_IMPORTANCE_TRANSPORT,
 					wo, wi, n)
@@ -347,7 +350,8 @@ func (pt *ParticleTracer) directSampleSensors(
 					getContinueProbabilityFromIntersection(
 					sensorEdgeCount-1, alpha, &f,
 					emittedPdf)
-				invW += (pContinue * emittedPdf) / pdf
+				pdfRatio := (pContinue * emittedPdf) / pdf
+				invW += powFloat32(pdfRatio, pt.beta)
 			}
 		}
 		w := 1 / invW
