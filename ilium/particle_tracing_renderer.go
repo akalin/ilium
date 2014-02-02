@@ -14,17 +14,13 @@ type ParticleTracingRenderer struct {
 func MakeParticleTracingRenderer(
 	config map[string]interface{}) *ParticleTracingRenderer {
 	pathTypesConfig := config["pathTypes"].([]interface{})
-	var pathTypes ParticleTracerPathType
+	var pathTypes TracerPathType
 	for _, pathTypeConfig := range pathTypesConfig {
 		pathTypeString := pathTypeConfig.(string)
-		var pathType ParticleTracerPathType
-		switch pathTypeConfig {
-		case "emittedImportance":
-			pathType = PARTICLE_TRACER_EMITTED_W_PATH
-		case "directSensor":
-			pathType = PARTICLE_TRACER_DIRECT_SENSOR_PATH
-		default:
-			panic("unknown path type " + pathTypeString)
+		pathType := MakeTracerPathType(pathTypeString)
+		if (pathType.GetContributionTypes() &
+			TRACER_LIGHT_CONTRIBUTION) == 0 {
+			panic("invalid path type " + pathTypeString)
 		}
 		pathTypes |= pathType
 	}
