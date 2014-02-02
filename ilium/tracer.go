@@ -140,3 +140,37 @@ type TracerDebugRecord struct {
 	Tag string
 	S   Spectrum
 }
+
+type TracerRecord struct {
+	ContributionType TracerContributionType
+	Sensor           Sensor
+	X, Y             int
+	WeLiDivPdf       Spectrum
+	DebugRecords     []TracerDebugRecord
+}
+
+func (record *TracerRecord) Accumulate() {
+	switch record.ContributionType {
+	case TRACER_SENSOR_CONTRIBUTION:
+		record.Sensor.AccumulateSensorContribution(
+			record.X, record.Y, record.WeLiDivPdf)
+		for _, debugRecord := range record.DebugRecords {
+			record.Sensor.AccumulateSensorDebugInfo(
+				debugRecord.Tag, record.X, record.Y,
+				debugRecord.S)
+		}
+		record.Sensor.RecordAccumulatedSensorContributions(
+			record.X, record.Y)
+	case TRACER_LIGHT_CONTRIBUTION:
+		record.Sensor.AccumulateLightContribution(
+			record.X, record.Y, record.WeLiDivPdf)
+		for _, debugRecord := range record.DebugRecords {
+			record.Sensor.AccumulateLightDebugInfo(
+				debugRecord.Tag, record.X, record.Y,
+				debugRecord.S)
+		}
+	default:
+		panic(fmt.Sprintf("Unknown contribution type %d",
+			record.ContributionType))
+	}
+}

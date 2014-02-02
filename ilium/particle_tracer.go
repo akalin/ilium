@@ -3,21 +3,6 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type ParticleRecord struct {
-	sensor       Sensor
-	x, y         int
-	_WeLiDivPdf  Spectrum
-	debugRecords []TracerDebugRecord
-}
-
-func (pr *ParticleRecord) Accumulate() {
-	pr.sensor.AccumulateLightContribution(pr.x, pr.y, pr._WeLiDivPdf)
-	for _, debugRecord := range pr.debugRecords {
-		pr.sensor.AccumulateLightDebugInfo(
-			debugRecord.Tag, pr.x, pr.y, debugRecord.S)
-	}
-}
-
 type ParticleTracer struct {
 	pathTypes                   TracerPathType
 	weighingMethod              TracerWeighingMethod
@@ -196,7 +181,7 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 func (pt *ParticleTracer) computeEmittedImportance(
 	edgeCount int, alpha *Spectrum, continueBsdfPdfPrev float32,
 	pPrev Point3, pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
-	intersection *Intersection, records []ParticleRecord) []ParticleRecord {
+	intersection *Intersection, records []TracerRecord) []TracerRecord {
 	for _, sensor := range intersection.Sensors {
 		x, y, We := sensor.ComputePixelPositionAndWe(
 			intersection.P, intersection.N, wo)
@@ -256,14 +241,15 @@ func (pt *ParticleTracer) computeEmittedImportance(
 		wWeAlpha.Mul(&wWe, alpha)
 		debugRecords := pt.makeWWeAlphaDebugRecords(
 			edgeCount, sensor, w, &wWeAlpha, &We, alpha, "We", "Ae")
-		particleRecord := ParticleRecord{
+		record := TracerRecord{
+			TRACER_LIGHT_CONTRIBUTION,
 			sensor,
 			x,
 			y,
 			wWeAlpha,
 			debugRecords,
 		}
-		records = append(records, particleRecord)
+		records = append(records, record)
 	}
 	return records
 }
@@ -273,7 +259,7 @@ func (pt *ParticleTracer) directSampleSensors(
 	currentEdgeCount int, rng *rand.Rand, scene *Scene, sensors []Sensor,
 	tracerBundle SampleBundle, alpha *Spectrum, p Point3,
 	pEpsilon float32, n Normal3, wo Vector3, material Material,
-	records []ParticleRecord) []ParticleRecord {
+	records []TracerRecord) []TracerRecord {
 	directSensor1DSamples := tracerBundle.Samples1D[1:]
 	directSensor2DSamples := tracerBundle.Samples2D[1:]
 
@@ -359,14 +345,15 @@ func (pt *ParticleTracer) directSampleSensors(
 		debugRecords := pt.makeWWeAlphaDebugRecords(
 			sensorEdgeCount, sensor, w, &wWeAlphaNext, &WeDivPdf,
 			&fAlpha, "Wd", "Ad")
-		particleRecord := ParticleRecord{
+		record := TracerRecord{
+			TRACER_LIGHT_CONTRIBUTION,
 			sensor,
 			x,
 			y,
 			wWeAlphaNext,
 			debugRecords,
 		}
-		records = append(records, particleRecord)
+		records = append(records, record)
 	}
 	return records
 }
@@ -397,13 +384,13 @@ func (lm *lightMaterial) ComputePdf(transportType MaterialTransportType,
 
 func (pt *ParticleTracer) SampleLightPath(
 	rng *rand.Rand, scene *Scene, sensors []Sensor,
-	lightBundle, tracerBundle SampleBundle) []ParticleRecord {
+	lightBundle, tracerBundle SampleBundle) []TracerRecord {
 	if !pt.hasSomethingToDo() {
-		return []ParticleRecord{}
+		return []TracerRecord{}
 	}
 
 	if len(scene.Lights) == 0 {
-		return []ParticleRecord{}
+		return []TracerRecord{}
 	}
 
 	u := tracerBundle.Samples1D[0][0]
@@ -416,7 +403,7 @@ func (pt *ParticleTracer) SampleLightPath(
 	// alpha = Le * T(path) / pdf.
 	var alpha Spectrum
 	var albedo Spectrum
-	var records []ParticleRecord
+	var records []TracerRecord
 
 	if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
 		!pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
