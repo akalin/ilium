@@ -135,3 +135,8 @@ func MakeTracerRussianRouletteContribution(
 			contributionString)
 	}
 }
+
+type TracerDebugRecord struct {
+	Tag string
+	S   Spectrum
+}
