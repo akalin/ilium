@@ -115,3 +115,23 @@ func MakeTracerWeighingMethod(weighingMethodString string) (
 		panic("unknown weighing method " + weighingMethodString)
 	}
 }
+
+type TracerRussianRouletteContribution int
+
+const (
+	TRACER_RUSSIAN_ROULETTE_ALPHA  TracerRussianRouletteContribution = iota
+	TRACER_RUSSIAN_ROULETTE_ALBEDO TracerRussianRouletteContribution = iota
+)
+
+func MakeTracerRussianRouletteContribution(
+	contributionString string) TracerRussianRouletteContribution {
+	switch contributionString {
+	case "alpha":
+		return TRACER_RUSSIAN_ROULETTE_ALPHA
+	case "albedo":
+		return TRACER_RUSSIAN_ROULETTE_ALBEDO
+	default:
+		panic("unknown Russian roulette contribution " +
+			contributionString)
+	}
+}

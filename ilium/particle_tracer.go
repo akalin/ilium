@@ -3,13 +3,6 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type ParticleTracerRRContribution int
-
-const (
-	PARTICLE_TRACER_RR_ALPHA  ParticleTracerRRContribution = iota
-	PARTICLE_TRACER_RR_ALBEDO ParticleTracerRRContribution = iota
-)
-
 type ParticleDebugRecord struct {
 	tag string
 	s   Spectrum
@@ -34,7 +27,7 @@ type ParticleTracer struct {
 	pathTypes                   TracerPathType
 	weighingMethod              TracerWeighingMethod
 	beta                        float32
-	russianRouletteContribution ParticleTracerRRContribution
+	russianRouletteContribution TracerRussianRouletteContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
 	debugLevel                  int
@@ -44,7 +37,7 @@ type ParticleTracer struct {
 func (pt *ParticleTracer) InitializeParticleTracer(
 	pathTypes TracerPathType,
 	weighingMethod TracerWeighingMethod, beta float32,
-	russianRouletteContribution ParticleTracerRRContribution,
+	russianRouletteContribution TracerRussianRouletteContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
@@ -118,9 +111,9 @@ func (pt *ParticleTracer) getContinueProbabilityFromIntersection(
 		var albedo Spectrum
 		albedo.ScaleInv(f, fPdf)
 		switch pt.russianRouletteContribution {
-		case PARTICLE_TRACER_RR_ALPHA:
+		case TRACER_RUSSIAN_ROULETTE_ALPHA:
 			t.Mul(alpha, &albedo)
-		case PARTICLE_TRACER_RR_ALBEDO:
+		case TRACER_RUSSIAN_ROULETTE_ALBEDO:
 			t = albedo
 		}
 	}
@@ -483,9 +476,9 @@ func (pt *ParticleTracer) SampleLightPath(
 	wiSamples := tracerBundle.Samples2D[0]
 	var t *Spectrum
 	switch pt.russianRouletteContribution {
-	case PARTICLE_TRACER_RR_ALPHA:
+	case TRACER_RUSSIAN_ROULETTE_ALPHA:
 		t = &alpha
-	case PARTICLE_TRACER_RR_ALBEDO:
+	case TRACER_RUSSIAN_ROULETTE_ALBEDO:
 		t = &albedo
 	}
 	for {
