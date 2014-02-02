@@ -78,21 +78,15 @@ type pathTracingBlock struct {
 	blockExtent SensorExtent
 }
 
-type pathRecord struct {
-	x, y         int
-	_WeLiDivPdf  Spectrum
-	debugRecords []TracerDebugRecord
-}
-
 type processedPathTracingBlock struct {
-	block       pathTracingBlock
-	pathRecords []pathRecord
+	block   pathTracingBlock
+	records []TracerRecord
 }
 
 func (ptr *PathTracingRenderer) processPixel(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y, samplesPerXY int,
 	sensorSampleStorage, tracerSampleStorage SampleStorage,
-	pathRecords []pathRecord) {
+	records []TracerRecord) {
 	sensorBundles := ptr.sampler.GenerateSampleBundles(
 		sensor.GetSampleConfig(), sensorSampleStorage,
 		samplesPerXY, rng)
@@ -100,13 +94,9 @@ func (ptr *PathTracingRenderer) processPixel(
 		ptr.pathTracer.GetSampleConfig(), tracerSampleStorage,
 		samplesPerXY, rng)
 	for i := 0; i < len(sensorBundles); i++ {
-		pathRecords[i].x = x
-		pathRecords[i].y = y
 		ptr.pathTracer.SampleSensorPath(
 			rng, scene, sensor, x, y,
-			sensorBundles[i], tracerBundles[i],
-			&pathRecords[i]._WeLiDivPdf,
-			&pathRecords[i].debugRecords)
+			sensorBundles[i], tracerBundles[i], &records[i])
 	}
 }
 
@@ -120,13 +110,13 @@ func (ptr *PathTracingRenderer) processBlocks(
 		ptr.pathTracer.GetSampleConfig(), maxSampleCount)
 	for block := range inputCh {
 		extent := block.blockExtent
-		pathRecords := make([]pathRecord, extent.GetSampleCount())
+		records := make([]TracerRecord, extent.GetSampleCount())
 		i := 0
 		for x := extent.XStart; x < extent.XEnd; x++ {
 			for y := extent.YStart; y < extent.YEnd; y++ {
 				start := i * extent.SamplesPerXY
 				end := (i + 1) * extent.SamplesPerXY
-				pixelRecords := pathRecords[start:end]
+				pixelRecords := records[start:end]
 				ptr.processPixel(
 					rng, scene, sensor, x, y,
 					extent.SamplesPerXY,
@@ -136,7 +126,7 @@ func (ptr *PathTracingRenderer) processBlocks(
 				i++
 			}
 		}
-		outputCh <- processedPathTracingBlock{block, pathRecords}
+		outputCh <- processedPathTracingBlock{block, records}
 	}
 }
 
@@ -170,20 +160,9 @@ func (ptr *PathTracingRenderer) processSensor(
 		block := processedBlock.block
 		fmt.Printf("Finished block %d/%d\n",
 			block.blockNumber+1, numBlocks)
-		pathRecords := processedBlock.pathRecords
-		for i := 0; i < len(pathRecords); i++ {
-			sensor.AccumulateSensorContribution(
-				pathRecords[i].x, pathRecords[i].y,
-				pathRecords[i]._WeLiDivPdf)
-			debugRecords := pathRecords[i].debugRecords
-			for _, debugRecord := range debugRecords {
-				sensor.AccumulateSensorDebugInfo(
-					debugRecord.Tag,
-					pathRecords[i].x, pathRecords[i].y,
-					debugRecord.S)
-			}
-			sensor.RecordAccumulatedSensorContributions(
-				pathRecords[i].x, pathRecords[i].y)
+		records := processedBlock.records
+		for i := 0; i < len(records); i++ {
+			records[i].Accumulate()
 		}
 	}
 
