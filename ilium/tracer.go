@@ -88,3 +88,30 @@ func MakeTracerPathType(pathTypeString string) TracerPathType {
 		panic("unknown path type " + pathTypeString)
 	}
 }
+
+type TracerWeighingMethod int
+
+const (
+	TRACER_UNIFORM_WEIGHTS TracerWeighingMethod = iota
+	TRACER_POWER_WEIGHTS   TracerWeighingMethod = iota
+)
+
+func MakeTracerWeighingMethod(weighingMethodString string) (
+	weighingMethod TracerWeighingMethod, beta float32) {
+	switch weighingMethodString {
+	case "uniform":
+		weighingMethod = TRACER_UNIFORM_WEIGHTS
+		beta = 1
+		return
+	case "balanced":
+		weighingMethod = TRACER_POWER_WEIGHTS
+		beta = 1
+		return
+	case "power":
+		weighingMethod = TRACER_POWER_WEIGHTS
+		beta = 2
+		return
+	default:
+		panic("unknown weighing method " + weighingMethodString)
+	}
+}
