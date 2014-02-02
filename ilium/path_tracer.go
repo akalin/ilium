@@ -3,18 +3,11 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type PathTracerRRContribution int
-
-const (
-	PATH_TRACER_RR_ALPHA  PathTracerRRContribution = iota
-	PATH_TRACER_RR_ALBEDO PathTracerRRContribution = iota
-)
-
 type PathTracer struct {
 	pathTypes                   TracerPathType
 	weighingMethod              TracerWeighingMethod
 	beta                        float32
-	russianRouletteContribution PathTracerRRContribution
+	russianRouletteContribution TracerRussianRouletteContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
 	debugLevel                  int
@@ -29,7 +22,7 @@ type PathTracerDebugRecord struct {
 func (pt *PathTracer) InitializePathTracer(
 	pathTypes TracerPathType,
 	weighingMethod TracerWeighingMethod, beta float32,
-	russianRouletteContribution PathTracerRRContribution,
+	russianRouletteContribution TracerRussianRouletteContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
 	pt.pathTypes = pathTypes
@@ -100,9 +93,9 @@ func (pt *PathTracer) getContinueProbabilityFromIntersection(
 		var albedo Spectrum
 		albedo.ScaleInv(f, fPdf)
 		switch pt.russianRouletteContribution {
-		case PATH_TRACER_RR_ALPHA:
+		case TRACER_RUSSIAN_ROULETTE_ALPHA:
 			t.Mul(alpha, &albedo)
-		case PATH_TRACER_RR_ALBEDO:
+		case TRACER_RUSSIAN_ROULETTE_ALBEDO:
 			t = albedo
 		}
 	}
@@ -362,9 +355,9 @@ func (pt *PathTracer) SampleSensorPath(
 	albedo := WeDivPdf
 	var t *Spectrum
 	switch pt.russianRouletteContribution {
-	case PATH_TRACER_RR_ALPHA:
+	case TRACER_RUSSIAN_ROULETTE_ALPHA:
 		t = &alpha
-	case PATH_TRACER_RR_ALBEDO:
+	case TRACER_RUSSIAN_ROULETTE_ALBEDO:
 		t = &albedo
 	}
 	var edgeCount int
