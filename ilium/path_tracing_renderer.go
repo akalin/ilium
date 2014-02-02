@@ -28,20 +28,14 @@ func MakePathTracingRenderer(
 	weighingMethod, beta :=
 		MakeTracerWeighingMethod(config["weighingMethod"].(string))
 
-	var russianRouletteContribution PathTracerRRContribution
-	if russianRouletteContributionConfig, ok :=
+	var russianRouletteContribution TracerRussianRouletteContribution
+	if contributionString, ok :=
 		config["russianRouletteContribution"].(string); ok {
-		switch russianRouletteContributionConfig {
-		case "alpha":
-			russianRouletteContribution = PATH_TRACER_RR_ALPHA
-		case "albedo":
-			russianRouletteContribution = PATH_TRACER_RR_ALBEDO
-		default:
-			panic("unknown Russian roulette contribution " +
-				russianRouletteContributionConfig)
-		}
+		russianRouletteContribution =
+			MakeTracerRussianRouletteContribution(
+				contributionString)
 	} else {
-		russianRouletteContribution = PATH_TRACER_RR_ALPHA
+		russianRouletteContribution = TRACER_RUSSIAN_ROULETTE_ALPHA
 	}
 
 	russianRouletteState := MakeRussianRouletteState(config)
