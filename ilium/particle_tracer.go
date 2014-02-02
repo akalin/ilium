@@ -3,13 +3,6 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type ParticleTracerWeighingMethod int
-
-const (
-	PARTICLE_TRACER_UNIFORM_WEIGHTS ParticleTracerWeighingMethod = iota
-	PARTICLE_TRACER_POWER_WEIGHTS                                = iota
-)
-
 type ParticleTracerRRContribution int
 
 const (
@@ -39,7 +32,7 @@ func (pr *ParticleRecord) Accumulate() {
 
 type ParticleTracer struct {
 	pathTypes                   TracerPathType
-	weighingMethod              ParticleTracerWeighingMethod
+	weighingMethod              TracerWeighingMethod
 	beta                        float32
 	russianRouletteContribution ParticleTracerRRContribution
 	russianRouletteState        *RussianRouletteState
@@ -50,7 +43,7 @@ type ParticleTracer struct {
 
 func (pt *ParticleTracer) InitializeParticleTracer(
 	pathTypes TracerPathType,
-	weighingMethod ParticleTracerWeighingMethod, beta float32,
+	weighingMethod TracerWeighingMethod, beta float32,
 	russianRouletteContribution ParticleTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
@@ -246,9 +239,9 @@ func (pt *ParticleTracer) computeEmittedImportance(
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
 			switch pt.weighingMethod {
-			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
+			case TRACER_UNIFORM_WEIGHTS:
 				invW++
-			case PARTICLE_TRACER_POWER_WEIGHTS:
+			case TRACER_POWER_WEIGHTS:
 				directSensorPdf :=
 					sensor.ComputeWePdfFromPoint(
 						x, y, pPrev, pEpsilonPrev,
@@ -343,9 +336,9 @@ func (pt *ParticleTracer) directSampleSensors(
 			TRACER_EMITTED_IMPORTANCE_PATH,
 			sensorEdgeCount, sensor) {
 			switch pt.weighingMethod {
-			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
+			case TRACER_UNIFORM_WEIGHTS:
 				invW++
-			case PARTICLE_TRACER_POWER_WEIGHTS:
+			case TRACER_POWER_WEIGHTS:
 				emittedPdf := material.ComputePdf(
 					MATERIAL_IMPORTANCE_TRANSPORT,
 					wo, wi, n)
