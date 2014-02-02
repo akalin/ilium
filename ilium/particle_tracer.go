@@ -3,23 +3,18 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type ParticleDebugRecord struct {
-	tag string
-	s   Spectrum
-}
-
 type ParticleRecord struct {
 	sensor       Sensor
 	x, y         int
 	_WeLiDivPdf  Spectrum
-	debugRecords []ParticleDebugRecord
+	debugRecords []TracerDebugRecord
 }
 
 func (pr *ParticleRecord) Accumulate() {
 	pr.sensor.AccumulateLightContribution(pr.x, pr.y, pr._WeLiDivPdf)
 	for _, debugRecord := range pr.debugRecords {
 		pr.sensor.AccumulateLightDebugInfo(
-			debugRecord.tag, pr.x, pr.y, debugRecord.s)
+			debugRecord.Tag, pr.x, pr.y, debugRecord.S)
 	}
 }
 
@@ -119,22 +114,22 @@ func (pt *ParticleTracer) getContinueProbabilityFromIntersection(
 
 func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 	edgeCount int, sensor Sensor, w float32, wWeAlpha, f1, f2 *Spectrum,
-	f1Name, f2Name string) []ParticleDebugRecord {
-	var debugRecords []ParticleDebugRecord
+	f1Name, f2Name string) []TracerDebugRecord {
+	var debugRecords []TracerDebugRecord
 	if pt.debugLevel >= 1 {
 		width := widthInt(pt.debugMaxEdgeCount)
 
 		var f1F2 Spectrum
 		f1F2.Mul(f1, f2)
 
-		f1F2TotalDebugRecord := ParticleDebugRecord{
-			tag: f1Name + f2Name,
-			s:   f1F2,
+		f1F2TotalDebugRecord := TracerDebugRecord{
+			Tag: f1Name + f2Name,
+			S:   f1F2,
 		}
 
-		wF1F2TotalDebugRecord := ParticleDebugRecord{
-			tag: "w" + f1Name + f2Name,
-			s:   *wWeAlpha,
+		wF1F2TotalDebugRecord := TracerDebugRecord{
+			Tag: "w" + f1Name + f2Name,
+			S:   *wWeAlpha,
 		}
 
 		debugRecords = append(debugRecords,
@@ -150,19 +145,19 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 		}
 
 		if pt.debugLevel >= 2 {
-			wWeAlphaDebugRecord := ParticleDebugRecord{
-				tag: "wWA" + tagSuffix,
-				s:   *wWeAlpha,
+			wWeAlphaDebugRecord := TracerDebugRecord{
+				Tag: "wWA" + tagSuffix,
+				S:   *wWeAlpha,
 			}
 
-			f1F2DebugRecord := ParticleDebugRecord{
-				tag: f1Name + f2Name + tagSuffix,
-				s:   f1F2,
+			f1F2DebugRecord := TracerDebugRecord{
+				Tag: f1Name + f2Name + tagSuffix,
+				S:   f1F2,
 			}
 
-			wF1F2DebugRecord := ParticleDebugRecord{
-				tag: "w" + f1Name + f2Name + tagSuffix,
-				s:   *wWeAlpha,
+			wF1F2DebugRecord := TracerDebugRecord{
+				Tag: "w" + f1Name + f2Name + tagSuffix,
+				S:   *wWeAlpha,
 			}
 
 			debugRecords = append(debugRecords,
@@ -171,9 +166,9 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 		}
 
 		if pt.debugLevel >= 3 {
-			f1DebugRecord := ParticleDebugRecord{
-				tag: f1Name + tagSuffix,
-				s:   *f1,
+			f1DebugRecord := TracerDebugRecord{
+				Tag: f1Name + tagSuffix,
+				S:   *f1,
 			}
 
 			// Scale f2 by the pixel count so that it
@@ -186,9 +181,9 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 			scale := sensorExtent.GetPixelCount()
 			var scaledF2 Spectrum
 			scaledF2.Scale(f2, float32(scale))
-			f2DebugRecord := ParticleDebugRecord{
-				tag: f2Name + tagSuffix,
-				s:   scaledF2,
+			f2DebugRecord := TracerDebugRecord{
+				Tag: f2Name + tagSuffix,
+				S:   scaledF2,
 			}
 
 			debugRecords = append(
