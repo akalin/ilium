@@ -14,17 +14,13 @@ type PathTracingRenderer struct {
 func MakePathTracingRenderer(
 	config map[string]interface{}) *PathTracingRenderer {
 	pathTypesConfig := config["pathTypes"].([]interface{})
-	var pathTypes PathTracerPathType
+	var pathTypes TracerPathType
 	for _, pathTypeConfig := range pathTypesConfig {
 		pathTypeString := pathTypeConfig.(string)
-		var pathType PathTracerPathType
-		switch pathTypeString {
-		case "emittedLight":
-			pathType = PATH_TRACER_EMITTED_LIGHT_PATH
-		case "directLighting":
-			pathType = PATH_TRACER_DIRECT_LIGHTING_PATH
-		default:
-			panic("unknown path type " + pathTypeString)
+		pathType := MakeTracerPathType(pathTypeString)
+		if (pathType.GetContributionTypes() &
+			TRACER_SENSOR_CONTRIBUTION) == 0 {
+			panic("invalid path type " + pathTypeString)
 		}
 		pathTypes |= pathType
 	}
