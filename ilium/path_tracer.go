@@ -3,13 +3,6 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type PathTracerWeighingMethod int
-
-const (
-	PATH_TRACER_UNIFORM_WEIGHTS PathTracerWeighingMethod = iota
-	PATH_TRACER_POWER_WEIGHTS   PathTracerWeighingMethod = iota
-)
-
 type PathTracerRRContribution int
 
 const (
@@ -19,7 +12,7 @@ const (
 
 type PathTracer struct {
 	pathTypes                   TracerPathType
-	weighingMethod              PathTracerWeighingMethod
+	weighingMethod              TracerWeighingMethod
 	beta                        float32
 	russianRouletteContribution PathTracerRRContribution
 	russianRouletteState        *RussianRouletteState
@@ -35,7 +28,7 @@ type PathTracerDebugRecord struct {
 
 func (pt *PathTracer) InitializePathTracer(
 	pathTypes TracerPathType,
-	weighingMethod PathTracerWeighingMethod, beta float32,
+	weighingMethod TracerWeighingMethod, beta float32,
 	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
@@ -207,9 +200,9 @@ func (pt *PathTracer) computeEmittedLight(
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
 		switch pt.weighingMethod {
-		case PATH_TRACER_UNIFORM_WEIGHTS:
+		case TRACER_UNIFORM_WEIGHTS:
 			invW++
-		case PATH_TRACER_POWER_WEIGHTS:
+		case TRACER_POWER_WEIGHTS:
 			pChooseLight := scene.ComputeLightPdf(light)
 			directLightingPdf :=
 				light.ComputeLePdfFromPoint(
@@ -295,9 +288,9 @@ func (pt *PathTracer) sampleDirectLighting(
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
 		switch pt.weighingMethod {
-		case PATH_TRACER_UNIFORM_WEIGHTS:
+		case TRACER_UNIFORM_WEIGHTS:
 			invW++
-		case PATH_TRACER_POWER_WEIGHTS:
+		case TRACER_POWER_WEIGHTS:
 			emittedPdf := material.ComputePdf(
 				MATERIAL_LIGHT_TRANSPORT, wo, wi, n)
 			pContinue := pt.getContinueProbabilityFromIntersection(

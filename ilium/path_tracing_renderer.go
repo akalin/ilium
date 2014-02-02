@@ -25,22 +25,8 @@ func MakePathTracingRenderer(
 		pathTypes |= pathType
 	}
 
-	weighingMethodConfig := config["weighingMethod"].(string)
-	var weighingMethod PathTracerWeighingMethod
-	var beta float32
-	switch weighingMethodConfig {
-	case "uniform":
-		weighingMethod = PATH_TRACER_UNIFORM_WEIGHTS
-		beta = 1
-	case "balanced":
-		weighingMethod = PATH_TRACER_POWER_WEIGHTS
-		beta = 1
-	case "power":
-		weighingMethod = PATH_TRACER_POWER_WEIGHTS
-		beta = 2
-	default:
-		panic("unknown weighing method " + weighingMethodConfig)
-	}
+	weighingMethod, beta :=
+		MakeTracerWeighingMethod(config["weighingMethod"].(string))
 
 	var russianRouletteContribution PathTracerRRContribution
 	if russianRouletteContributionConfig, ok :=
