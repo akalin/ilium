@@ -77,7 +77,7 @@ func (ptr *ParticleTracingRenderer) processBlock(
 	rng *rand.Rand, scene *Scene, sensors []Sensor, blockSampleCount int,
 	particleTracerConfig, lightConfig SampleConfig,
 	particleTracerSampleStorage, lightSampleStorage SampleStorage,
-	recordsCh chan []ParticleRecord) {
+	recordsCh chan []TracerRecord) {
 	tracerBundles := ptr.sampler.GenerateSampleBundles(
 		particleTracerConfig,
 		particleTracerSampleStorage, blockSampleCount, rng)
@@ -96,7 +96,7 @@ func (ptr *ParticleTracingRenderer) processBlock(
 func (ptr *ParticleTracingRenderer) processSamples(
 	rng *rand.Rand, scene *Scene, sensors []Sensor,
 	lightConfig SampleConfig, sampleCount int,
-	recordsCh chan []ParticleRecord) {
+	recordsCh chan []TracerRecord) {
 	blockSize := minInt(sampleCount, 1024)
 	blockCount := (sampleCount + blockSize - 1) / blockSize
 
@@ -136,7 +136,7 @@ func (ptr *ParticleTracingRenderer) Render(
 	totalSampleCount = samplesPerJob * numRenderJobs
 
 	channelSize := minInt(totalSampleCount, 1024)
-	recordsCh := make(chan []ParticleRecord, channelSize)
+	recordsCh := make(chan []TracerRecord, channelSize)
 
 	for i := 0; i < numRenderJobs; i++ {
 		workerRng := rand.New(rand.NewSource(rng.Int63()))
