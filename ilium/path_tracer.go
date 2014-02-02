@@ -3,13 +3,6 @@ package ilium
 import "fmt"
 import "math/rand"
 
-type PathTracerPathType int
-
-const (
-	PATH_TRACER_EMITTED_LIGHT_PATH   PathTracerPathType = 1 << iota
-	PATH_TRACER_DIRECT_LIGHTING_PATH PathTracerPathType = 1 << iota
-)
-
 type PathTracerWeighingMethod int
 
 const (
@@ -25,7 +18,7 @@ const (
 )
 
 type PathTracer struct {
-	pathTypes                   PathTracerPathType
+	pathTypes                   TracerPathType
 	weighingMethod              PathTracerWeighingMethod
 	beta                        float32
 	russianRouletteContribution PathTracerRRContribution
@@ -41,7 +34,7 @@ type PathTracerDebugRecord struct {
 }
 
 func (pt *PathTracer) InitializePathTracer(
-	pathTypes PathTracerPathType,
+	pathTypes TracerPathType,
 	weighingMethod PathTracerWeighingMethod, beta float32,
 	russianRouletteContribution PathTracerRRContribution,
 	russianRouletteState *RussianRouletteState,
@@ -61,15 +54,8 @@ func (pt *PathTracer) hasSomethingToDo() bool {
 		return false
 	}
 
-	if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
-		return true
-	}
-
-	if (pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0 {
-		return true
-	}
-
-	return false
+	return (pt.pathTypes.GetContributionTypes() &
+		TRACER_SENSOR_CONTRIBUTION) != 0
 }
 
 func (pt *PathTracer) GetSampleConfig() SampleConfig {
@@ -87,7 +73,7 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	var sample1DLengths []int
 	sample2DLengths := []int{numWiSamples}
 
-	if (pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0 {
+	if (pt.pathTypes & TRACER_DIRECT_LIGHTING_PATH) != 0 {
 		// Sample direct lighting for each interior vertex;
 		// don't do it from the first vertex since that will
 		// most likely end up on a different pixel, and don't
@@ -201,7 +187,7 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 }
 
 func (pt *PathTracer) computeEmittedLight(
-	edgeCount int, scene *Scene, alpha *Spectrum,
+	edgeCount int, scene *Scene, sensor Sensor, alpha *Spectrum,
 	continueBsdfPdfPrev float32, pPrev Point3, pEpsilonPrev float32,
 	nPrev Normal3, wiPrev, wo Vector3, intersection *Intersection,
 	debugRecords *[]PathTracerDebugRecord) (wLeAlpha Spectrum) {
@@ -218,9 +204,10 @@ func (pt *PathTracer) computeEmittedLight(
 	}
 
 	var invW float32 = 1
-	// No other path type handles the first edge.
+
+	// Direct lighting isn't done with the first edge.
 	if edgeCount > 1 &&
-		((pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0) {
+		((pt.pathTypes & TRACER_DIRECT_LIGHTING_PATH) != 0) {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
@@ -235,7 +222,19 @@ func (pt *PathTracer) computeEmittedLight(
 			invW += powFloat32(pdfRatio, pt.beta)
 		}
 	}
+
+	if (pt.pathTypes&TRACER_EMITTED_IMPORTANCE_PATH) != 0 &&
+		!sensor.HasSpecularPosition() {
+		panic("Not implemented")
+	}
+
+	if (pt.pathTypes&TRACER_DIRECT_SENSOR_PATH) != 0 &&
+		!sensor.HasSpecularDirection() {
+		panic("Not implemented")
+	}
+
 	w := 1 / invW
+
 	if !isFiniteFloat32(w) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", w, intersection, wo)
@@ -252,8 +251,9 @@ func (pt *PathTracer) computeEmittedLight(
 }
 
 func (pt *PathTracer) sampleDirectLighting(
-	edgeCount int, rng *rand.Rand, scene *Scene, tracerBundle SampleBundle,
-	alpha *Spectrum, wo Vector3, intersection *Intersection,
+	edgeCount int, rng *rand.Rand, scene *Scene, sensor Sensor,
+	tracerBundle SampleBundle, alpha *Spectrum, wo Vector3,
+	intersection *Intersection,
 	debugRecords *[]PathTracerDebugRecord) (wLeAlphaNext Spectrum) {
 	if len(scene.Lights) == 0 {
 		return
@@ -291,7 +291,8 @@ func (pt *PathTracer) sampleDirectLighting(
 	edgeCount++
 
 	var invW float32 = 1
-	if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
+
+	if (pt.pathTypes & TRACER_EMITTED_LIGHT_PATH) != 0 {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
@@ -305,7 +306,19 @@ func (pt *PathTracer) sampleDirectLighting(
 			invW += powFloat32(pdfRatio, pt.beta)
 		}
 	}
+
+	if (pt.pathTypes&TRACER_EMITTED_IMPORTANCE_PATH) != 0 &&
+		!sensor.HasSpecularPosition() {
+		panic("Not implemented")
+	}
+
+	if (pt.pathTypes&TRACER_DIRECT_SENSOR_PATH) != 0 &&
+		!sensor.HasSpecularDirection() {
+		panic("Not implemented")
+	}
+
 	weight := 1 / invW
+
 	if !isFiniteFloat32(weight) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", weight, intersection, wo)
@@ -389,10 +402,11 @@ func (pt *PathTracer) SampleSensorPath(
 		// no light will reach the sensor directly from the
 		// light (since direct lighting doesn't handle the
 		// first edge).
-		if (pt.pathTypes & PATH_TRACER_EMITTED_LIGHT_PATH) != 0 {
+		if (pt.pathTypes & TRACER_EMITTED_LIGHT_PATH) != 0 {
 			wLeAlpha := pt.computeEmittedLight(
-				edgeCount, scene, &alpha, continueBsdfPdfPrev,
-				ray.O, ray.MinT, n, ray.D, wo, &intersection,
+				edgeCount, scene, sensor, &alpha,
+				continueBsdfPdfPrev, ray.O, ray.MinT, n,
+				ray.D, wo, &intersection,
 				debugRecords)
 			if !wLeAlpha.IsValid() {
 				fmt.Printf("Invalid wLeAlpha %v returned for "+
@@ -410,9 +424,9 @@ func (pt *PathTracer) SampleSensorPath(
 
 		// Don't sample direct lighting for the last edge,
 		// since the process adds an extra edge.
-		if (pt.pathTypes & PATH_TRACER_DIRECT_LIGHTING_PATH) != 0 {
+		if (pt.pathTypes & TRACER_DIRECT_LIGHTING_PATH) != 0 {
 			wLeAlphaNext := pt.sampleDirectLighting(
-				edgeCount, rng, scene, tracerBundle,
+				edgeCount, rng, scene, sensor, tracerBundle,
 				&alpha, wo, &intersection, debugRecords)
 			if !wLeAlphaNext.IsValid() {
 				fmt.Printf("Invalid wLeAlphaNext %v returned "+
