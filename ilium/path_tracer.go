@@ -324,9 +324,13 @@ func (pt *PathTracer) sampleDirectLighting(
 // path.
 func (pt *PathTracer) SampleSensorPath(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
-	sensorBundle, tracerBundle SampleBundle, WeLiDivPdf *Spectrum,
-	debugRecords *[]TracerDebugRecord) {
-	*WeLiDivPdf = Spectrum{}
+	sensorBundle, tracerBundle SampleBundle, record *TracerRecord) {
+	*record = TracerRecord{
+		ContributionType: TRACER_SENSOR_CONTRIBUTION,
+		Sensor:           sensor,
+		X:                x,
+		Y:                y,
+	}
 	if !pt.hasSomethingToDo() {
 		return
 	}
@@ -387,7 +391,7 @@ func (pt *PathTracer) SampleSensorPath(
 				edgeCount, scene, sensor, &alpha,
 				continueBsdfPdfPrev, ray.O, ray.MinT, n,
 				ray.D, wo, &intersection,
-				debugRecords)
+				&record.DebugRecords)
 			if !wLeAlpha.IsValid() {
 				fmt.Printf("Invalid wLeAlpha %v returned for "+
 					"intersection %v and wo %v\n",
@@ -395,7 +399,7 @@ func (pt *PathTracer) SampleSensorPath(
 				wLeAlpha = Spectrum{}
 			}
 
-			WeLiDivPdf.Add(WeLiDivPdf, &wLeAlpha)
+			record.WeLiDivPdf.Add(&record.WeLiDivPdf, &wLeAlpha)
 		}
 
 		if edgeCount >= pt.maxEdgeCount {
@@ -407,7 +411,7 @@ func (pt *PathTracer) SampleSensorPath(
 		if pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 			wLeAlphaNext := pt.sampleDirectLighting(
 				edgeCount, rng, scene, sensor, tracerBundle,
-				&alpha, wo, &intersection, debugRecords)
+				&alpha, wo, &intersection, &record.DebugRecords)
 			if !wLeAlphaNext.IsValid() {
 				fmt.Printf("Invalid wLeAlphaNext %v returned "+
 					"for intersection %v and wo %v\n",
@@ -415,7 +419,7 @@ func (pt *PathTracer) SampleSensorPath(
 				wLeAlphaNext = Spectrum{}
 			}
 
-			WeLiDivPdf.Add(WeLiDivPdf, &wLeAlphaNext)
+			record.WeLiDivPdf.Add(&record.WeLiDivPdf, &wLeAlphaNext)
 		}
 
 		sampleIndex := edgeCount - 1
@@ -449,11 +453,11 @@ func (pt *PathTracer) SampleSensorPath(
 			Tag: "n",
 			S:   MakeConstantSpectrum(n),
 		}
-		*debugRecords = append(*debugRecords, debugRecord)
+		record.DebugRecords = append(record.DebugRecords, debugRecord)
 	}
 
-	if !WeLiDivPdf.IsValid() {
+	if !record.WeLiDivPdf.IsValid() {
 		fmt.Printf("Invalid weighted Li %v for ray %v\n",
-			*WeLiDivPdf, initialRay)
+			record.WeLiDivPdf, initialRay)
 	}
 }
