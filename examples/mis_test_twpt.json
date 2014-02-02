@@ -1,0 +1,49 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "mis_test_scene.json"
+        },
+        {
+          "_comment": "Sensors.",
+          "type": "PointPrimitive",
+          "position": [0, -1.5, 0],
+          "sensors": [
+            {
+              "_comment": "Towards back wall.",
+              "type": "PinholeCamera",
+              "outputPath": "mis_test_twpt.png",
+              "target":   [0, 1, 0],
+              "up":       [0, 0, 1],
+              "fov": 44,
+              "width": 500,
+              "height": 500,
+              "samplesPerPixel": 4
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "TwoWayPathTracingRenderer",
+    "pathTypes": [
+      "emittedLight",
+      "directLighting",
+      "emittedImportance",
+      "directSensor"
+    ],
+    "weighingMethod": "uniform",
+    "russianRouletteMethod": "proportional",
+    "russianRouletteStartIndex": 5,
+    "russianRouletteMaxProbability": 0.95,
+    "russianRouletteDelta": 0.25,
+    "maxEdgeCount": 100,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}

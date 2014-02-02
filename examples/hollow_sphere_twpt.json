@@ -1,0 +1,51 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "hollow_sphere_scene.json"
+        },
+        {
+          "_comment": "Radiometers.",
+          "type": "PointPrimitive",
+          "position": [0, 0.5, 0],
+          "sensors": [
+            {
+              "type": "RadianceMeter",
+              "description": "towards hollow sphere",
+              "target": [0, 1, 0],
+              "sampleCount": 16
+            },
+            {
+              "type": "IrradianceMeter",
+              "description": "in center of hollow sphere",
+              "samplingMethod": "cosine",
+              "up": [0, 1, 0],
+              "sampleCount": 16
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "TwoWayPathTracingRenderer",
+    "pathTypes": [
+      "emittedLight",
+      "directLighting",
+      "emittedImportance",
+      "directSensor"
+    ],
+    "weighingMethod": "uniform",
+    "russianRouletteMethod": "proportional",
+    "russianRouletteStartIndex": 5,
+    "russianRouletteMaxProbability": 0.95,
+    "russianRouletteDelta": 0.25,
+    "maxEdgeCount": 100,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "disk_irradiance_scene.json"
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "TwoWayPathTracingRenderer",
+    "pathTypes": [ "emittedLight", "emittedImportance", "directSensor" ],
+    "weighingMethod": "uniform",
+    "russianRouletteMethod": "fixed",
+    "russianRouletteStartIndex": 1,
+    "russianRouletteMaxProbability": 1,
+    "maxEdgeCount": 1,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
