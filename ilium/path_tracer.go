@@ -14,11 +14,6 @@ type PathTracer struct {
 	debugMaxEdgeCount           int
 }
 
-type PathTracerDebugRecord struct {
-	Tag string
-	S   Spectrum
-}
-
 func (pt *PathTracer) InitializePathTracer(
 	pathTypes TracerPathType,
 	weighingMethod TracerWeighingMethod, beta float32,
@@ -84,19 +79,19 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 
 func (pt *PathTracer) recordWLeAlphaDebugInfo(
 	edgeCount int, w float32, wLeAlpha, f1, f2 *Spectrum,
-	f1Name, f2Name string, debugRecords *[]PathTracerDebugRecord) {
+	f1Name, f2Name string, debugRecords *[]TracerDebugRecord) {
 	if pt.debugLevel >= 1 {
 		width := widthInt(pt.debugMaxEdgeCount)
 
 		var f1F2 Spectrum
 		f1F2.Mul(f1, f2)
 
-		f1F2TotalDebugRecord := PathTracerDebugRecord{
+		f1F2TotalDebugRecord := TracerDebugRecord{
 			Tag: f1Name + f2Name,
 			S:   f1F2,
 		}
 
-		wF1F2TotalDebugRecord := PathTracerDebugRecord{
+		wF1F2TotalDebugRecord := TracerDebugRecord{
 			Tag: "w" + f1Name + f2Name,
 			S:   *wLeAlpha,
 		}
@@ -114,17 +109,17 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 		}
 
 		if pt.debugLevel >= 2 {
-			wLeAlphaDebugRecord := PathTracerDebugRecord{
+			wLeAlphaDebugRecord := TracerDebugRecord{
 				Tag: "wLA" + tagSuffix,
 				S:   *wLeAlpha,
 			}
 
-			f1F2DebugRecord := PathTracerDebugRecord{
+			f1F2DebugRecord := TracerDebugRecord{
 				Tag: f1Name + f2Name + tagSuffix,
 				S:   f1F2,
 			}
 
-			wF1F2DebugRecord := PathTracerDebugRecord{
+			wF1F2DebugRecord := TracerDebugRecord{
 				Tag: "w" + f1Name + f2Name + tagSuffix,
 				S:   *wLeAlpha,
 			}
@@ -135,12 +130,12 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 		}
 
 		if pt.debugLevel >= 3 {
-			f1DebugRecord := PathTracerDebugRecord{
+			f1DebugRecord := TracerDebugRecord{
 				Tag: f1Name + tagSuffix,
 				S:   *f1,
 			}
 
-			f2DebugRecord := PathTracerDebugRecord{
+			f2DebugRecord := TracerDebugRecord{
 				Tag: f2Name + tagSuffix,
 				S:   *f2,
 			}
@@ -155,7 +150,7 @@ func (pt *PathTracer) computeEmittedLight(
 	edgeCount int, scene *Scene, sensor Sensor, alpha *Spectrum,
 	continueBsdfPdfPrev float32, pPrev Point3, pEpsilonPrev float32,
 	nPrev Normal3, wiPrev, wo Vector3, intersection *Intersection,
-	debugRecords *[]PathTracerDebugRecord) (wLeAlpha Spectrum) {
+	debugRecords *[]TracerDebugRecord) (wLeAlpha Spectrum) {
 	light := intersection.Light
 
 	if light == nil {
@@ -218,7 +213,7 @@ func (pt *PathTracer) sampleDirectLighting(
 	edgeCount int, rng *rand.Rand, scene *Scene, sensor Sensor,
 	tracerBundle SampleBundle, alpha *Spectrum, wo Vector3,
 	intersection *Intersection,
-	debugRecords *[]PathTracerDebugRecord) (wLeAlphaNext Spectrum) {
+	debugRecords *[]TracerDebugRecord) (wLeAlphaNext Spectrum) {
 	if len(scene.Lights) == 0 {
 		return
 	}
@@ -314,7 +309,7 @@ func (pt *PathTracer) sampleDirectLighting(
 func (pt *PathTracer) SampleSensorPath(
 	rng *rand.Rand, scene *Scene, sensor Sensor, x, y int,
 	sensorBundle, tracerBundle SampleBundle, WeLiDivPdf *Spectrum,
-	debugRecords *[]PathTracerDebugRecord) {
+	debugRecords *[]TracerDebugRecord) {
 	*WeLiDivPdf = Spectrum{}
 	if !pt.hasSomethingToDo() {
 		return
@@ -434,7 +429,7 @@ func (pt *PathTracer) SampleSensorPath(
 
 	if pt.debugLevel >= 1 {
 		n := float32(edgeCount) / float32(pt.maxEdgeCount)
-		debugRecord := PathTracerDebugRecord{
+		debugRecord := TracerDebugRecord{
 			Tag: "n",
 			S:   MakeConstantSpectrum(n),
 		}

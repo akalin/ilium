@@ -81,7 +81,7 @@ type pathTracingBlock struct {
 type pathRecord struct {
 	x, y         int
 	_WeLiDivPdf  Spectrum
-	debugRecords []PathTracerDebugRecord
+	debugRecords []TracerDebugRecord
 }
 
 type processedPathTracingBlock struct {

@@ -157,3 +157,8 @@ func GetContinueProbabilityFromIntersection(
 	}
 	return russianRouletteState.GetContinueProbability(edgeCount, &t)
 }
+
+type TracerDebugRecord struct {
+	Tag string
+	S   Spectrum
+}
