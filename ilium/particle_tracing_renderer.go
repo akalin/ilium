@@ -28,20 +28,14 @@ func MakeParticleTracingRenderer(
 	weighingMethod, beta :=
 		MakeTracerWeighingMethod(config["weighingMethod"].(string))
 
-	var russianRouletteContribution ParticleTracerRRContribution
-	if russianRouletteContributionConfig, ok :=
+	var russianRouletteContribution TracerRussianRouletteContribution
+	if contributionString, ok :=
 		config["russianRouletteContribution"].(string); ok {
-		switch russianRouletteContributionConfig {
-		case "alpha":
-			russianRouletteContribution = PARTICLE_TRACER_RR_ALPHA
-		case "albedo":
-			russianRouletteContribution = PARTICLE_TRACER_RR_ALBEDO
-		default:
-			panic("unknown Russian roulette contribution " +
-				russianRouletteContributionConfig)
-		}
+		russianRouletteContribution =
+			MakeTracerRussianRouletteContribution(
+				contributionString)
 	} else {
-		russianRouletteContribution = PARTICLE_TRACER_RR_ALPHA
+		russianRouletteContribution = TRACER_RUSSIAN_ROULETTE_ALPHA
 	}
 
 	russianRouletteState := MakeRussianRouletteState(config)
