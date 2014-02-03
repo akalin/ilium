@@ -548,9 +548,9 @@ func (pt *ParticleTracer) SampleLightPath(
 		alpha = LeDivPdf
 		albedo = LeDivPdf
 	} else if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
-		pSurface, pSurfaceEpsilon, nSurface, LeSpatialDivPdf :=
-			light.SampleSurface(lightBundle)
-		if LeSpatialDivPdf.IsBlack() {
+		pSurface, pSurfaceEpsilon, nSurface, LeSpatialDivPdf,
+			pdfSpatial := light.SampleSurface(lightBundle)
+		if LeSpatialDivPdf.IsBlack() || pdfSpatial == 0 {
 			return records
 		}
 
