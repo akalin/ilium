@@ -519,8 +519,8 @@ func (pt *ParticleTracer) SampleLightPath(
 		!pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
 		// No need to sample the spatial and directional
 		// components separately.
-		initialRay, LeDivPdf := light.SampleRay(lightBundle)
-		if LeDivPdf.IsBlack() {
+		initialRay, LeDivPdf, pdfLight := light.SampleRay(lightBundle)
+		if LeDivPdf.IsBlack() || pdfLight == 0 {
 			return records
 		}
 

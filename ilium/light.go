@@ -8,7 +8,8 @@ type Light interface {
 	SampleDirection(
 		sampleBundle SampleBundle, pSurface Point3, nSurface Normal3) (
 		wo Vector3, LeDirectionalDivPdf Spectrum, pdf float32)
-	SampleRay(sampleBundle SampleBundle) (ray Ray, LeDivPdf Spectrum)
+	SampleRay(sampleBundle SampleBundle) (
+		ray Ray, LeDivPdf Spectrum, pdf float32)
 
 	// Samples the surface of the light, possible taking advantage
 	// of the fact that only points directly visible from the
