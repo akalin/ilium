@@ -60,7 +60,7 @@ func (fm *FluxMeter) GetSampleConfig() SampleConfig {
 }
 
 func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum) {
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	u := sampleBundle.Samples1D[0][0].U
 	v1 := sampleBundle.Samples2D[0][0].U1
 	v2 := sampleBundle.Samples2D[0][0].U2
@@ -76,10 +76,13 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 		// pdf = pdfSurfaceArea / (2 * pi * |cos(th)|).
 		WeDivPdf = MakeConstantSpectrum(
 			2 * math.Pi * absCosTh / pdfSurfaceArea)
+		pdf = pdfSurfaceArea *
+			uniformHemispherePdfSolidAngle() / absCosTh
 	case FLUX_METER_COSINE_SAMPLING:
 		r3 = cosineSampleHemisphere(w1, w2)
 		// pdf = pdfSurfaceArea / pi.
 		WeDivPdf = MakeConstantSpectrum(math.Pi / pdfSurfaceArea)
+		pdf = pdfSurfaceArea * cosineHemispherePdfProjectedSolidAngle()
 	}
 	k := R3(nSurface)
 	var i, j R3

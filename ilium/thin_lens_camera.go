@@ -138,13 +138,20 @@ func (tlc *ThinLensCamera) woToWc(
 	return wc
 }
 
+func (tlc *ThinLensCamera) computePdfDirectional(cosThC float32) float32 {
+	// This calculation is similar to the one in
+	// PinholeCamera.ComputeWeRayPdf().
+	return (tlc.backFocalLength * tlc.backFocalLength) /
+		(cosThC * cosThC * cosThC * cosThC)
+}
+
 func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum) {
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	samples := sampleBundle.Samples2D[0]
 
 	// Find the point on the lens.
 	// TODO(akalin): Use concentric sampling.
-	pLens, pLensEpsilon, nLens, _ :=
+	pLens, pLensEpsilon, nLens, pdfSurface :=
 		tlc.disk.SampleSurface(samples[0].U1, samples[0].U2)
 
 	xC := float32(x) + samples[1].U1
@@ -153,9 +160,10 @@ func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	wo := tlc.wcToWo(&wc, &pLens, &nLens)
 
 	ray = Ray{pLens, wo, pLensEpsilon, infFloat32(+1)}
-	// There's a bit of subtlety here; the pdf isn't trivial, but
 	// We is set so that We/pdf = 1.
 	WeDivPdf = MakeConstantSpectrum(1)
+	cosThC := wc.DotNormal(&nLens)
+	pdf = pdfSurface * tlc.computePdfDirectional(cosThC)
 	return
 }
 

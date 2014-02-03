@@ -116,7 +116,7 @@ type Sensor interface {
 	// which to measure radiometric quantities, and its associated
 	// pdf-weighted importance.
 	SampleRay(x, y int, sampleBundle SampleBundle) (
-		ray Ray, WeDivPdf Spectrum)
+		ray Ray, WeDivPdf Spectrum, pdf float32)
 
 	// Given a point, samples a point on the sensor and returns
 	// its pixel coordinates, pdf-weighted importance, pdf,
