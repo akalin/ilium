@@ -144,10 +144,11 @@ type Sensor interface {
 	// the sensor from the ray (p, wi), or 0 if no such point
 	// exists.
 	//
-	// For now, can be assumed to only be called when
-	// HasSpecularPosition() and HasSpecularDirection() both
-	// return false, and when wi is known to intersect the sensor
-	// from p with pixel coordinates (x, y).
+	// Can be assumed to only be called when wi is known to
+	// intersect the sensor from p with pixel coordinates (x,
+	// y). (This can happen even if HasSpecularPosition() or
+	// HasSpecularDirection() returns false, as when p lies on the
+	// ray returned by SampleRay() with t > 0 and wi = ray.D.)
 	//
 	// Note that even if (p, wi) is expected to intersect this
 	// light, 0 may still be returned due to floating point

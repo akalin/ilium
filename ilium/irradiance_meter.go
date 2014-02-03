@@ -123,7 +123,17 @@ func (im *IrradianceMeter) SamplePixelPositionAndWeFromPoint(
 
 func (im *IrradianceMeter) ComputeWePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
-	panic("Called unexpectedly")
+	r := im.position.Distance(&p)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+	var wo R3
+	wo.Invert((*R3)(&wi))
+	cosThO := wo.Dot(&im.k)
+	// Since we're assuming all parameters are valid, clamp
+	// cos(thO) to avoid infinities.
+	if cosThO < PDF_COS_THETA_EPSILON {
+		cosThO = PDF_COS_THETA_EPSILON
+	}
+	return r * r / (absCosThI * cosThO)
 }
 
 func (im *IrradianceMeter) ComputePixelPositionAndWe(
