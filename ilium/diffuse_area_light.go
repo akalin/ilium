@@ -92,7 +92,7 @@ func (d *DiffuseAreaLight) SampleDirection(
 }
 
 func (d *DiffuseAreaLight) SampleRay(sampleBundle SampleBundle) (
-	ray Ray, LeDivPdf Spectrum) {
+	ray Ray, LeDivPdf Spectrum, pdf float32) {
 	u := sampleBundle.Samples1D[0][0].U
 	v1 := sampleBundle.Samples2D[0][0].U1
 	v2 := sampleBundle.Samples2D[0][0].U2
@@ -107,9 +107,12 @@ func (d *DiffuseAreaLight) SampleRay(sampleBundle SampleBundle) (
 		// pdf = pdfSurfaceArea / (2 * pi * |cos(th)|).
 		LeDivPdf.Scale(
 			&d.emission, 2*math.Pi*absCosTh/pdfSurfaceArea)
+		pdf = pdfSurfaceArea *
+			uniformHemispherePdfSolidAngle() / absCosTh
 	case DAL_COSINE_SAMPLING:
 		// pdf = pdfSurfaceArea / pi.
 		LeDivPdf.Scale(&d.emission, math.Pi/pdfSurfaceArea)
+		pdf = pdfSurfaceArea * cosineHemispherePdfProjectedSolidAngle()
 	}
 	return
 }
