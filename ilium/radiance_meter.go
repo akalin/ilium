@@ -48,9 +48,10 @@ func (rm *RadianceMeter) GetSampleConfig() SampleConfig {
 }
 
 func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum) {
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	ray = rm.ray
 	WeDivPdf = MakeConstantSpectrum(1)
+	pdf = 1
 	return
 }
 

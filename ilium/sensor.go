@@ -116,7 +116,7 @@ type Sensor interface {
 	// which to measure radiometric quantities, and its associated
 	// inverse-pdf-weighted importance.
 	SampleRay(x, y int, sampleBundle SampleBundle) (
-		ray Ray, WeDivPdf Spectrum)
+		ray Ray, WeDivPdf Spectrum, pdf float32)
 
 	// Samples the surface of the sensor, possible taking
 	// advantage of the fact that only points directly visible
