@@ -42,11 +42,11 @@ func (d *DiffuseAreaLight) GetSampleConfig() SampleConfig {
 
 func (d *DiffuseAreaLight) SampleSurface(sampleBundle SampleBundle) (
 	pSurface Point3, pSurfaceEpsilon float32,
-	nSurface Normal3, LeSpatialDivPdf Spectrum) {
+	nSurface Normal3, LeSpatialDivPdf Spectrum, pdf float32) {
 	u := sampleBundle.Samples1D[0][0].U
 	v1 := sampleBundle.Samples2D[0][0].U1
 	v2 := sampleBundle.Samples2D[0][0].U2
-	pSurface, pSurfaceEpsilon, nSurface, pdf :=
+	pSurface, pSurfaceEpsilon, nSurface, pdf =
 		d.shapeSet.SampleSurface(u, v1, v2)
 	LeSpatial := d.ComputeLeSpatial(pSurface)
 	LeSpatialDivPdf.ScaleInv(&LeSpatial, pdf)
