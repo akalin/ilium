@@ -11,7 +11,8 @@ type Light interface {
 	SampleRay(sampleBundle SampleBundle) (ray Ray, LeDivPdf Spectrum)
 	SampleLeFromPoint(
 		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
-		LeDivPdf Spectrum, pdf float32, wi Vector3, shadowRay Ray)
+		LeDivPdf Spectrum, pdf float32, wi Vector3,
+		pSurface Point3, nSurface Normal3, shadowRay Ray)
 	ComputeLePdfFromPoint(
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 	ComputeLeSpatial(pSurface Point3) Spectrum
