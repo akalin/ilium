@@ -76,7 +76,7 @@ func (im *IrradianceMeter) GetSampleConfig() SampleConfig {
 }
 
 func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum) {
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	u1 := sampleBundle.Samples2D[0][0].U1
 	u2 := sampleBundle.Samples2D[0][0].U2
 	var r3 R3
@@ -86,10 +86,12 @@ func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 		absCosTh := r3.Z
 		// pdf = 1 / (2 * pi * |cos(th)|).
 		WeDivPdf = MakeConstantSpectrum(2 * math.Pi * absCosTh)
+		pdf = uniformHemispherePdfSolidAngle() / absCosTh
 	case IRRADIANCE_METER_COSINE_SAMPLING:
 		r3 = cosineSampleHemisphere(u1, u2)
 		// pdf = 1 / pi.
 		WeDivPdf = MakeConstantSpectrum(math.Pi)
+		pdf = cosineHemispherePdfProjectedSolidAngle()
 	}
 	var r3w R3
 	r3w.ConvertToCoordinateSystemNoAlias(&r3, &im.i, &im.j, &im.k)

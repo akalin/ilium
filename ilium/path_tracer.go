@@ -479,8 +479,8 @@ func (pt *PathTracer) SampleSensorPath(
 		return
 	}
 
-	initialRay, WeDivPdf := sensor.SampleRay(x, y, sensorBundle)
-	if WeDivPdf.IsBlack() {
+	initialRay, WeDivPdf, pdfSensor := sensor.SampleRay(x, y, sensorBundle)
+	if WeDivPdf.IsBlack() || pdfSensor == 0 {
 		return
 	}
 

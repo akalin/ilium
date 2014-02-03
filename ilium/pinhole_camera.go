@@ -81,8 +81,21 @@ func (pc *PinholeCamera) GetSampleConfig() SampleConfig {
 	}
 }
 
+func (pc *PinholeCamera) computePdfDirectional(cosThO float32) float32 {
+	// To compute the value of the pdf with respect to projected
+	// solid angle, pretend that we sample a point on a pixel on
+	// the imaginary image plane. The pdf with respect to surface
+	// area is just 1, and the geometric factor is
+	// r'^2 / cos^2(thO), where r' is the distance to the imaginary image
+	// plane. From the geometry, r' turns out to be
+	// backFocalLength / cos(thO), so
+	// pdf = backFocalLength^2 / cos^4(thO).
+	return pc.backFocalLength * pc.backFocalLength /
+		(cosThO * cosThO * cosThO * cosThO)
+}
+
 func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
-	ray Ray, WeDivPdf Spectrum) {
+	ray Ray, WeDivPdf Spectrum, pdf float32) {
 	xC := float32(x) + sampleBundle.Samples2D[0][0].U1
 	yC := float32(y) + sampleBundle.Samples2D[0][0].U2
 	leftLength := 0.5*float32(pc.imageSensor.GetWidth()) - xC
@@ -97,10 +110,10 @@ func (pc *PinholeCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	wo.Normalize(&wo)
 
 	ray = Ray{pc.position, wo, 0, infFloat32(+1)}
-	// There's a bit of subtlety here; the pdf isn't trivial (see
-	// the comments in SamplePixelPositionAndWeFromPoint() for the
-	// derivation), but We is set so that We/pdf = 1.
+	// We is set so that We/pdf = 1.
 	WeDivPdf = MakeConstantSpectrum(1)
+	cosThO := wo.Dot(&pc.frontHat)
+	pdf = pc.computePdfDirectional(cosThO)
 	return
 }
 
