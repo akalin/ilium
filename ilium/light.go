@@ -4,7 +4,7 @@ type Light interface {
 	GetSampleConfig() SampleConfig
 	SampleSurface(sampleBundle SampleBundle) (
 		pSurface Point3, pSurfaceEpsilon float32,
-		nSurface Normal3, LeSpatialDivPdf Spectrum)
+		nSurface Normal3, LeSpatialDivPdf Spectrum, pdf float32)
 	SampleDirection(
 		sampleBundle SampleBundle, pSurface Point3, nSurface Normal3) (
 		wo Vector3, LeDirectionalDivPdf Spectrum, pdf float32)
