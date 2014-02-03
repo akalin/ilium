@@ -168,7 +168,17 @@ func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 
 func (pc *PinholeCamera) ComputeWePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
-	panic("Called unexpectedly")
+	r := pc.position.Distance(&p)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+	var wo Vector3
+	wo.Flip(&wi)
+	cosThO := wo.Dot(&pc.frontHat)
+	// Since we're assuming all parameters are valid, clamp
+	// cos(thO) to avoid infinities.
+	if cosThO < PDF_COS_THETA_EPSILON {
+		cosThO = PDF_COS_THETA_EPSILON
+	}
+	return r * r / (absCosThI * cosThO)
 }
 
 func (pc *PinholeCamera) ComputePixelPositionAndWe(
