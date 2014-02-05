@@ -74,6 +74,33 @@ func (pathTypes TracerPathType) HasAlternatePath(
 	}
 }
 
+func (pathTypes TracerPathType) ComputePathCount(
+	edgeCount int, sensor Sensor) int {
+	var pathCount int = 0
+
+	if pathTypes.HasAlternatePath(
+		TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
+		pathCount++
+	}
+
+	if pathTypes.HasAlternatePath(
+		TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
+		pathCount++
+	}
+
+	if pathTypes.HasAlternatePath(
+		TRACER_EMITTED_IMPORTANCE_PATH, edgeCount, sensor) {
+		pathCount++
+	}
+
+	if pathTypes.HasAlternatePath(
+		TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
+		pathCount++
+	}
+
+	return pathCount
+}
+
 func MakeTracerPathType(pathTypeString string) TracerPathType {
 	switch pathTypeString {
 	case "emittedLight":
