@@ -10,6 +10,8 @@ type TracerWeightTracker struct {
 	firstQs      []float32
 }
 
+// TODO(akalin): Keep track of middle q/p ratio.
+
 // TracerWeightTracker objects are safely copyable, as long as only
 // one copy is used for computing weights at a time.
 
@@ -36,7 +38,8 @@ func (twt *TracerWeightTracker) AddP(vertexIndex int, p float32) {
 }
 
 func (twt *TracerWeightTracker) AddQ(vertexIndex int, q float32) {
-	if vertexIndex != 0 {
+	if (vertexIndex == 0 && twt.qVertexCount > 1) ||
+		(vertexIndex != 0 && vertexIndex != twt.qVertexCount) {
 		panic(fmt.Sprintf("Invalid q index %d for vertex count %d",
 			vertexIndex, twt.qVertexCount))
 	}
@@ -45,14 +48,23 @@ func (twt *TracerWeightTracker) AddQ(vertexIndex int, q float32) {
 		panic(fmt.Sprintf("Invalid q value %f", q))
 	}
 
-	twt.firstQs = append(twt.firstQs, q)
-	twt.qVertexCount = 1
+	if vertexIndex == 0 {
+		twt.firstQs = append(twt.firstQs, q)
+		twt.qVertexCount = 1
+	} else {
+		twt.qVertexCount++
+	}
 }
 
 func (twt *TracerWeightTracker) ComputeWeight(vertexCount int) float32 {
 	if twt.pVertexCount != vertexCount {
 		panic(fmt.Sprintf("p vertex count is %d, expected %d",
 			twt.pVertexCount, vertexCount))
+	}
+
+	if twt.qVertexCount > 0 && twt.qVertexCount != vertexCount {
+		panic(fmt.Sprintf("q vertex count is %d, expected %d",
+			twt.qVertexCount, vertexCount))
 	}
 
 	var invW float32 = 1
