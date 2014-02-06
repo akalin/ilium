@@ -179,7 +179,8 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 }
 
 func (pt *ParticleTracer) computeEmittedImportance(
-	edgeCount int, alpha *Spectrum, continueBsdfPdfPrev float32,
+	edgeCount int, alpha *Spectrum,
+	templateWeightTracker TracerWeightTracker,
 	pPrev Point3, pEpsilonPrev float32, nPrev Normal3, wiPrev, wo Vector3,
 	intersection *Intersection, records []TracerRecord) []TracerRecord {
 	for _, sensor := range intersection.Sensors {
@@ -197,7 +198,7 @@ func (pt *ParticleTracer) computeEmittedImportance(
 			continue
 		}
 
-		var invW float32 = 1
+		sensorWeightTracker := templateWeightTracker
 
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
@@ -211,22 +212,22 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
+			pVertexIndex := edgeCount
 			switch pt.weighingMethod {
 			case TRACER_UNIFORM_WEIGHTS:
-				invW++
+				sensorWeightTracker.AddP(pVertexIndex, 1)
 			case TRACER_POWER_WEIGHTS:
 				directSensorPdf :=
 					sensor.ComputeWePdfFromPoint(
 						x, y, pPrev, pEpsilonPrev,
 						nPrev, wiPrev)
-				pdfRatio :=
-					directSensorPdf / continueBsdfPdfPrev
-				invW += powFloat32(pdfRatio, pt.beta)
+				sensorWeightTracker.AddP(
+					pVertexIndex, directSensorPdf)
 			}
 		}
 
-		w := 1 / invW
-
+		vertexCount := edgeCount + 1
+		w := sensorWeightTracker.ComputeWeight(vertexCount)
 		if !isFiniteFloat32(w) {
 			fmt.Printf("Invalid weight %v returned for "+
 				"intersection %v and wo %v and sensor %v\n",
@@ -257,7 +258,8 @@ func (pt *ParticleTracer) computeEmittedImportance(
 // This implements the sensor equivalent of direct lighting sampling.
 func (pt *ParticleTracer) directSampleSensors(
 	currentEdgeCount int, rng *rand.Rand, scene *Scene, sensors []Sensor,
-	tracerBundle SampleBundle, alpha *Spectrum, p Point3,
+	tracerBundle SampleBundle, alpha *Spectrum,
+	templateWeightTracker TracerWeightTracker, p Point3,
 	pEpsilon float32, n Normal3, wo Vector3, material Material,
 	records []TracerRecord) []TracerRecord {
 	directSensor1DSamples := tracerBundle.Samples1D[1:]
@@ -294,7 +296,7 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		sensorEdgeCount := currentEdgeCount + 1
 
-		var invW float32 = 1
+		sensorWeightTracker := templateWeightTracker
 
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_EMITTED_LIGHT_PATH, sensorEdgeCount, sensor) {
@@ -306,12 +308,20 @@ func (pt *ParticleTracer) directSampleSensors(
 			panic("Not implemented")
 		}
 
+		pVertexIndex := sensorEdgeCount
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			sensorWeightTracker.AddP(pVertexIndex, 1)
+		case TRACER_POWER_WEIGHTS:
+			sensorWeightTracker.AddP(pVertexIndex, pdf)
+		}
+
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_EMITTED_IMPORTANCE_PATH,
 			sensorEdgeCount, sensor) {
 			switch pt.weighingMethod {
 			case TRACER_UNIFORM_WEIGHTS:
-				invW++
+				sensorWeightTracker.AddP(pVertexIndex, 1)
 			case TRACER_POWER_WEIGHTS:
 				emittedPdf := material.ComputePdf(
 					MATERIAL_IMPORTANCE_TRANSPORT,
@@ -320,13 +330,13 @@ func (pt *ParticleTracer) directSampleSensors(
 					getContinueProbabilityFromIntersection(
 					sensorEdgeCount-1, alpha, &f,
 					emittedPdf)
-				pdfRatio := (pContinue * emittedPdf) / pdf
-				invW += powFloat32(pdfRatio, pt.beta)
+				sensorWeightTracker.AddP(
+					pVertexIndex, pContinue*emittedPdf)
 			}
 		}
 
-		w := 1 / invW
-
+		vertexCount := sensorEdgeCount + 1
+		w := sensorWeightTracker.ComputeWeight(vertexCount)
 		if !isFiniteFloat32(w) {
 			fmt.Printf("Invalid weight %v returned for "+
 				"point %v and sensor %v\n",
@@ -393,13 +403,14 @@ func (pt *ParticleTracer) SampleLightPath(
 		return []TracerRecord{}
 	}
 
+	weightTracker := MakeTracerWeightTracker(pt.beta)
+
 	u := tracerBundle.Samples1D[0][0]
 	light, pChooseLight := scene.SampleLight(u.U)
 
 	var edgeCount int
 	var ray Ray
 	var n Normal3
-	var continueBsdfPdfPrev float32
 	// alpha = Le * T(path) / pdf.
 	var alpha Spectrum
 	var albedo Spectrum
@@ -414,11 +425,19 @@ func (pt *ParticleTracer) SampleLightPath(
 			return records
 		}
 
+		// One for the point on the light, and one for the
+		// direction to the next vertex (assuming there is
+		// one). Don't bother using the real probabilities
+		// since these values aren't used anyway (since direct
+		// sensor paths aren't being used).
+		weightTracker.AddP(0, 1)
+		weightTracker.AddP(1, 1)
+
 		LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 		ray = initialRay
-		// It's okay to leave n and continueBsdfPdfPrev
-		// uninitialized since pt.computeEmittedImportance()
-		// uses them only when there are direct sensor paths.
+		// It's okay to leave n uninitialized since
+		// pt.computeEmittedImportance() uses it only when
+		// there are direct sensor paths.
 		alpha = LeDivPdf
 		albedo = LeDivPdf
 	} else if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
@@ -428,13 +447,23 @@ func (pt *ParticleTracer) SampleLightPath(
 			return records
 		}
 
+		// One for the point on the light.
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddP(0, 1)
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Also include spatial pdf.
+			weightTracker.AddP(0, pChooseLight)
+		}
+
 		LeSpatialDivPdf.ScaleInv(&LeSpatialDivPdf, pChooseLight)
 		alpha = LeSpatialDivPdf
 
 		records = pt.directSampleSensors(
 			edgeCount, rng, scene, sensors, tracerBundle,
-			&alpha, pSurface, pSurfaceEpsilon, nSurface,
-			Vector3{}, &lightMaterial{light, pSurface}, records)
+			&alpha, weightTracker, pSurface, pSurfaceEpsilon,
+			nSurface, Vector3{}, &lightMaterial{light, pSurface},
+			records)
 
 		wo, LeDirectionalDivPdf, pdf := light.SampleDirection(
 			lightBundle, pSurface, nSurface)
@@ -442,9 +471,17 @@ func (pt *ParticleTracer) SampleLightPath(
 			return records
 		}
 
+		// One for the direction to the next vertex (assuming
+		// there is one).
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddP(1, 1)
+		case TRACER_POWER_WEIGHTS:
+			weightTracker.AddP(1, pdf)
+		}
+
 		ray = Ray{pSurface, wo, pSurfaceEpsilon, infFloat32(+1)}
 		n = nSurface
-		continueBsdfPdfPrev = pdf
 		alpha.Mul(&alpha, &LeDirectionalDivPdf)
 		albedo = alpha
 	}
@@ -481,7 +518,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) {
 			records = pt.computeEmittedImportance(
-				edgeCount, &alpha, continueBsdfPdfPrev, ray.O,
+				edgeCount, &alpha, weightTracker, ray.O,
 				ray.MinT, n, ray.D, wo, &intersection,
 				records)
 		}
@@ -500,7 +537,8 @@ func (pt *ParticleTracer) SampleLightPath(
 		if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
 			records = pt.directSampleSensors(
 				edgeCount, rng, scene, sensors, tracerBundle,
-				&alpha, p, pEpsilon, n, wo, material, records)
+				&alpha, weightTracker, p, pEpsilon, n, wo,
+				material, records)
 		}
 
 		sampleIndex := edgeCount - 1
@@ -517,8 +555,17 @@ func (pt *ParticleTracer) SampleLightPath(
 			break
 		}
 
+		// One for the direction to the next vertex (assuming
+		// there is one).
+		pVertexIndex := edgeCount + 1
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddP(pVertexIndex, 1)
+		case TRACER_POWER_WEIGHTS:
+			weightTracker.AddP(pVertexIndex, pContinue*pdf)
+		}
+
 		ray = Ray{p, wi, pEpsilon, infFloat32(+1)}
-		continueBsdfPdfPrev = pContinue * pdf
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
