@@ -69,8 +69,7 @@ func (pt *ParticleTracer) hasSomethingToDo() bool {
 		return false
 	}
 
-	return (pt.pathTypes.GetContributionTypes() &
-		TRACER_LIGHT_CONTRIBUTION) != 0
+	return pt.pathTypes.HasContributions(TRACER_LIGHT_CONTRIBUTION)
 }
 
 func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
@@ -90,7 +89,7 @@ func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
 	}
 	sample2DLengths := []int{numWiSamples}
 
-	if (pt.pathTypes & TRACER_DIRECT_SENSOR_PATH) != 0 {
+	if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
 		// Do direct sensor sampling for the first vertex and
 		// each interior vertex; don't do it from the last
 		// vertex since that would add an extra edge.
@@ -234,7 +233,7 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 		var invW float32 = 1
 
-		if (pt.pathTypes&TRACER_DIRECT_SENSOR_PATH) != 0 &&
+		if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) &&
 			!sensor.HasSpecularDirection() {
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
@@ -250,12 +249,12 @@ func (pt *ParticleTracer) computeEmittedImportance(
 			}
 		}
 
-		if (pt.pathTypes & TRACER_EMITTED_LIGHT_PATH) != 0 {
+		if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
 			panic("Not implemented")
 		}
 
 		if edgeCount > 1 &&
-			(pt.pathTypes&TRACER_DIRECT_LIGHTING_PATH) != 0 {
+			pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 			panic("Not implemented")
 		}
 
@@ -329,7 +328,7 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		var invW float32 = 1
 
-		if (pt.pathTypes&TRACER_EMITTED_IMPORTANCE_PATH) != 0 &&
+		if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
 			!sensor.HasSpecularPosition() {
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
@@ -347,12 +346,12 @@ func (pt *ParticleTracer) directSampleSensors(
 			}
 		}
 
-		if (pt.pathTypes & TRACER_EMITTED_LIGHT_PATH) != 0 {
+		if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
 			panic("Not implemented")
 		}
 
 		if sensorEdgeCount > 1 &&
-			(pt.pathTypes&TRACER_DIRECT_LIGHTING_PATH) != 0 {
+			pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 			panic("Not implemented")
 		}
 
@@ -435,8 +434,8 @@ func (pt *ParticleTracer) SampleLightPath(
 	var albedo Spectrum
 	var records []ParticleRecord
 
-	if ((pt.pathTypes & TRACER_EMITTED_IMPORTANCE_PATH) != 0) &&
-		((pt.pathTypes & TRACER_DIRECT_SENSOR_PATH) == 0) {
+	if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
+		!pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
 		// No need to sample the spatial and directional
 		// components separately.
 		initialRay, LeDivPdf := light.SampleRay(lightBundle)
@@ -451,7 +450,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		// uses them only when there are direct sensor paths.
 		alpha = LeDivPdf
 		albedo = LeDivPdf
-	} else if (pt.pathTypes & TRACER_DIRECT_SENSOR_PATH) != 0 {
+	} else if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
 		pSurface, pSurfaceEpsilon, nSurface, LeSpatialDivPdf :=
 			light.SampleSurface(lightBundle)
 		if LeSpatialDivPdf.IsBlack() {
@@ -509,7 +508,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		var wo Vector3
 		wo.Flip(&ray.D)
 
-		if (pt.pathTypes & TRACER_EMITTED_IMPORTANCE_PATH) != 0 {
+		if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) {
 			records = pt.computeEmittedImportance(
 				edgeCount, &alpha, continueBsdfPdfPrev, ray.O,
 				ray.MinT, n, ray.D, wo, &intersection,
@@ -527,7 +526,7 @@ func (pt *ParticleTracer) SampleLightPath(
 
 		// Don't direct-sample sensors for the last edge,
 		// since the process adds an extra edge.
-		if (pt.pathTypes & TRACER_DIRECT_SENSOR_PATH) != 0 {
+		if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) {
 			records = pt.directSampleSensors(
 				edgeCount, rng, scene, sensors, tracerBundle,
 				&alpha, p, pEpsilon, n, wo, material, records)

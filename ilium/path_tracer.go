@@ -54,8 +54,7 @@ func (pt *PathTracer) hasSomethingToDo() bool {
 		return false
 	}
 
-	return (pt.pathTypes.GetContributionTypes() &
-		TRACER_SENSOR_CONTRIBUTION) != 0
+	return pt.pathTypes.HasContributions(TRACER_SENSOR_CONTRIBUTION)
 }
 
 func (pt *PathTracer) GetSampleConfig() SampleConfig {
@@ -73,7 +72,7 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	var sample1DLengths []int
 	sample2DLengths := []int{numWiSamples}
 
-	if (pt.pathTypes & TRACER_DIRECT_LIGHTING_PATH) != 0 {
+	if pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 		// Sample direct lighting for each interior vertex;
 		// don't do it from the first vertex since that will
 		// most likely end up on a different pixel, and don't
@@ -206,8 +205,7 @@ func (pt *PathTracer) computeEmittedLight(
 	var invW float32 = 1
 
 	// Direct lighting isn't done with the first edge.
-	if edgeCount > 1 &&
-		((pt.pathTypes & TRACER_DIRECT_LIGHTING_PATH) != 0) {
+	if edgeCount > 1 && pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
@@ -223,12 +221,12 @@ func (pt *PathTracer) computeEmittedLight(
 		}
 	}
 
-	if (pt.pathTypes&TRACER_EMITTED_IMPORTANCE_PATH) != 0 &&
+	if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
 		!sensor.HasSpecularPosition() {
 		panic("Not implemented")
 	}
 
-	if (pt.pathTypes&TRACER_DIRECT_SENSOR_PATH) != 0 &&
+	if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) &&
 		!sensor.HasSpecularDirection() {
 		panic("Not implemented")
 	}
@@ -292,7 +290,7 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	var invW float32 = 1
 
-	if (pt.pathTypes & TRACER_EMITTED_LIGHT_PATH) != 0 {
+	if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
@@ -307,12 +305,12 @@ func (pt *PathTracer) sampleDirectLighting(
 		}
 	}
 
-	if (pt.pathTypes&TRACER_EMITTED_IMPORTANCE_PATH) != 0 &&
+	if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
 		!sensor.HasSpecularPosition() {
 		panic("Not implemented")
 	}
 
-	if (pt.pathTypes&TRACER_DIRECT_SENSOR_PATH) != 0 &&
+	if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) &&
 		!sensor.HasSpecularDirection() {
 		panic("Not implemented")
 	}
@@ -402,7 +400,7 @@ func (pt *PathTracer) SampleSensorPath(
 		// no light will reach the sensor directly from the
 		// light (since direct lighting doesn't handle the
 		// first edge).
-		if (pt.pathTypes & TRACER_EMITTED_LIGHT_PATH) != 0 {
+		if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
 			wLeAlpha := pt.computeEmittedLight(
 				edgeCount, scene, sensor, &alpha,
 				continueBsdfPdfPrev, ray.O, ray.MinT, n,
@@ -424,7 +422,7 @@ func (pt *PathTracer) SampleSensorPath(
 
 		// Don't sample direct lighting for the last edge,
 		// since the process adds an extra edge.
-		if (pt.pathTypes & TRACER_DIRECT_LIGHTING_PATH) != 0 {
+		if pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 			wLeAlphaNext := pt.sampleDirectLighting(
 				edgeCount, rng, scene, sensor, tracerBundle,
 				&alpha, wo, &intersection, debugRecords)
