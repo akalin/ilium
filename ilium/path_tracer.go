@@ -168,7 +168,7 @@ func (pt *PathTracer) recordWLeAlphaDebugInfo(
 
 func (pt *PathTracer) computeEmittedLight(
 	edgeCount int, scene *Scene, sensor Sensor, alpha *Spectrum,
-	continueBsdfPdfPrev float32, pPrev Point3, pEpsilonPrev float32,
+	weightTracker TracerWeightTracker, pPrev Point3, pEpsilonPrev float32,
 	nPrev Normal3, wiPrev, wo Vector3, intersection *Intersection,
 	debugRecords *[]TracerDebugRecord) (wLeAlpha Spectrum) {
 	light := intersection.Light
@@ -183,22 +183,19 @@ func (pt *PathTracer) computeEmittedLight(
 		return
 	}
 
-	var invW float32 = 1
-
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
+		pVertexIndex := edgeCount
 		switch pt.weighingMethod {
 		case TRACER_UNIFORM_WEIGHTS:
-			invW++
+			weightTracker.AddP(pVertexIndex, 1)
 		case TRACER_POWER_WEIGHTS:
 			pChooseLight := scene.ComputeLightPdf(light)
 			directLightingPdf :=
 				light.ComputeLePdfFromPoint(
 					pPrev, pEpsilonPrev, nPrev, wiPrev)
-			pdfRatio :=
-				pChooseLight * directLightingPdf /
-					continueBsdfPdfPrev
-			invW += powFloat32(pdfRatio, pt.beta)
+			weightTracker.AddP(
+				pVertexIndex, pChooseLight*directLightingPdf)
 		}
 	}
 
@@ -212,8 +209,8 @@ func (pt *PathTracer) computeEmittedLight(
 		panic("Not implemented")
 	}
 
-	w := 1 / invW
-
+	vertexCount := edgeCount + 1
+	w := weightTracker.ComputeWeight(vertexCount)
 	if !isFiniteFloat32(w) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", w, intersection, wo)
@@ -231,7 +228,8 @@ func (pt *PathTracer) computeEmittedLight(
 
 func (pt *PathTracer) sampleDirectLighting(
 	edgeCount int, rng *rand.Rand, scene *Scene, sensor Sensor,
-	tracerBundle SampleBundle, alpha *Spectrum, wo Vector3,
+	tracerBundle SampleBundle, alpha *Spectrum,
+	weightTracker TracerWeightTracker, wo Vector3,
 	intersection *Intersection,
 	debugRecords *[]TracerDebugRecord) (wLeAlphaNext Spectrum) {
 	if len(scene.Lights) == 0 {
@@ -269,21 +267,25 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	edgeCount++
 
-	var invW float32 = 1
+	pVertexIndex := edgeCount
+	switch pt.weighingMethod {
+	case TRACER_UNIFORM_WEIGHTS:
+		weightTracker.AddP(pVertexIndex, 1)
+	case TRACER_POWER_WEIGHTS:
+		weightTracker.AddP(pVertexIndex, pChooseLight*pdf)
+	}
 
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
 		switch pt.weighingMethod {
 		case TRACER_UNIFORM_WEIGHTS:
-			invW++
+			weightTracker.AddP(pVertexIndex, 1)
 		case TRACER_POWER_WEIGHTS:
 			emittedPdf := material.ComputePdf(
 				MATERIAL_LIGHT_TRANSPORT, wo, wi, n)
 			pContinue := pt.getContinueProbabilityFromIntersection(
 				edgeCount-1, alpha, &f, emittedPdf)
-			pdfRatio :=
-				(pContinue * emittedPdf) / (pChooseLight * pdf)
-			invW += powFloat32(pdfRatio, pt.beta)
+			weightTracker.AddP(pVertexIndex, pContinue*emittedPdf)
 		}
 	}
 
@@ -297,8 +299,8 @@ func (pt *PathTracer) sampleDirectLighting(
 		panic("Not implemented")
 	}
 
-	weight := 1 / invW
-
+	vertexCount := edgeCount + 1
+	weight := weightTracker.ComputeWeight(vertexCount)
 	if !isFiniteFloat32(weight) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", weight, intersection, wo)
@@ -340,14 +342,23 @@ func (pt *PathTracer) SampleSensorPath(
 		return
 	}
 
+	weightTracker := MakeTracerWeightTracker(pt.beta)
+
+	// One for the point on the sensor, and one for the direction
+	// to the next vertex (assuming there is one). Don't bother
+	// using the real probabilities since these values aren't used
+	// anyway (since direct lighting doesn't happen for the first
+	// edge).
+	weightTracker.AddP(0, 1)
+	weightTracker.AddP(1, 1)
+
 	wiSamples := tracerBundle.Samples2D[0]
 	ray := initialRay
 
-	// It's okay to leave n and continueBsdfPdfPrev uninitialized
-	// for the first iteration of the loop below since
-	// pt.computeEmittedLight() uses them only when edgeCount > 1.
+	// It's okay to leave n uninitialized for the first iteration
+	// of the loop below since pt.computeEmittedLight() uses it
+	// only when edgeCount > 1.
 	var n Normal3
-	var continueBsdfPdfPrev float32
 
 	// alpha = We * T(path) / pdf.
 	alpha := WeDivPdf
@@ -389,7 +400,7 @@ func (pt *PathTracer) SampleSensorPath(
 		if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
 			wLeAlpha := pt.computeEmittedLight(
 				edgeCount, scene, sensor, &alpha,
-				continueBsdfPdfPrev, ray.O, ray.MinT, n,
+				weightTracker, ray.O, ray.MinT, n,
 				ray.D, wo, &intersection,
 				&record.DebugRecords)
 			if !wLeAlpha.IsValid() {
@@ -411,7 +422,8 @@ func (pt *PathTracer) SampleSensorPath(
 		if pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
 			wLeAlphaNext := pt.sampleDirectLighting(
 				edgeCount, rng, scene, sensor, tracerBundle,
-				&alpha, wo, &intersection, &record.DebugRecords)
+				&alpha, weightTracker, wo, &intersection,
+				&record.DebugRecords)
 			if !wLeAlphaNext.IsValid() {
 				fmt.Printf("Invalid wLeAlphaNext %v returned "+
 					"for intersection %v and wo %v\n",
@@ -437,12 +449,21 @@ func (pt *PathTracer) SampleSensorPath(
 			break
 		}
 
+		// One for the direction to the next vertex (assuming
+		// there is one).
+		pVertexIndex := edgeCount + 1
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddP(pVertexIndex, 1)
+		case TRACER_POWER_WEIGHTS:
+			weightTracker.AddP(pVertexIndex, pContinue*pdf)
+		}
+
 		ray = Ray{
 			intersection.P, wi,
 			intersection.PEpsilon, infFloat32(+1),
 		}
 		n = intersection.N
-		continueBsdfPdfPrev = pContinue * pdf
 		alpha.Mul(&alpha, &fDivPdf)
 		albedo = fDivPdf
 	}
