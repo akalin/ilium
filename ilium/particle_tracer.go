@@ -178,6 +178,82 @@ func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 	return debugRecords
 }
 
+func (pt *ParticleTracer) hasBackwardsPath(edgeCount int, sensor Sensor) bool {
+	return pt.pathTypes.HasAlternatePath(
+		TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) ||
+		pt.pathTypes.HasAlternatePath(
+			TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor)
+}
+
+func (pt *ParticleTracer) addVertexQs(
+	weightTracker *TracerWeightTracker, qVertexIndex, edgeCount int,
+	sensor Sensor) {
+	if qVertexIndex == 0 {
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
+			// One for the direction to the light from
+			// vertex 1.
+			switch pt.weighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				weightTracker.AddQ(0, 1)
+			case TRACER_POWER_WEIGHTS:
+				panic("Not implemented")
+			}
+		}
+
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
+			// One for direct sampling the light from
+			// vertex 1.
+			switch pt.weighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				weightTracker.AddQ(0, 1)
+			case TRACER_POWER_WEIGHTS:
+				panic("Not implemented")
+			}
+		}
+	} else if pt.hasBackwardsPath(edgeCount, sensor) {
+		// One for the direction to this vertex from the next
+		// vertex.
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(qVertexIndex, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
+	}
+}
+
+func (pt *ParticleTracer) addSensorDirectionalQs(
+	weightTracker *TracerWeightTracker, qVertexIndex, edgeCount int,
+	sensor Sensor) {
+	if pt.hasBackwardsPath(edgeCount, sensor) {
+		// One for the direction to this vertex from the
+		// sensor.
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(qVertexIndex, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
+	}
+}
+
+func (pt *ParticleTracer) addSensorSpatialQs(
+	weightTracker *TracerWeightTracker, qVertexIndex, edgeCount int,
+	sensor Sensor) {
+	if pt.hasBackwardsPath(edgeCount, sensor) {
+		// One for the point on the sensor and picking the
+		// sensor pixel.
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(qVertexIndex, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
+	}
+}
+
 func (pt *ParticleTracer) computeEmittedImportance(
 	edgeCount int, alpha *Spectrum,
 	templateWeightTracker TracerWeightTracker,
@@ -200,30 +276,6 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 		sensorWeightTracker := templateWeightTracker
 
-		// TODO(akalin): Move this block to the correct place
-		// to implement MIS.
-		if pt.pathTypes.HasAlternatePath(
-			TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
-			switch pt.weighingMethod {
-			case TRACER_UNIFORM_WEIGHTS:
-				sensorWeightTracker.AddQ(0, 1)
-			case TRACER_POWER_WEIGHTS:
-				panic("Not implemented")
-			}
-		}
-
-		// TODO(akalin): Move this block to the correct place
-		// to implement MIS.
-		if pt.pathTypes.HasAlternatePath(
-			TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
-			switch pt.weighingMethod {
-			case TRACER_UNIFORM_WEIGHTS:
-				sensorWeightTracker.AddQ(0, 1)
-			case TRACER_POWER_WEIGHTS:
-				panic("Not implemented")
-			}
-		}
-
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
 			pVertexIndex := edgeCount
@@ -239,6 +291,13 @@ func (pt *ParticleTracer) computeEmittedImportance(
 					pVertexIndex, directSensorPdf)
 			}
 		}
+
+		qVertexIndex := edgeCount - 1
+		pt.addVertexQs(
+			&sensorWeightTracker, qVertexIndex, edgeCount, sensor)
+		qVertexIndex++
+		pt.addSensorSpatialQs(
+			&sensorWeightTracker, qVertexIndex, edgeCount, sensor)
 
 		vertexCount := edgeCount + 1
 		w := sensorWeightTracker.ComputeWeight(vertexCount)
@@ -321,30 +380,6 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		sensorWeightTracker := templateWeightTracker
 
-		// TODO(akalin): Move this block to the correct place
-		// to implement MIS.
-		if pt.pathTypes.HasAlternatePath(
-			TRACER_EMITTED_LIGHT_PATH, sensorEdgeCount, sensor) {
-			switch pt.weighingMethod {
-			case TRACER_UNIFORM_WEIGHTS:
-				sensorWeightTracker.AddQ(0, 1)
-			case TRACER_POWER_WEIGHTS:
-				panic("Not implemented")
-			}
-		}
-
-		// TODO(akalin): Move this block to the correct place
-		// to implement MIS.
-		if pt.pathTypes.HasAlternatePath(
-			TRACER_DIRECT_LIGHTING_PATH, sensorEdgeCount, sensor) {
-			switch pt.weighingMethod {
-			case TRACER_UNIFORM_WEIGHTS:
-				sensorWeightTracker.AddQ(0, 1)
-			case TRACER_POWER_WEIGHTS:
-				panic("Not implemented")
-			}
-		}
-
 		pVertexIndex := sensorEdgeCount
 		switch pt.weighingMethod {
 		case TRACER_UNIFORM_WEIGHTS:
@@ -371,6 +406,20 @@ func (pt *ParticleTracer) directSampleSensors(
 					pVertexIndex, pContinue*emittedPdf)
 			}
 		}
+
+		if sensorEdgeCount > 1 {
+			qVertexIndex := sensorEdgeCount - 2
+			pt.addVertexQs(&sensorWeightTracker,
+				qVertexIndex, sensorEdgeCount, sensor)
+		}
+		qVertexIndex := sensorEdgeCount - 1
+		pt.addSensorDirectionalQs(
+			&sensorWeightTracker, qVertexIndex,
+			sensorEdgeCount, sensor)
+		qVertexIndex++
+		pt.addSensorSpatialQs(
+			&sensorWeightTracker, qVertexIndex,
+			sensorEdgeCount, sensor)
 
 		vertexCount := sensorEdgeCount + 1
 		w := sensorWeightTracker.ComputeWeight(vertexCount)
@@ -610,6 +659,9 @@ func (pt *ParticleTracer) SampleLightPath(
 		case TRACER_POWER_WEIGHTS:
 			weightTracker.AddP(pVertexIndex, pContinue*pdf)
 		}
+
+		qVertexIndex := edgeCount - 1
+		pt.addVertexQs(&weightTracker, qVertexIndex, edgeCount+1, nil)
 
 		ray = Ray{p, wi, pEpsilon, infFloat32(+1)}
 		alpha.Mul(&alpha, &fDivPdf)
