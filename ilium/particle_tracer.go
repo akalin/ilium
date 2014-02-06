@@ -183,14 +183,28 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 		sensorWeightTracker := templateWeightTracker
 
+		// TODO(akalin): Move this block to the correct place
+		// to implement MIS.
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
-			panic("Not implemented")
+			switch pt.weighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				sensorWeightTracker.AddQ(0, 1)
+			case TRACER_POWER_WEIGHTS:
+				panic("Not implemented")
+			}
 		}
 
+		// TODO(akalin): Move this block to the correct place
+		// to implement MIS.
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
-			panic("Not implemented")
+			switch pt.weighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				sensorWeightTracker.AddQ(0, 1)
+			case TRACER_POWER_WEIGHTS:
+				panic("Not implemented")
+			}
 		}
 
 		if pt.pathTypes.HasAlternatePath(
@@ -211,6 +225,15 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 		vertexCount := edgeCount + 1
 		w := sensorWeightTracker.ComputeWeight(vertexCount)
+		if pt.weighingMethod == TRACER_UNIFORM_WEIGHTS {
+			expectedW := 1 / float32(pt.pathTypes.ComputePathCount(
+				edgeCount, sensor))
+			if w != expectedW {
+				panic(fmt.Sprintf(
+					"(edgeCount=%d) w=%f != expectedW=%f",
+					edgeCount, w, expectedW))
+			}
+		}
 		if !isFiniteFloat32(w) {
 			fmt.Printf("Invalid weight %v returned for "+
 				"intersection %v and wo %v and sensor %v\n",
@@ -285,14 +308,28 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		sensorWeightTracker := templateWeightTracker
 
+		// TODO(akalin): Move this block to the correct place
+		// to implement MIS.
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_EMITTED_LIGHT_PATH, sensorEdgeCount, sensor) {
-			panic("Not implemented")
+			switch pt.weighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				sensorWeightTracker.AddQ(0, 1)
+			case TRACER_POWER_WEIGHTS:
+				panic("Not implemented")
+			}
 		}
 
+		// TODO(akalin): Move this block to the correct place
+		// to implement MIS.
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_DIRECT_LIGHTING_PATH, sensorEdgeCount, sensor) {
-			panic("Not implemented")
+			switch pt.weighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				sensorWeightTracker.AddQ(0, 1)
+			case TRACER_POWER_WEIGHTS:
+				panic("Not implemented")
+			}
 		}
 
 		pVertexIndex := sensorEdgeCount
@@ -326,6 +363,15 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		vertexCount := sensorEdgeCount + 1
 		w := sensorWeightTracker.ComputeWeight(vertexCount)
+		if pt.weighingMethod == TRACER_UNIFORM_WEIGHTS {
+			expectedW := 1 / float32(pt.pathTypes.ComputePathCount(
+				sensorEdgeCount, sensor))
+			if w != expectedW {
+				panic(fmt.Sprintf(
+					"(edgeCount=%d) w=%f != expectedW=%f",
+					sensorEdgeCount, w, expectedW))
+			}
+		}
 		if !isFiniteFloat32(w) {
 			fmt.Printf("Invalid weight %v returned for "+
 				"point %v and sensor %v\n",
