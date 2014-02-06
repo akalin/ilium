@@ -6,6 +6,8 @@ type TracerWeightTracker struct {
 	beta         float32
 	pVertexCount int
 	lastPs       []float32
+	qVertexCount int
+	firstQs      []float32
 }
 
 // TracerWeightTracker objects are safely copyable, as long as only
@@ -33,6 +35,20 @@ func (twt *TracerWeightTracker) AddP(vertexIndex int, p float32) {
 	}
 }
 
+func (twt *TracerWeightTracker) AddQ(vertexIndex int, q float32) {
+	if vertexIndex != 0 {
+		panic(fmt.Sprintf("Invalid q index %d for vertex count %d",
+			vertexIndex, twt.qVertexCount))
+	}
+
+	if q < 0 {
+		panic(fmt.Sprintf("Invalid q value %f", q))
+	}
+
+	twt.firstQs = append(twt.firstQs, q)
+	twt.qVertexCount = 1
+}
+
 func (twt *TracerWeightTracker) ComputeWeight(vertexCount int) float32 {
 	if twt.pVertexCount != vertexCount {
 		panic(fmt.Sprintf("p vertex count is %d, expected %d",
@@ -43,6 +59,11 @@ func (twt *TracerWeightTracker) ComputeWeight(vertexCount int) float32 {
 
 	for i := 1; i < len(twt.lastPs); i++ {
 		r := twt.lastPs[i] / twt.lastPs[0]
+		invW += powFloat32(r, twt.beta)
+	}
+
+	for i := 0; i < len(twt.firstQs); i++ {
+		r := twt.firstQs[i] / twt.lastPs[0]
 		invW += powFloat32(r, twt.beta)
 	}
 
