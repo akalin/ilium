@@ -204,8 +204,8 @@ func (pt *PathTracer) computeEmittedLight(
 
 	var invW float32 = 1
 
-	// Direct lighting isn't done with the first edge.
-	if edgeCount > 1 && pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
+	if pt.pathTypes.HasAlternatePath(
+		TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
@@ -221,13 +221,13 @@ func (pt *PathTracer) computeEmittedLight(
 		}
 	}
 
-	if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
-		!sensor.HasSpecularPosition() {
+	if pt.pathTypes.HasAlternatePath(
+		TRACER_EMITTED_IMPORTANCE_PATH, edgeCount, sensor) {
 		panic("Not implemented")
 	}
 
-	if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) &&
-		!sensor.HasSpecularDirection() {
+	if pt.pathTypes.HasAlternatePath(
+		TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
 		panic("Not implemented")
 	}
 
@@ -290,7 +290,8 @@ func (pt *PathTracer) sampleDirectLighting(
 
 	var invW float32 = 1
 
-	if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
+	if pt.pathTypes.HasAlternatePath(
+		TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
 		switch pt.weighingMethod {
 		case PATH_TRACER_UNIFORM_WEIGHTS:
 			invW++
@@ -305,13 +306,13 @@ func (pt *PathTracer) sampleDirectLighting(
 		}
 	}
 
-	if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
-		!sensor.HasSpecularPosition() {
+	if pt.pathTypes.HasAlternatePath(
+		TRACER_EMITTED_IMPORTANCE_PATH, edgeCount, sensor) {
 		panic("Not implemented")
 	}
 
-	if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) &&
-		!sensor.HasSpecularDirection() {
+	if pt.pathTypes.HasAlternatePath(
+		TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
 		panic("Not implemented")
 	}
 

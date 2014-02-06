@@ -233,8 +233,18 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 		var invW float32 = 1
 
-		if pt.pathTypes.HasPaths(TRACER_DIRECT_SENSOR_PATH) &&
-			!sensor.HasSpecularDirection() {
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
+			panic("Not implemented")
+		}
+
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_DIRECT_LIGHTING_PATH, edgeCount, sensor) {
+			panic("Not implemented")
+		}
+
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
@@ -247,15 +257,6 @@ func (pt *ParticleTracer) computeEmittedImportance(
 					directSensorPdf / continueBsdfPdfPrev
 				invW += powFloat32(pdfRatio, pt.beta)
 			}
-		}
-
-		if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
-			panic("Not implemented")
-		}
-
-		if edgeCount > 1 &&
-			pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
-			panic("Not implemented")
 		}
 
 		w := 1 / invW
@@ -328,8 +329,19 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		var invW float32 = 1
 
-		if pt.pathTypes.HasPaths(TRACER_EMITTED_IMPORTANCE_PATH) &&
-			!sensor.HasSpecularPosition() {
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_EMITTED_LIGHT_PATH, sensorEdgeCount, sensor) {
+			panic("Not implemented")
+		}
+
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_DIRECT_LIGHTING_PATH, sensorEdgeCount, sensor) {
+			panic("Not implemented")
+		}
+
+		if pt.pathTypes.HasAlternatePath(
+			TRACER_EMITTED_IMPORTANCE_PATH,
+			sensorEdgeCount, sensor) {
 			switch pt.weighingMethod {
 			case PARTICLE_TRACER_UNIFORM_WEIGHTS:
 				invW++
@@ -344,15 +356,6 @@ func (pt *ParticleTracer) directSampleSensors(
 				pdfRatio := (pContinue * emittedPdf) / pdf
 				invW += powFloat32(pdfRatio, pt.beta)
 			}
-		}
-
-		if pt.pathTypes.HasPaths(TRACER_EMITTED_LIGHT_PATH) {
-			panic("Not implemented")
-		}
-
-		if sensorEdgeCount > 1 &&
-			pt.pathTypes.HasPaths(TRACER_DIRECT_LIGHTING_PATH) {
-			panic("Not implemented")
 		}
 
 		w := 1 / invW

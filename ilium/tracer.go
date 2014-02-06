@@ -1,5 +1,7 @@
 package ilium
 
+import "fmt"
+
 type TracerContributionType int
 
 const (
@@ -44,6 +46,32 @@ func (pathTypes TracerPathType) HasContributions(
 
 func (pathTypes TracerPathType) HasPaths(paths TracerPathType) bool {
 	return (pathTypes & paths) == paths
+}
+
+func (pathTypes TracerPathType) HasAlternatePath(
+	alternatePathType TracerPathType, edgeCount int, sensor Sensor) bool {
+	if !pathTypes.HasPaths(alternatePathType) {
+		return false
+	}
+
+	switch alternatePathType {
+	case TRACER_EMITTED_LIGHT_PATH:
+		return true
+
+	case TRACER_DIRECT_LIGHTING_PATH:
+		// Direct lighting isn't done with the first edge.
+		return edgeCount > 1
+
+	case TRACER_EMITTED_IMPORTANCE_PATH:
+		return !sensor.HasSpecularPosition()
+
+	case TRACER_DIRECT_SENSOR_PATH:
+		return !sensor.HasSpecularDirection()
+
+	default:
+		panic(fmt.Sprintf(
+			"unknown alternate path type %d", alternatePathType))
+	}
 }
 
 func MakeTracerPathType(pathTypeString string) TracerPathType {
