@@ -179,18 +179,40 @@ func (pt *PathTracer) computeEmittedLight(
 		}
 	}
 
+	// TODO(akalin): Move this block to the correct place to
+	// implement MIS.
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_EMITTED_IMPORTANCE_PATH, edgeCount, sensor) {
-		panic("Not implemented")
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(0, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
 	}
 
+	// TODO(akalin): Move this block to the correct place to
+	// implement MIS.
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
-		panic("Not implemented")
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(0, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
 	}
 
 	vertexCount := edgeCount + 1
 	w := weightTracker.ComputeWeight(vertexCount)
+	if pt.weighingMethod == TRACER_UNIFORM_WEIGHTS {
+		expectedW := 1 / float32(
+			pt.pathTypes.ComputePathCount(edgeCount, sensor))
+		if w != expectedW {
+			panic(fmt.Sprintf("(edgeCount=%d) w=%f != expectedW=%f",
+				edgeCount, w, expectedW))
+		}
+	}
 	if !isFiniteFloat32(w) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", w, intersection, wo)
@@ -273,18 +295,40 @@ func (pt *PathTracer) sampleDirectLighting(
 		}
 	}
 
+	// TODO(akalin): Move this block to the correct place to
+	// implement MIS.
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_EMITTED_IMPORTANCE_PATH, edgeCount, sensor) {
-		panic("Not implemented")
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(0, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
 	}
 
+	// TODO(akalin): Move this block to the correct place to
+	// implement MIS.
 	if pt.pathTypes.HasAlternatePath(
 		TRACER_DIRECT_SENSOR_PATH, edgeCount, sensor) {
-		panic("Not implemented")
+		switch pt.weighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			weightTracker.AddQ(0, 1)
+		case TRACER_POWER_WEIGHTS:
+			panic("Not implemented")
+		}
 	}
 
 	vertexCount := edgeCount + 1
 	weight := weightTracker.ComputeWeight(vertexCount)
+	if pt.weighingMethod == TRACER_UNIFORM_WEIGHTS {
+		expectedW := 1 / float32(
+			pt.pathTypes.ComputePathCount(edgeCount, sensor))
+		if weight != expectedW {
+			panic(fmt.Sprintf("(edgeCount=%d) w=%f != expectedW=%f",
+				edgeCount, weight, expectedW))
+		}
+	}
 	if !isFiniteFloat32(weight) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", weight, intersection, wo)
