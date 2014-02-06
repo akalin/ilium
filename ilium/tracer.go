@@ -7,6 +7,11 @@ const (
 	TRACER_LIGHT_CONTRIBUTION  TracerContributionType = 1 << iota
 )
 
+func (contributionTypes TracerContributionType) HasContributions(
+	contributions TracerContributionType) bool {
+	return (contributionTypes & contributions) == contributions
+}
+
 type TracerPathType int
 
 const (
@@ -30,6 +35,15 @@ func (pathTypes TracerPathType) GetContributionTypes() TracerContributionType {
 	}
 
 	return contributionTypes
+}
+
+func (pathTypes TracerPathType) HasContributions(
+	contributions TracerContributionType) bool {
+	return pathTypes.GetContributionTypes().HasContributions(contributions)
+}
+
+func (pathTypes TracerPathType) HasPaths(paths TracerPathType) bool {
+	return (pathTypes & paths) == paths
 }
 
 func MakeTracerPathType(pathTypeString string) TracerPathType {
