@@ -341,9 +341,18 @@ func (pt *PathTracer) computeDirectLightingWeight(
 			emittedPdf := intersection.Material.ComputePdf(
 				MATERIAL_LIGHT_TRANSPORT, wo, wi,
 				intersection.N)
-			pContinue := pt.getContinueProbabilityFromIntersection(
-				edgeCount-1, alpha, f, emittedPdf)
-			weightTracker.AddP(pVertexIndex, pContinue*emittedPdf)
+			var pContinue float32 = 1
+			// Don't use Russian roulette probabilities in
+			// weights if we have backwards paths turned
+			// on.
+			if !pt.pathTypes.HasContributions(
+				TRACER_LIGHT_CONTRIBUTION) {
+				pContinue = pt.
+					getContinueProbabilityFromIntersection(
+					edgeCount-1, alpha, f, emittedPdf)
+			}
+			weightTracker.AddP(
+				pVertexIndex, pContinue*emittedPdf)
 		}
 	}
 
@@ -442,6 +451,11 @@ func (pt *PathTracer) updatePathWeight(
 	case TRACER_UNIFORM_WEIGHTS:
 		weightTracker.AddP(pVertexIndex, 1)
 	case TRACER_POWER_WEIGHTS:
+		// Don't use Russian roulette probabilities in weights
+		// if we have backwards paths turned on.
+		if pt.pathTypes.HasContributions(TRACER_LIGHT_CONTRIBUTION) {
+			pContinue = 1
+		}
 		weightTracker.AddP(pVertexIndex, pContinue*pdfBsdf)
 	}
 
