@@ -224,7 +224,8 @@ func (pt *PathTracer) addLightDirectionalQs(
 
 func (pt *PathTracer) addLightSpatialQs(
 	weightTracker *TracerWeightTracker, qVertexIndex, edgeCount int,
-	sensor Sensor) {
+	scene *Scene, sensor Sensor, light Light, pSurface Point3,
+	existingPChooseLight *float32) {
 	if pt.hasBackwardsPath(edgeCount, sensor) {
 		// One for the point on the light and picking the
 		// light.
@@ -232,7 +233,15 @@ func (pt *PathTracer) addLightSpatialQs(
 		case TRACER_UNIFORM_WEIGHTS:
 			weightTracker.AddQ(qVertexIndex, 1)
 		case TRACER_POWER_WEIGHTS:
-			panic("Not implemented")
+			var pChooseLight float32
+			if existingPChooseLight != nil {
+				pChooseLight = *existingPChooseLight
+			} else {
+				pChooseLight = scene.ComputeLightPdf(light)
+			}
+			pdfSpatial := light.ComputeLeSpatialPdf(pSurface)
+			weightTracker.AddQ(
+				qVertexIndex, pChooseLight*pdfSpatial)
 		}
 	}
 }
@@ -267,7 +276,8 @@ func (pt *PathTracer) computeEmittedLightWeight(
 		x, y, p, intersection.PEpsilon, intersection.N, wo,
 		Vector3{}, &LightMaterial{light, p})
 	qVertexIndex++
-	pt.addLightSpatialQs(weightTracker, qVertexIndex, edgeCount, sensor)
+	pt.addLightSpatialQs(weightTracker, qVertexIndex, edgeCount,
+		scene, sensor, light, p, nil)
 
 	vertexCount := edgeCount + 1
 	w := weightTracker.ComputeWeight(vertexCount)
@@ -320,9 +330,10 @@ func (pt *PathTracer) computeEmittedLight(
 
 func (pt *PathTracer) computeDirectLightingWeight(
 	weightTracker *TracerWeightTracker,
-	edgeCount int, sensor Sensor, x, y int, light Light, alpha, f *Spectrum,
-	wo, wi Vector3, intersection *Intersection, pSurface Point3,
-	nSurface Normal3, pChooseLight, pdfDirect float32) float32 {
+	edgeCount int, scene *Scene, sensor Sensor, x, y int, light Light,
+	alpha, f *Spectrum, wo, wi Vector3, intersection *Intersection,
+	pSurface Point3, nSurface Normal3,
+	pChooseLight, pdfDirect float32) float32 {
 	pVertexIndex := edgeCount
 	switch pt.weighingMethod {
 	case TRACER_UNIFORM_WEIGHTS:
@@ -369,7 +380,8 @@ func (pt *PathTracer) computeDirectLightingWeight(
 		weightTracker, qVertexIndex, edgeCount, sensor, light,
 		wi, pSurface, nSurface)
 	qVertexIndex++
-	pt.addLightSpatialQs(weightTracker, qVertexIndex, edgeCount, sensor)
+	pt.addLightSpatialQs(weightTracker, qVertexIndex, edgeCount, scene,
+		sensor, light, pSurface, &pChooseLight)
 
 	vertexCount := edgeCount + 1
 	w := weightTracker.ComputeWeight(vertexCount)
@@ -430,8 +442,8 @@ func (pt *PathTracer) sampleDirectLighting(
 	LeDivPdf.ScaleInv(&LeDivPdf, pChooseLight)
 
 	weight := pt.computeDirectLightingWeight(
-		&weightTracker, edgeCount, sensor, x, y, light, alpha, &f,
-		wo, wi, intersection, pSurface, nSurface, pChooseLight, pdf)
+		&weightTracker, edgeCount, scene, sensor, x, y, light, alpha,
+		&f, wo, wi, intersection, pSurface, nSurface, pChooseLight, pdf)
 	if !isFiniteFloat32(weight) {
 		fmt.Printf("Invalid weight %v returned for intersection %v "+
 			"and wo %v\n", weight, intersection, wo)
