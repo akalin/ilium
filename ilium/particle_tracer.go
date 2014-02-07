@@ -219,7 +219,8 @@ func (pt *ParticleTracer) addVertexQs(
 
 func (pt *ParticleTracer) addSensorDirectionalQs(
 	weightTracker *TracerWeightTracker, qVertexIndex, edgeCount int,
-	sensor Sensor) {
+	sensor Sensor, x, y int, wiPrev Vector3, pSurface Point3,
+	nSurface Normal3) {
 	if pt.hasBackwardsPath(edgeCount, sensor) {
 		// One for the direction to this vertex from the
 		// sensor.
@@ -227,7 +228,14 @@ func (pt *ParticleTracer) addSensorDirectionalQs(
 		case TRACER_UNIFORM_WEIGHTS:
 			weightTracker.AddQ(qVertexIndex, 1)
 		case TRACER_POWER_WEIGHTS:
-			panic("Not implemented")
+			var sensorWo Vector3
+			sensorWo.Flip(&wiPrev)
+			pdfDirectional := sensor.ComputeWeDirectionalPdf(
+				x, y, pSurface, nSurface, sensorWo)
+			extent := sensor.GetExtent()
+			pdfPixel := 1 / float32(extent.GetPixelCount())
+			weightTracker.AddQ(
+				qVertexIndex, pdfDirectional*pdfPixel)
 		}
 	}
 }
@@ -343,9 +351,10 @@ func (pt *ParticleTracer) computeEmittedImportance(
 
 func (pt *ParticleTracer) computeDirectSensorWeight(
 	sensorWeightTracker *TracerWeightTracker,
-	sensorEdgeCount int, sensor Sensor, light Light, pChooseLight float32,
+	sensorEdgeCount int, sensor Sensor, x, y int, light Light,
 	alpha, f *Spectrum, p Point3, pEpsilon float32, n Normal3,
-	wo, wi Vector3, material Material, pdfDirect float32) float32 {
+	wo, wi Vector3, material Material, pSurface Point3, nSurface Normal3,
+	pChooseLight, pdfDirect float32) float32 {
 	pVertexIndex := sensorEdgeCount
 	switch pt.weighingMethod {
 	case TRACER_UNIFORM_WEIGHTS:
@@ -388,7 +397,8 @@ func (pt *ParticleTracer) computeDirectSensorWeight(
 	}
 	qVertexIndex := sensorEdgeCount - 1
 	pt.addSensorDirectionalQs(
-		sensorWeightTracker, qVertexIndex, sensorEdgeCount, sensor)
+		sensorWeightTracker, qVertexIndex, sensorEdgeCount, sensor,
+		x, y, wi, pSurface, nSurface)
 	qVertexIndex++
 	pt.addSensorSpatialQs(
 		sensorWeightTracker, qVertexIndex, sensorEdgeCount, sensor)
@@ -426,7 +436,7 @@ func (pt *ParticleTracer) directSampleSensors(
 
 		u := directSensor1DSamples[i].GetSample(sampleIndex, rng)
 		v := directSensor2DSamples[i].GetSample(sampleIndex, rng)
-		x, y, WeDivPdf, pdf, wi, _, _, shadowRay :=
+		x, y, WeDivPdf, pdf, wi, pSurface, nSurface, shadowRay :=
 			sensor.SamplePixelPositionAndWeFromPoint(
 				u.U, v.U1, v.U2, p, pEpsilon, n)
 
@@ -454,9 +464,9 @@ func (pt *ParticleTracer) directSampleSensors(
 		sensorEdgeCount := currentEdgeCount + 1
 		sensorWeightTracker := templateWeightTracker
 		w := pt.computeDirectSensorWeight(
-			&sensorWeightTracker, sensorEdgeCount, sensor, light,
-			pChooseLight, alpha, &f, p, pEpsilon, n,
-			wo, wi, material, pdf)
+			&sensorWeightTracker, sensorEdgeCount, sensor, x, y,
+			light, alpha, &f, p, pEpsilon, n, wo, wi, material,
+			pSurface, nSurface, pChooseLight, pdf)
 		if !isFiniteFloat32(w) {
 			fmt.Printf("Invalid weight %v returned for "+
 				"point %v and sensor %v\n",
