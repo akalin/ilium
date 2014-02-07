@@ -570,8 +570,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		case TRACER_UNIFORM_WEIGHTS:
 			weightTracker.AddP(0, 1)
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Also include spatial pdf.
-			weightTracker.AddP(0, pChooseLight)
+			weightTracker.AddP(0, pChooseLight*pdfSpatial)
 		}
 
 		LeSpatialDivPdf.ScaleInv(&LeSpatialDivPdf, pChooseLight)
@@ -583,9 +582,9 @@ func (pt *ParticleTracer) SampleLightPath(
 			nSurface, Vector3{}, &LightMaterial{light, pSurface},
 			records)
 
-		wo, LeDirectionalDivPdf, pdf := light.SampleDirection(
-			lightBundle, pSurface, nSurface)
-		if LeDirectionalDivPdf.IsBlack() || pdf == 0 {
+		wo, LeDirectionalDivPdf, pdfDirectional :=
+			light.SampleDirection(lightBundle, pSurface, nSurface)
+		if LeDirectionalDivPdf.IsBlack() || pdfDirectional == 0 {
 			return records
 		}
 
@@ -595,7 +594,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		case TRACER_UNIFORM_WEIGHTS:
 			weightTracker.AddP(1, 1)
 		case TRACER_POWER_WEIGHTS:
-			weightTracker.AddP(1, pdf)
+			weightTracker.AddP(1, pdfDirectional)
 		}
 
 		ray = Ray{pSurface, wo, pSurfaceEpsilon, infFloat32(+1)}
