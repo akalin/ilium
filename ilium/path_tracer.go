@@ -472,12 +472,21 @@ func (pt *PathTracer) SampleSensorPath(
 	weightTracker := MakeTracerWeightTracker(pt.beta)
 
 	// One for the point on the sensor, and one for the direction
-	// to the next vertex (assuming there is one). Don't bother
-	// using the real probabilities since these values aren't used
-	// anyway (since direct lighting doesn't happen for the first
-	// edge).
-	weightTracker.AddP(0, 1)
-	weightTracker.AddP(1, 1)
+	// to the next vertex (assuming there is one).
+	switch pt.weighingMethod {
+	case TRACER_UNIFORM_WEIGHTS:
+		weightTracker.AddP(0, 1)
+		weightTracker.AddP(1, 1)
+	case TRACER_POWER_WEIGHTS:
+		weightTracker.AddP(0, 1)
+		// The spatial component should technically be in the
+		// first weight, but it doesn't affect anything to
+		// have it lumped in with the directional component
+		// here.
+		extent := sensor.GetExtent()
+		pdfPixel := 1 / float32(extent.GetPixelCount())
+		weightTracker.AddP(1, pdfPixel*pdfSensor)
+	}
 
 	wiSamples := tracerBundle.Samples2D[0]
 	ray := initialRay
