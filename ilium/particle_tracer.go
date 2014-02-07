@@ -256,7 +256,7 @@ func (pt *ParticleTracer) addSensorDirectionalQs(
 
 func (pt *ParticleTracer) addSensorSpatialQs(
 	weightTracker *TracerWeightTracker, qVertexIndex, edgeCount int,
-	sensor Sensor) {
+	sensor Sensor, x, y int, pSurface Point3) {
 	if pt.hasBackwardsPath(edgeCount, sensor) {
 		// One for the point on the sensor and picking the
 		// sensor pixel.
@@ -264,7 +264,10 @@ func (pt *ParticleTracer) addSensorSpatialQs(
 		case TRACER_UNIFORM_WEIGHTS:
 			weightTracker.AddQ(qVertexIndex, 1)
 		case TRACER_POWER_WEIGHTS:
-			panic("Not implemented")
+			extent := sensor.GetExtent()
+			pdfPixel := 1 / float32(extent.GetPixelCount())
+			pdfSpatial := sensor.ComputeWeSpatialPdf(x, y, pSurface)
+			weightTracker.AddQ(qVertexIndex, pdfPixel*pdfSpatial)
 		}
 	}
 }
@@ -295,7 +298,7 @@ func (pt *ParticleTracer) computeEmittedImportanceWeight(
 		wo, Vector3{}, &SensorMaterial{sensor, x, y, p}, pChooseLight)
 	qVertexIndex++
 	pt.addSensorSpatialQs(
-		sensorWeightTracker, qVertexIndex, edgeCount, sensor)
+		sensorWeightTracker, qVertexIndex, edgeCount, sensor, x, y, p)
 
 	vertexCount := edgeCount + 1
 	w := sensorWeightTracker.ComputeWeight(vertexCount)
@@ -413,7 +416,8 @@ func (pt *ParticleTracer) computeDirectSensorWeight(
 		x, y, wi, pSurface, nSurface)
 	qVertexIndex++
 	pt.addSensorSpatialQs(
-		sensorWeightTracker, qVertexIndex, sensorEdgeCount, sensor)
+		sensorWeightTracker, qVertexIndex, sensorEdgeCount, sensor,
+		x, y, pSurface)
 
 	vertexCount := sensorEdgeCount + 1
 	w := sensorWeightTracker.ComputeWeight(vertexCount)
