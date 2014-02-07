@@ -18,7 +18,7 @@
       "emittedImportance",
       "directSensor"
     ],
-    "weighingMethod": "uniform",
+    "weighingMethod": "power",
     "russianRouletteMethod": "fixed",
     "russianRouletteStartIndex": 2,
     "russianRouletteMaxProbability": 1,
