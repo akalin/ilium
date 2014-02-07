@@ -8,15 +8,14 @@ type TracerWeightTracker struct {
 	lastPs       []float32
 	qVertexCount int
 	firstQs      []float32
+	middleRatio  float32
 }
-
-// TODO(akalin): Keep track of middle q/p ratio.
 
 // TracerWeightTracker objects are safely copyable, as long as only
 // one copy is used for computing weights at a time.
 
 func MakeTracerWeightTracker(beta float32) TracerWeightTracker {
-	return TracerWeightTracker{beta: beta}
+	return TracerWeightTracker{beta: beta, middleRatio: 1}
 }
 
 func (twt *TracerWeightTracker) AddP(vertexIndex int, p float32) {
@@ -32,6 +31,9 @@ func (twt *TracerWeightTracker) AddP(vertexIndex int, p float32) {
 	if vertexIndex == twt.pVertexCount-1 {
 		twt.lastPs = append(twt.lastPs, p)
 	} else {
+		if vertexIndex > 0 {
+			twt.middleRatio /= twt.lastPs[0]
+		}
 		twt.lastPs = []float32{p}
 		twt.pVertexCount++
 	}
@@ -52,6 +54,7 @@ func (twt *TracerWeightTracker) AddQ(vertexIndex int, q float32) {
 		twt.firstQs = append(twt.firstQs, q)
 		twt.qVertexCount = 1
 	} else {
+		twt.middleRatio *= q
 		twt.qVertexCount++
 	}
 }
@@ -75,7 +78,7 @@ func (twt *TracerWeightTracker) ComputeWeight(vertexCount int) float32 {
 	}
 
 	for i := 0; i < len(twt.firstQs); i++ {
-		r := twt.firstQs[i] / twt.lastPs[0]
+		r := twt.firstQs[i] * twt.middleRatio / twt.lastPs[0]
 		invW += powFloat32(r, twt.beta)
 	}
 
