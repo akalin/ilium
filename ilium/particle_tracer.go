@@ -346,10 +346,19 @@ func (pt *ParticleTracer) computeDirectSensorWeight(
 		case TRACER_POWER_WEIGHTS:
 			emittedPdf := material.ComputePdf(
 				MATERIAL_IMPORTANCE_TRANSPORT, wo, wi, n)
-			pContinue := GetContinueProbabilityFromIntersection(
-				pt.russianRouletteContribution,
-				pt.russianRouletteState,
-				sensorEdgeCount-1, alpha, f, emittedPdf)
+			var pContinue float32 = 1
+			// Don't use Russian roulette probabilities in
+			// weights if we have backwards paths turned
+			// on.
+			if !pt.pathTypes.HasContributions(
+				TRACER_SENSOR_CONTRIBUTION) {
+				pContinue =
+					GetContinueProbabilityFromIntersection(
+						pt.russianRouletteContribution,
+						pt.russianRouletteState,
+						sensorEdgeCount-1, alpha, f,
+						emittedPdf)
+			}
 			sensorWeightTracker.AddP(
 				pVertexIndex, pContinue*emittedPdf)
 		}
@@ -493,6 +502,11 @@ func (pt *ParticleTracer) updatePathWeight(
 	case TRACER_UNIFORM_WEIGHTS:
 		weightTracker.AddP(pVertexIndex, 1)
 	case TRACER_POWER_WEIGHTS:
+		// Don't use Russian roulette probabilities in weights
+		// if we have backwards paths turned on.
+		if pt.pathTypes.HasContributions(TRACER_SENSOR_CONTRIBUTION) {
+			pContinue = 1
+		}
 		weightTracker.AddP(pVertexIndex, pContinue*pdfBsdf)
 	}
 
