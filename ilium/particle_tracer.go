@@ -480,30 +480,6 @@ func (pt *ParticleTracer) directSampleSensors(
 	return records
 }
 
-// A wrapper that implements the Material interface in terms of Light
-// functions.
-type lightMaterial struct {
-	light    Light
-	pSurface Point3
-}
-
-func (lm *lightMaterial) SampleWi(transportType MaterialTransportType,
-	u1, u2 float32, wo Vector3, n Normal3) (
-	wi Vector3, fDivPdf Spectrum, pdf float32) {
-	panic("called unexpectedly")
-}
-
-func (lm *lightMaterial) ComputeF(transportType MaterialTransportType,
-	wo, wi Vector3, n Normal3) Spectrum {
-	return lm.light.ComputeLeDirectional(lm.pSurface, n, wi)
-}
-
-func (lm *lightMaterial) ComputePdf(transportType MaterialTransportType,
-	wo, wi Vector3, n Normal3) float32 {
-	pSurface := Point3(wo)
-	return lm.light.ComputeLeDirectionalPdf(pSurface, n, wi)
-}
-
 func (pt *ParticleTracer) updatePathWeight(
 	weightTracker *TracerWeightTracker, edgeCount int,
 	pContinue, pdfBsdf float32) {
@@ -596,7 +572,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		records = pt.directSampleSensors(
 			edgeCount, rng, scene, sensors, tracerBundle,
 			&alpha, weightTracker, pSurface, pSurfaceEpsilon,
-			nSurface, Vector3{}, &lightMaterial{light, pSurface},
+			nSurface, Vector3{}, &LightMaterial{light, pSurface},
 			records)
 
 		wo, LeDirectionalDivPdf, pdf := light.SampleDirection(
