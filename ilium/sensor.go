@@ -234,3 +234,27 @@ func MakeSensor(config map[string]interface{}, shapes []Shape) Sensor {
 		panic("unknown sensor type " + sensorType)
 	}
 }
+
+// A wrapper that implements the Material interface in terms of Sensor
+// functions.
+type SensorMaterial struct {
+	sensor   Sensor
+	x, y     int
+	pSurface Point3
+}
+
+func (sm *SensorMaterial) SampleWi(transportType MaterialTransportType,
+	u1, u2 float32, wo Vector3, n Normal3) (
+	wi Vector3, fDivPdf Spectrum, pdf float32) {
+	panic("called unexpectedly")
+}
+
+func (sm *SensorMaterial) ComputeF(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) Spectrum {
+	panic("called unexpectedly")
+}
+
+func (sm *SensorMaterial) ComputePdf(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) float32 {
+	return sm.sensor.ComputeWeDirectionalPdf(sm.x, sm.y, sm.pSurface, n, wi)
+}
