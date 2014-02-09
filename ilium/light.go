@@ -31,3 +31,27 @@ func MakeLight(config map[string]interface{}, shapes []Shape) Light {
 		panic("unknown light type " + lightType)
 	}
 }
+
+// A wrapper that implements the Material interface in terms of Light
+// functions.
+type LightMaterial struct {
+	light    Light
+	pSurface Point3
+}
+
+func (lm *LightMaterial) SampleWi(transportType MaterialTransportType,
+	u1, u2 float32, wo Vector3, n Normal3) (
+	wi Vector3, fDivPdf Spectrum, pdf float32) {
+	panic("called unexpectedly")
+}
+
+func (lm *LightMaterial) ComputeF(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) Spectrum {
+	return lm.light.ComputeLeDirectional(lm.pSurface, n, wi)
+}
+
+func (lm *LightMaterial) ComputePdf(transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) float32 {
+	pSurface := Point3(wo)
+	return lm.light.ComputeLeDirectionalPdf(pSurface, n, wi)
+}
