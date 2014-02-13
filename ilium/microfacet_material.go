@@ -2,18 +2,37 @@ package ilium
 
 import "math"
 
+type MicrofacetSamplingMethod int
+
+// TODO(akalin): Implement better sampling methods.
+const (
+	MICROFACET_UNIFORM_SAMPLING MicrofacetSamplingMethod = iota
+	MICROFACET_COSINE_SAMPLING  MicrofacetSamplingMethod = iota
+)
+
 const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
 
 type MicrofacetMaterial struct {
-	color         Spectrum
-	blinnExponent float32
+	samplingMethod MicrofacetSamplingMethod
+	color          Spectrum
+	blinnExponent  float32
 }
 
 func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
+	var samplingMethod MicrofacetSamplingMethod
+	samplingMethodConfig := config["samplingMethod"].(string)
+	switch samplingMethodConfig {
+	case "uniform":
+		samplingMethod = MICROFACET_UNIFORM_SAMPLING
+	case "cosine":
+		samplingMethod = MICROFACET_COSINE_SAMPLING
+	default:
+		panic("unknown sampling method " + samplingMethodConfig)
+	}
 	colorConfig := config["color"].(map[string]interface{})
 	color := MakeSpectrumFromConfig(colorConfig)
 	blinnExponent := float32(config["blinnExponent"].(float64))
-	return &MicrofacetMaterial{color, blinnExponent}
+	return &MicrofacetMaterial{samplingMethod, color, blinnExponent}
 }
 
 func (m *MicrofacetMaterial) computeG(
@@ -30,8 +49,14 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		return
 	}
 
-	// TODO(akalin): Implement better sampling methods.
-	vh := uniformSampleHemisphere(u1, u2)
+	var vh R3
+	switch m.samplingMethod {
+	case MICROFACET_UNIFORM_SAMPLING:
+		vh = uniformSampleHemisphere(u1, u2)
+	case MICROFACET_COSINE_SAMPLING:
+		vh = cosineSampleHemisphere(u1, u2)
+	}
+	absCosThH := vh.Z
 
 	// Convert the sampled vector to be around (i, j, k=n). Note
 	// that this means that wo and wh may lie on different
@@ -65,8 +90,14 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 	}
 
 	f := m.ComputeF(wo, wi, n)
-	// pdf = 1 / (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|).
-	fDivPdf.Scale(&f, 8*math.Pi*absCosThI*absWoDotWh)
+	switch m.samplingMethod {
+	case MICROFACET_UNIFORM_SAMPLING:
+		// pdf = 1 / (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|).
+		fDivPdf.Scale(&f, 8*math.Pi*absCosThI*absWoDotWh)
+	case MICROFACET_COSINE_SAMPLING:
+		// pdf = |cos(th_h)| / (pi * |cos(th_i)| * 4 * |w_o * w_h|).
+		fDivPdf.Scale(&f, 4*math.Pi*absCosThI*absWoDotWh/absCosThH)
+	}
 	return
 }
 
