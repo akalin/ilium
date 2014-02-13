@@ -175,7 +175,7 @@
           },
           "material": {
             "type": "MicrofacetMaterial",
-            "samplingMethod": "cosine",
+            "samplingMethod": "distribution",
             "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 },
             "blinnExponent": 2000
           }
