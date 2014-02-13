@@ -4,11 +4,11 @@ import "math"
 
 type MicrofacetSamplingMethod int
 
-// TODO(akalin): Implement better sampling methods.
 const (
-	MICROFACET_UNIFORM_SAMPLING      MicrofacetSamplingMethod = iota
-	MICROFACET_COSINE_SAMPLING       MicrofacetSamplingMethod = iota
-	MICROFACET_DISTRIBUTION_SAMPLING MicrofacetSamplingMethod = iota
+	MICROFACET_UNIFORM_SAMPLING             MicrofacetSamplingMethod = iota
+	MICROFACET_COSINE_SAMPLING              MicrofacetSamplingMethod = iota
+	MICROFACET_DISTRIBUTION_SAMPLING        MicrofacetSamplingMethod = iota
+	MICROFACET_DISTRIBUTION_COSINE_SAMPLING MicrofacetSamplingMethod = iota
 )
 
 const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
@@ -29,6 +29,8 @@ func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
 		samplingMethod = MICROFACET_COSINE_SAMPLING
 	case "distribution":
 		samplingMethod = MICROFACET_DISTRIBUTION_SAMPLING
+	case "distributionCosine":
+		samplingMethod = MICROFACET_DISTRIBUTION_COSINE_SAMPLING
 	default:
 		panic("unknown sampling method " + samplingMethodConfig)
 	}
@@ -60,6 +62,10 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		vh = cosineSampleHemisphere(u1, u2)
 	case MICROFACET_DISTRIBUTION_SAMPLING:
 		absCosThH := powFloat32(u1, 1/(m.blinnExponent+1))
+		phiH := 2 * math.Pi * u2
+		vh = MakeSphericalDirection(absCosThH, phiH)
+	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
+		absCosThH := powFloat32(u1, 1/(m.blinnExponent+2))
 		phiH := 2 * math.Pi * u2
 		vh = MakeSphericalDirection(absCosThH, phiH)
 	}
@@ -118,6 +124,15 @@ func (m *MicrofacetMaterial) SampleWi(u1, u2 float32, wo Vector3, n Normal3) (
 		// f / pdf = (color * (e + 2) * G * (w_o * w_h)) /
 		//   ((e + 1) * |cos(th_o)|).
 		fDivPdf.Scale(&m.color, ((e+2)*G*woDotWh)/((e+1)*absCosThO))
+	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
+		G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
+		// f = (color * D_blinn * G) / (4 * |cos(th_o) * cos(th_i)|),
+		// and pdf = ((e + 2) * |cos^(e+1)(th_h)|) /
+		//   (2 * pi * |cos(th_i)| * 4 * (w_o * w_h)) =
+		// (D_blinn * |cos(th_h)|) / (|cos(th_i)| * 4 * (w_o * w_h)),
+		// so f / pdf =
+		//   (color * G * (w_o * w_h)) / (|cos(th_h) * cos(th_o)|).
+		fDivPdf.Scale(&m.color, (G*woDotWh)/(absCosThH*absCosThO))
 	}
 	return
 }
