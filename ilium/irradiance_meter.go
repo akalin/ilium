@@ -176,6 +176,11 @@ func (im *IrradianceMeter) ComputeWePdfFromPoint(
 	return r * r / (absCosThI * cosThO)
 }
 
+func (im *IrradianceMeter) ComputePixelPosition(
+	pSurface Point3, nSurface Normal3, wo Vector3) (ok bool, x, y int) {
+	panic("Called unexpectedly")
+}
+
 func (im *IrradianceMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
 	panic("Called unexpectedly")
 }

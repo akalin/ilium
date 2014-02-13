@@ -92,6 +92,11 @@ func (rm *RadianceMeter) ComputeWePdfFromPoint(
 	panic("Called unexpectedly")
 }
 
+func (rm *RadianceMeter) ComputePixelPosition(
+	pSurface Point3, nSurface Normal3, wo Vector3) (ok bool, x, y int) {
+	panic("Called unexpectedly")
+}
+
 func (rm *RadianceMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
 	panic("Called unexpectedly")
 }

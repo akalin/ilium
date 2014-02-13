@@ -258,6 +258,28 @@ func (tlc *ThinLensCamera) ComputeWePdfFromPoint(
 	return tlc.disk.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (tlc *ThinLensCamera) ComputePixelPosition(
+	pSurface Point3, nSurface Normal3, wo Vector3) (
+	ok bool, x, y int) {
+	nLens := tlc.disk.GetNormal()
+	wc := tlc.woToWc(&wo, &pSurface, &nLens)
+	cosThC := wc.DotNormal(&nLens)
+	if cosThC < PDF_COS_THETA_EPSILON {
+		return
+	}
+
+	xC, yC := tlc.wcToXy(&wc, cosThC)
+	extent := tlc.GetExtent()
+	if !extent.Contains(xC, yC) {
+		return
+	}
+
+	ok = true
+	x = int(xC)
+	y = int(yC)
+	return
+}
+
 func (tlc *ThinLensCamera) ComputeWeSpatial(pSurface Point3) Spectrum {
 	return MakeConstantSpectrum(1 / tlc.disk.SurfaceArea())
 }

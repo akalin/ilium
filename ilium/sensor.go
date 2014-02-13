@@ -171,6 +171,13 @@ type Sensor interface {
 		x, y int,
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 
+	// For now, can be assumed to only be called when
+	// HasSpecularPosition() returns false, and when pSurface is
+	// known to lie on the surface on the sensor with normal
+	// nSurface. (However, wo can be arbitrary.)
+	ComputePixelPosition(pSurface Point3, nSurface Normal3, wo Vector3) (
+		ok bool, x, y int)
+
 	// Given a point on the sensor, returns its importance.
 	//
 	// For now, can be assumed to only be called when

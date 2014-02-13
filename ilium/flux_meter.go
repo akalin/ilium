@@ -157,6 +157,17 @@ func (fm *FluxMeter) ComputeWePdfFromPoint(
 	return fm.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
 
+func (fm *FluxMeter) ComputePixelPosition(
+	pSurface Point3, nSurface Normal3, wo Vector3) (ok bool, x, y int) {
+	if wo.DotNormal(&nSurface) < 0 {
+		return
+	}
+	ok = true
+	x = 0
+	y = 0
+	return
+}
+
 func (fm *FluxMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
 	return MakeConstantSpectrum(math.Pi)
 }
