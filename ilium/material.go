@@ -14,6 +14,8 @@ func MakeMaterial(config map[string]interface{}) Material {
 		return MakeDiffuseMaterial(config)
 	case "MicrofacetMaterial":
 		return MakeMicrofacetMaterial(config)
+	case "FlipMaterial":
+		return MakeFlipMaterial(config)
 	default:
 		panic("unknown material type " + materialType)
 	}
