@@ -46,7 +46,7 @@
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 },
         "blinnExponent": 2000

@@ -1,26 +1,20 @@
 package ilium
 
-const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
-
-type MicrofacetMaterial struct {
+type MicrofacetReflectionMaterial struct {
 	blinnDistribution *BlinnDistribution
 	color             Spectrum
 }
 
-func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
+func MakeMicrofacetReflectionMaterial(
+	config map[string]interface{}) *MicrofacetReflectionMaterial {
 	blinnDistribution := MakeBlinnDistribution(config)
 	colorConfig := config["color"].(map[string]interface{})
 	color := MakeSpectrumFromConfig(colorConfig)
-	return &MicrofacetMaterial{blinnDistribution, color}
+	return &MicrofacetReflectionMaterial{blinnDistribution, color}
 }
 
-func (m *MicrofacetMaterial) computeG(
-	absCosThO, absCosThI, absCosThH, woDotWh float32) float32 {
-	return minFloat32(
-		1, 2*absCosThH*minFloat32(absCosThO, absCosThI)/woDotWh)
-}
-
-func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
+func (m *MicrofacetReflectionMaterial) SampleWi(
+	transportType MaterialTransportType,
 	u1, u2 float32, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	cosThO := wo.DotNormal(&n)
@@ -61,13 +55,14 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 	// pdf = (DPdf * |cos(th_h)|) / (4 * (w_o * w_h) * |cos(th_i)|), so
 	// f / pdf = (D/DPdf) *
 	//   ((color * (w_o * w_h) / |cos(th_o) * cos(th_h)|).
-	G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
+	G := ComputeMicrofacetG(absCosThO, absCosThI, absCosThH, woDotWh)
 	fDivPdf.Scale(&m.color, (DDivPdf*G*woDotWh)/(absCosThO*absCosThH))
 	pdf = (DPdf * absCosThH) / (4 * woDotWh * absCosThI)
 	return
 }
 
-func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
+func (m *MicrofacetReflectionMaterial) ComputeF(
+	transportType MaterialTransportType,
 	wo, wi Vector3, n Normal3) Spectrum {
 	cosThO := wo.DotNormal(&n)
 	cosThI := wi.DotNormal(&n)
@@ -97,13 +92,14 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 	//
 	// TODO(akalin): Implement a real Fresnel term and refraction.
 	D := m.blinnDistribution.ComputeD(wh, n)
-	G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
+	G := ComputeMicrofacetG(absCosThO, absCosThI, absCosThH, woDotWh)
 	var f Spectrum
 	f.Scale(&m.color, (D*G)/(4*absCosThO*absCosThI))
 	return f
 }
 
-func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
+func (m *MicrofacetReflectionMaterial) ComputePdf(
+	transportType MaterialTransportType,
 	wo, wi Vector3, n Normal3) float32 {
 	cosThO := wo.DotNormal(&n)
 	cosThI := wi.DotNormal(&n)

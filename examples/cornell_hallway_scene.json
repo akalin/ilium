@@ -180,7 +180,7 @@
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 },
         "blinnExponent": 2000
@@ -197,7 +197,7 @@
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.9, "g": 0.7, "b": 0.7 },
         "blinnExponent": 1000
@@ -214,7 +214,7 @@
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.7, "g": 0.7, "b": 0.9 },
         "blinnExponent": 500
@@ -231,7 +231,7 @@
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.7 },
         "blinnExponent": 100
@@ -248,7 +248,7 @@
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.9 },
         "blinnExponent": 10

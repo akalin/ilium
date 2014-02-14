@@ -120,7 +120,7 @@
         ]
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
         "blinnExponent" : 2000
@@ -144,7 +144,7 @@
         ]
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
         "blinnExponent" : 200
@@ -168,7 +168,7 @@
         ]
       },
       "material": {
-        "type": "MicrofacetMaterial",
+        "type": "MicrofacetReflectionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.9, "g": 0.9, "b": 0.9 },
         "blinnExponent" : 20
