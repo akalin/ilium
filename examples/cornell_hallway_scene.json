@@ -176,14 +176,16 @@
       "shape": {
         "type": "Sphere",
         "samplingMethod": "visibleFast",
-        "center": [ -1.0, 1.5, 0.1 ],
+        "center": [ 0, 1.5, 0.1 ],
         "radius": 0.6
       },
       "material": {
-        "type": "MicrofacetReflectionMaterial",
+        "type": "MicrofacetRefractionMaterial",
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 },
-        "blinnExponent": 2000
+	"etaI": 1.0,
+	"etaT": 1.4,
+        "blinnExponent": 200000
       }
     },
 
