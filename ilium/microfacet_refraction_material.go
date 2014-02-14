@@ -1,5 +1,7 @@
 package ilium
 
+//import "fmt"
+
 type MicrofacetRefractionMaterial struct {
 	blinnDistribution *BlinnDistribution
 	etaI, etaT        float32
@@ -35,16 +37,15 @@ func (m *MicrofacetRefractionMaterial) SampleWi(
 	if cosThO >= 0 {
 		etaO = m.etaI
 		etaI = m.etaT
-		eta = etaO / etaI
 	} else {
 		etaO = m.etaT
 		etaI = m.etaI
-		eta = etaI / etaO
 	}
+	eta = etaO / etaI
 
 	woDotWh := wo.Dot(&wh)
 
-	c := absFloat32(woDotWh)
+	c := woDotWh
 	d := 1 + eta*(c*c-1)
 	if d < 0 {
 		// Total internal reflection.
@@ -53,9 +54,16 @@ func (m *MicrofacetRefractionMaterial) SampleWi(
 
 	var t1, t2 Vector3
 	t1.Scale(&wh, eta*c-sqrtFloat32(d))
-	t2.Scale(&wo, eta)
+	t2.Scale(&wo, -eta)
 	wi.Add(&t1, &t2)
 	wi.Normalize(&wi)
+
+	wiDotWh := wi.Dot(&wh)
+	/*
+		sinWo := sqrtFloat32(1 - woDotWh*woDotWh)
+		sinWi := sqrtFloat32(1 - wiDotWh*wiDotWh)
+		fmt.Printf("sinRat=%v, etaRat=%v\n", sinWo/sinWi, 1/eta)
+	*/
 
 	cosThI := wi.DotNormal(&n)
 	if (cosThO >= 0) == (cosThI >= 0) {
@@ -67,7 +75,6 @@ func (m *MicrofacetRefractionMaterial) SampleWi(
 	absCosThI := absFloat32(cosThI)
 
 	absCosThH := absFloat32(wh.DotNormal(&n))
-	wiDotWh := wi.Dot(&wh)
 
 	// f = (color * D * G * J * (w_o * w_h)) /
 	//   (4 * |cos(th_o) * cos(th_i)|) and
