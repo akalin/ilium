@@ -42,21 +42,17 @@ func (m *MicrofacetRefractionMaterial) SampleWi(
 		eta = etaI / etaO
 	}
 
-	c := wo.Dot(&wh)
+	woDotWh := wo.Dot(&wh)
+
+	c := absFloat32(woDotWh)
 	d := 1 + eta*(c*c-1)
 	if d < 0 {
 		// Total internal reflection.
 		return
 	}
 
-	var s float32
-	if cosThO > 0 {
-		s = 1
-	} else {
-		s = -1
-	}
 	var t1, t2 Vector3
-	t1.Scale(&wh, eta*c-s*sqrtFloat32(d))
+	t1.Scale(&wh, eta*c-sqrtFloat32(d))
 	t2.Scale(&wo, eta)
 	wi.Add(&t1, &t2)
 	wi.Normalize(&wi)
@@ -71,8 +67,8 @@ func (m *MicrofacetRefractionMaterial) SampleWi(
 	absCosThI := absFloat32(cosThI)
 
 	absCosThH := absFloat32(wh.DotNormal(&n))
-	woDotWh := wo.Dot(&wh)
 	wiDotWh := wi.Dot(&wh)
+
 	// f = (color * D * G * J * (w_o * w_h)) /
 	//   (4 * |cos(th_o) * cos(th_i)|) and
 	// pdf = (DPdf * |cos(th_h)| * J) / |cos(th_i)|, so
