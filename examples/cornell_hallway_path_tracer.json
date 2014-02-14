@@ -27,9 +27,9 @@
               "outputPath": "cornell_hallway_path_tracer.png",
               "up": [0, 0, 1],
               "fov": 82,
-              "frontFocalLength": 2,
-              "width": 320,
-              "height": 240,
+              "frontFocalLength": 2.5,
+              "width": 640,
+              "height": 480,
               "samplesPerPixel": 32
             }
           ]
