@@ -139,7 +139,7 @@ func (m *MicrofacetRefractionMaterial) ComputeF(
 	wiDotWh := wi.Dot(&wh)
 	G := ComputeMicrofacetG(
 		absCosThO, absCosThI,
-		absFloat32(wh.DotNormal(&n)), woDotWh)
+		absFloat32(wh.DotNormal(&n)), absFloat32(woDotWh))
 	J := m.computeJacobian(wo, etaO, woDotWh, wi, etaI, wiDotWh)
 	var f Spectrum
 	f.Scale(&m.color, (absFloat32(woDotWh)*D*G*J)/(absCosThO*absCosThI))
