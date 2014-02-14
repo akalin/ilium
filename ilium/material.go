@@ -24,6 +24,8 @@ func MakeMaterial(config map[string]interface{}) Material {
 		return MakeDiffuseMaterial(config)
 	case "MicrofacetReflectionMaterial":
 		return MakeMicrofacetReflectionMaterial(config)
+	case "MicrofacetRefractionMaterial":
+		return MakeMicrofacetRefractionMaterial(config)
 	default:
 		panic("unknown material type " + materialType)
 	}
