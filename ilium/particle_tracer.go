@@ -695,7 +695,7 @@ func (pt *ParticleTracer) SampleLightPath(
 		sampleIndex := edgeCount - 1
 		u := wiSamples.GetSample(sampleIndex, rng)
 		wi, fDivPdf, pdf := material.SampleWi(
-			MATERIAL_IMPORTANCE_TRANSPORT, u.U1, u.U2, wo, n)
+			MATERIAL_IMPORTANCE_TRANSPORT, u.U1, u.U2, rng, wo, n)
 		if fDivPdf.IsBlack() || pdf == 0 {
 			break
 		}

@@ -1,6 +1,7 @@
 package ilium
 
 import "math"
+import "math/rand"
 
 type MicrofacetSamplingMethod int
 
@@ -162,7 +163,7 @@ func (m *MicrofacetMaterial) computeBlinnDPdf(absCosThH float32) float32 {
 }
 
 func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
-	u1, u2 float32, wo Vector3, n Normal3) (
+	u1, u2 float32, rng *rand.Rand, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	cosThO := wo.DotNormal(&n)
 	absCosThO := absFloat32(cosThO)
