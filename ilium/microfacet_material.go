@@ -14,9 +14,11 @@ const (
 const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
 
 type MicrofacetMaterial struct {
-	samplingMethod MicrofacetSamplingMethod
-	color          Spectrum
-	blinnExponent  float32
+	samplingMethod  MicrofacetSamplingMethod
+	color           Spectrum
+	blinnExponent   float32
+	etaAboveHorizon float32
+	etaBelowHorizon float32
 }
 
 func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
@@ -37,15 +39,51 @@ func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
 	colorConfig := config["color"].(map[string]interface{})
 	color := MakeSpectrumFromConfig(colorConfig)
 	blinnExponent := float32(config["blinnExponent"].(float64))
-	return &MicrofacetMaterial{samplingMethod, color, blinnExponent}
+	etaAboveHorizon, _ := config["etaAboveHorizon"].(float64)
+	etaBelowHorizon, _ := config["etaBelowHorizon"].(float64)
+	return &MicrofacetMaterial{
+		samplingMethod, color, blinnExponent,
+		float32(etaAboveHorizon), float32(etaBelowHorizon),
+	}
 }
 
 func (m *MicrofacetMaterial) computeRefractionTerms(
 	woDotWh, cosThH float32) (F, wiDotWh, etaO, etaI float32) {
-	// Assume perfect reflection for now (i.e., a Fresnel term of 1).
-	//
-	// TODO(akalin): Implement a real Fresnel term and refraction.
-	F = 1
+	if m.etaAboveHorizon <= 0 || m.etaBelowHorizon <= 0 {
+		F = 1
+		return
+	}
+	var eta1, eta2 float32
+	if (cosThH >= 0) == (woDotWh >= 0) {
+		eta1 = m.etaAboveHorizon
+		eta2 = m.etaBelowHorizon
+	} else {
+		eta1 = m.etaBelowHorizon
+		eta2 = m.etaAboveHorizon
+	}
+	absCosTh1 := absFloat32(woDotWh)
+	absSinTh1 := cosToSin(absCosTh1)
+	absSinTh2 := (eta1 / eta2) * absSinTh1
+	if absSinTh2 >= 1 {
+		// Total internal reflection.
+		F = 1
+		return
+	}
+	absCosTh2 := sinToCos(absSinTh2)
+	rParallel :=
+		(eta2*absCosTh1 - eta1*absCosTh2) /
+			(eta2*absCosTh1 + eta1*absCosTh2)
+	rPerpendicular :=
+		(eta1*absCosTh1 - eta2*absCosTh2) /
+			(eta1*absCosTh1 + eta2*absCosTh2)
+	F = 0.5 * (rParallel*rParallel + rPerpendicular*rPerpendicular)
+	if woDotWh >= 0 {
+		wiDotWh = -absCosTh2
+	} else {
+		wiDotWh = absCosTh2
+	}
+	etaO = eta1
+	etaI = eta2
 	return
 }
 
