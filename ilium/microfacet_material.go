@@ -197,7 +197,7 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
+	F, wiDotWh, etaO, etaI := m.computeRefractionTerms(woDotWh, cosThH)
 
 	var microfacetTransportType microfacetTransportType
 	if F >= 1 || randFloat32(rng) <= F {
@@ -211,7 +211,10 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		wi.Scale(&wh, 2*woDotWh)
 		wi.Sub(&wi, &wo)
 	case _MICROFACET_REFRACTION:
-		// TODO(akalin): Handle.
+		var v1, v2 Vector3
+		v1.Scale(&wh, (etaO/etaI)*woDotWh+wiDotWh)
+		v2.Scale(&wo, etaO/etaI)
+		wi.Sub(&v1, &v2)
 	}
 
 	cosThI := wi.DotNormal(&n)
