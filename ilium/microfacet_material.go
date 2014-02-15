@@ -40,6 +40,18 @@ func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
 	return &MicrofacetMaterial{samplingMethod, color, blinnExponent}
 }
 
+func (m *MicrofacetMaterial) computeEta(cosThO float32) float32 {
+	// TODO(akalin): Have an eta parameter.
+	return 0
+}
+
+func (m *MicrofacetMaterial) computeFresnelTerm(eta, c float32) float32 {
+	// Assume perfect reflection for now (i.e., a Fresnel term of 1).
+	//
+	// TODO(akalin): Implement a real Fresnel term and refraction.
+	return 1
+}
+
 func (m *MicrofacetMaterial) computeG(
 	absCosThO, absCosThI, absCosThH, woDotWh float32) float32 {
 	return minFloat32(
@@ -123,26 +135,32 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		pdf = absCosThH / (4 * math.Pi * absCosThI * woDotWh)
 	case MICROFACET_DISTRIBUTION_SAMPLING:
 		e := m.blinnExponent
+		eta := m.computeEta(cosThO)
+		F := m.computeFresnelTerm(eta, woDotWh)
 		G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
-		// f = (color * D_blinn * G) / (4 * |cos(th_o) * cos(th_i)|),
+		// f = (color * D_blinn * F * G) /
+		//   (4 * |cos(th_o) * cos(th_i)|),
 		// and pdf = ((e + 1) * |cos^e(th_h)|) /
 		//   (2 * pi * |cos(th_i)| * 4 * (w_o * w_h)) =
 		// ((e + 1) * D_blinn) /
 		//   ((e + 2) * |cos(th_i)| * 4 * (w_o * w_h)), so
-		// f / pdf = (color * (e + 2) * G * (w_o * w_h)) /
+		// f / pdf = (color * (e + 2) * F * G * (w_o * w_h)) /
 		//   ((e + 1) * |cos(th_o)|).
-		fDivPdf.Scale(&m.color, ((e+2)*G*woDotWh)/((e+1)*absCosThO))
+		fDivPdf.Scale(&m.color, ((e+2)*F*G*woDotWh)/((e+1)*absCosThO))
 		blinnD := m.computeBlinnD(absCosThH)
 		pdf = ((e + 1) * blinnD) / (4 * (e + 2) * absCosThI * woDotWh)
 	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
+		eta := m.computeEta(cosThO)
+		F := m.computeFresnelTerm(eta, woDotWh)
 		G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
-		// f = (color * D_blinn * G) / (4 * |cos(th_o) * cos(th_i)|),
+		// f = (color * D_blinn * F * G) /
+		//   (4 * |cos(th_o) * cos(th_i)|),
 		// and pdf = ((e + 2) * |cos^(e+1)(th_h)|) /
 		//   (2 * pi * |cos(th_i)| * 4 * (w_o * w_h)) =
 		// (D_blinn * |cos(th_h)|) / (|cos(th_i)| * 4 * (w_o * w_h)),
 		// so f / pdf =
-		//   (color * G * (w_o * w_h)) / (|cos(th_h) * cos(th_o)|).
-		fDivPdf.Scale(&m.color, (G*woDotWh)/(absCosThH*absCosThO))
+		//   (color * F * G * (w_o * w_h)) / (|cos(th_h) * cos(th_o)|).
+		fDivPdf.Scale(&m.color, (F*G*woDotWh)/(absCosThH*absCosThO))
 		blinnD := m.computeBlinnD(absCosThH)
 		pdf = (blinnD * absCosThH) / (4 * absCosThI * woDotWh)
 	}
@@ -174,14 +192,13 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 		return Spectrum{}
 	}
 
-	// Assume perfect reflection for now (i.e., a Fresnel term of 1).
-	//
-	// TODO(akalin): Implement a real Fresnel term and refraction.
+	eta := m.computeEta(cosThO)
+	F := m.computeFresnelTerm(eta, woDotWh)
 	absCosThH := absFloat32(wh.DotNormal(&n))
 	blinnD := m.computeBlinnD(absCosThH)
 	G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
 	var f Spectrum
-	f.Scale(&m.color, (blinnD*G)/(4*absCosThO*absCosThI))
+	f.Scale(&m.color, (blinnD*F*G)/(4*absCosThO*absCosThI))
 	return f
 }
 
