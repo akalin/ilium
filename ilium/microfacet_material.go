@@ -14,6 +14,13 @@ const (
 
 const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
 
+type microfacetTransportType int
+
+const (
+	_MICROFACET_REFLECTION microfacetTransportType = iota
+	_MICROFACET_REFRACTION microfacetTransportType = iota
+)
+
 type MicrofacetMaterial struct {
 	samplingMethod MicrofacetSamplingMethod
 	color          Spectrum
@@ -183,15 +190,41 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	// TODO(akalin): Handle refraction.
+	eta := m.computeEta(cosThO)
+	F := m.computeFresnelTerm(eta, woDotWh)
 
-	wi.Scale(&wh, 2*woDotWh)
-	wi.Sub(&wi, &wo)
+	var microfacetTransportType microfacetTransportType
+	if F >= 1 {
+		microfacetTransportType = _MICROFACET_REFLECTION
+	} else if F <= 0 {
+		microfacetTransportType = _MICROFACET_REFRACTION
+	} else if randFloat32(rng) <= F {
+		microfacetTransportType = _MICROFACET_REFLECTION
+	} else {
+		microfacetTransportType = _MICROFACET_REFRACTION
+	}
+
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		wi.Scale(&wh, 2*woDotWh)
+		wi.Sub(&wi, &wo)
+	case _MICROFACET_REFRACTION:
+		// TODO(akalin): Handle.
+	}
 
 	cosThI := wi.DotNormal(&n)
-	if (cosThO >= 0) != (cosThI >= 0) {
-		wi = Vector3{}
-		return
+
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		if (cosThO >= 0) != (cosThI >= 0) {
+			wi = Vector3{}
+			return
+		}
+	case _MICROFACET_REFRACTION:
+		if (cosThO >= 0) == (cosThI >= 0) {
+			wi = Vector3{}
+			return
+		}
 	}
 
 	absCosThI := absFloat32(cosThI)
@@ -200,15 +233,28 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
+	// For reflection,
 	// f = (color * D * F * G) / (4 * |cos(th_o) * cos(th_i)|) and
-	// pdf = (DPdf * |cos(th_h)|) / (4 * (w_o * w_h) * |cos(th_i)|), so
-	// f / pdf = ((color * (D/DPdf) * F * G * (w_o * w_h) /
+	// pdf = (DPdf * F * |cos(th_h)|) / (4 * (w_o * w_h) * |cos(th_i)|), so
+	// f / pdf = ((color * (D/DPdf) * G * (w_o * w_h) /
 	//   |cos(th_o) * cos(th_h)|).
-	eta := m.computeEta(cosThO)
-	F := m.computeFresnelTerm(eta, woDotWh)
 	G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
-	fDivPdf.Scale(&m.color, (DDivPdf*F*G*woDotWh)/(absCosThO*absCosThH))
-	pdf = (DPdf * absCosThH) / (4 * woDotWh * absCosThI)
+	fDivPdf.Scale(&m.color, (DDivPdf*G*woDotWh)/(absCosThO*absCosThH))
+	pdf = (DPdf * F * absCosThH) / (4 * woDotWh * absCosThI)
+	return
+}
+
+func (m *MicrofacetMaterial) computeHalfVector(
+	wo, wi *Vector3, cosThO, cosThI float32) (
+	wh Vector3, microfacetTransportType microfacetTransportType) {
+	if (cosThO >= 0) == (cosThI >= 0) {
+		wh.Add(wo, wi)
+		wh.Normalize(&wh)
+		microfacetTransportType = _MICROFACET_REFLECTION
+	} else {
+		// TODO(akalin): Handle refraction.
+		microfacetTransportType = _MICROFACET_REFRACTION
+	}
 	return
 }
 
@@ -222,16 +268,16 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 		(absCosThI < _MICROFACET_COS_THETA_EPSILON) {
 		return Spectrum{}
 	}
+
+	wh, microfacetTransportType :=
+		m.computeHalfVector(&wo, &wi, cosThO, cosThI)
+
 	// TODO(akalin): Handle refraction.
-	if (cosThO >= 0) != (cosThI >= 0) {
+	if microfacetTransportType == _MICROFACET_REFRACTION {
 		return Spectrum{}
 	}
 
-	var wh Vector3
-	wh.Add(&wo, &wi)
-	wh.Normalize(&wh)
 	woDotWh := wo.Dot(&wh)
-
 	// This check is redundant due to how wh is constructed, but
 	// keep it around to be consistent with SampleWi().
 	if woDotWh < _MICROFACET_COS_THETA_EPSILON {
@@ -258,23 +304,25 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 		(absCosThI < _MICROFACET_COS_THETA_EPSILON) {
 		return 0
 	}
+
+	wh, microfacetTransportType :=
+		m.computeHalfVector(&wo, &wi, cosThO, cosThI)
+
 	// TODO(akalin): Handle refraction.
-	if (cosThO >= 0) != (cosThI >= 0) {
+	if microfacetTransportType == _MICROFACET_REFRACTION {
 		return 0
 	}
 
-	var wh Vector3
-	wh.Add(&wo, &wi)
-	wh.Normalize(&wh)
 	woDotWh := wo.Dot(&wh)
-
 	// This check is redundant due to how wh is constructed, but
 	// keep it around to be consistent with SampleWi().
 	if woDotWh < _MICROFACET_COS_THETA_EPSILON {
 		return 0
 	}
 
+	eta := m.computeEta(cosThO)
+	F := m.computeFresnelTerm(eta, woDotWh)
 	absCosThH := absFloat32(wh.DotNormal(&n))
 	DPdf := m.computeBlinnDPdf(absCosThH)
-	return (DPdf * absCosThH) / (4 * woDotWh * absCosThI)
+	return (DPdf * F * absCosThH) / (4 * woDotWh * absCosThI)
 }
