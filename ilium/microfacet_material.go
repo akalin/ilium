@@ -98,16 +98,8 @@ func (m *MicrofacetMaterial) computeBlinnD(absCosThH float32) float32 {
 	return (e + 2) * powFloat32(absCosThH, e) / (2 * math.Pi)
 }
 
-func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
-	u1, u2 float32, wo Vector3, n Normal3) (
-	wi Vector3, fDivPdf Spectrum, pdf float32) {
-	cosThO := wo.DotNormal(&n)
-	absCosThO := absFloat32(cosThO)
-	if absCosThO < _MICROFACET_COS_THETA_EPSILON {
-		return
-	}
-
-	var vh R3
+func (m *MicrofacetMaterial) sampleBlinnD(u1, u2 float32) (
+	vh R3, DDivPdf, pdf float32) {
 	switch m.samplingMethod {
 	case MICROFACET_UNIFORM_SAMPLING:
 		vh = uniformSampleHemisphere(u1, u2)
@@ -122,6 +114,63 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		phiH := 2 * math.Pi * u2
 		vh = MakeSphericalDirection(absCosThH, phiH)
 	}
+
+	absCosThH := vh.Z
+	D := m.computeBlinnD(absCosThH)
+
+	switch m.samplingMethod {
+	case MICROFACET_UNIFORM_SAMPLING:
+		// pdf = 1 / (2 * pi * |cos(th_h)|).
+		DDivPdf = 2 * math.Pi * absCosThH * D
+		pdf = 1 / (2 * math.Pi * absCosThH)
+	case MICROFACET_COSINE_SAMPLING:
+		// pdf = 1 / pi.
+		DDivPdf = D * math.Pi
+		pdf = 1 / math.Pi
+	case MICROFACET_DISTRIBUTION_SAMPLING:
+		// pdf = ((e + 1) * |cos^(e-1)(th_h)|) / (2 * pi) =
+		//   ((e + 1) * D) / ((e + 2) * |cos(th_h)|),
+		// so D / pdf = ((e + 2) * |cos(th_h)| / (e + 1).
+		e := m.blinnExponent
+		DDivPdf = ((e + 2) * absCosThH) / (e + 1)
+		pdf = ((e + 1) * D) / ((e + 2) * absCosThH)
+	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
+		// pdf = ((e + 2) * |cos^e(th_h)|) / (2 * pi) = D,
+		// so D / pdf = 1.
+		DDivPdf = 1
+		pdf = D
+	}
+
+	return
+}
+
+func (m *MicrofacetMaterial) computeBlinnDPdf(absCosThH float32) float32 {
+	switch m.samplingMethod {
+	case MICROFACET_UNIFORM_SAMPLING:
+		return 1 / (2 * math.Pi * absCosThH)
+	case MICROFACET_COSINE_SAMPLING:
+		return 1 / math.Pi
+	case MICROFACET_DISTRIBUTION_SAMPLING:
+		D := m.computeBlinnD(absCosThH)
+		e := m.blinnExponent
+		return ((e + 1) * D) / ((e + 2) * absCosThH)
+	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
+		D := m.computeBlinnD(absCosThH)
+		return D
+	}
+	panic("not reached")
+}
+
+func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
+	u1, u2 float32, wo Vector3, n Normal3) (
+	wi Vector3, fDivPdf Spectrum, pdf float32) {
+	cosThO := wo.DotNormal(&n)
+	absCosThO := absFloat32(cosThO)
+	if absCosThO < _MICROFACET_COS_THETA_EPSILON {
+		return
+	}
+
+	vh, DDivPdf, DPdf := m.sampleBlinnD(u1, u2)
 	cosThH := vh.Z
 	absCosThH := vh.Z
 
@@ -156,48 +205,14 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	switch m.samplingMethod {
-	case MICROFACET_UNIFORM_SAMPLING:
-		f := m.ComputeF(transportType, wo, wi, n)
-		// pdf = 1 / (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|).
-		fDivPdf.Scale(&f, 8*math.Pi*absCosThI*absWoDotWh)
-		pdf = 1 / (8 * math.Pi * absCosThI * absWoDotWh)
-	case MICROFACET_COSINE_SAMPLING:
-		f := m.ComputeF(transportType, wo, wi, n)
-		// pdf = |cos(th_h)| / (pi * |cos(th_i)| * 4 * |w_o * w_h|).
-		fDivPdf.Scale(&f, 4*math.Pi*absCosThI*absWoDotWh/absCosThH)
-		pdf = absCosThH / (4 * math.Pi * absCosThI * absWoDotWh)
-	case MICROFACET_DISTRIBUTION_SAMPLING:
-		e := m.blinnExponent
-		F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
-		G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
-		// f = (color * D_blinn * F * G) /
-		//   (4 * |cos(th_o) * cos(th_i)|),
-		// and pdf = ((e + 1) * |cos^e(th_h)|) /
-		//   (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|) =
-		// ((e + 1) * D_blinn) /
-		//   ((e + 2) * |cos(th_i)| * 4 * |w_o * w_h|), so
-		// f / pdf = (color * (e + 2) * F * G * |w_o * w_h|) /
-		//   ((e + 1) * |cos(th_o)|).
-		fDivPdf.Scale(
-			&m.color, ((e+2)*F*G*absWoDotWh)/((e+1)*absCosThO))
-		blinnD := m.computeBlinnD(absCosThH)
-		pdf = ((e + 1) * blinnD) /
-			(4 * (e + 2) * absCosThI * absWoDotWh)
-	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
-		F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
-		G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
-		// f = (color * D_blinn * F * G) /
-		//   (4 * |cos(th_o) * cos(th_i)|),
-		// and pdf = ((e + 2) * |cos^(e+1)(th_h)|) /
-		//   (2 * pi * |cos(th_i)| * 4 * |w_o * w_h|) =
-		// (D_blinn * |cos(th_h)|) / (|cos(th_i)| * 4 * |w_o * w_h|),
-		// so f / pdf =
-		//   (color * F * G * |w_o * w_h|) / |cos(th_h) * cos(th_o)|.
-		fDivPdf.Scale(&m.color, (F*G*absWoDotWh)/(absCosThH*absCosThO))
-		blinnD := m.computeBlinnD(absCosThH)
-		pdf = (blinnD * absCosThH) / (4 * absCosThI * absWoDotWh)
-	}
+	// f = (color * D * F * G) / (4 * |cos(th_o) * cos(th_i)|) and
+	// pdf = (DPdf * |cos(th_h)|) / (4 * |w_o * w_h| * |cos(th_i)|), so
+	// f / pdf = (color * (D/DPdf) * F * G * |w_o * w_h|) /
+	//   |cos(th_o) * cos(th_h)|.
+	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThO)
+	G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
+	fDivPdf.Scale(&m.color, (DDivPdf*F*G*absWoDotWh)/(absCosThO*absCosThH))
+	pdf = (DPdf * absCosThH) / (4 * absWoDotWh * absCosThI)
 	return
 }
 
@@ -266,22 +281,7 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 		return 0
 	}
 
-	switch m.samplingMethod {
-	case MICROFACET_UNIFORM_SAMPLING:
-		return 1 / (8 * math.Pi * absCosThI * absWoDotWh)
-	case MICROFACET_COSINE_SAMPLING:
-		absCosThH := absFloat32(wh.DotNormal(&n))
-		return absCosThH / (4 * math.Pi * absCosThI * absWoDotWh)
-	case MICROFACET_DISTRIBUTION_SAMPLING:
-		absCosThH := absFloat32(wh.DotNormal(&n))
-		e := m.blinnExponent
-		blinnD := m.computeBlinnD(absCosThH)
-		return ((e + 1) * blinnD) /
-			(4 * (e + 2) * absCosThI * absWoDotWh)
-	case MICROFACET_DISTRIBUTION_COSINE_SAMPLING:
-		absCosThH := absFloat32(wh.DotNormal(&n))
-		blinnD := m.computeBlinnD(absCosThH)
-		return (blinnD * absCosThH) / (4 * absCosThI * absWoDotWh)
-	}
-	panic("not reached")
+	absCosThH := absFloat32(wh.DotNormal(&n))
+	DPdf := m.computeBlinnDPdf(absCosThH)
+	return (DPdf * absCosThH) / (4 * absWoDotWh * absCosThI)
 }
