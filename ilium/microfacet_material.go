@@ -17,6 +17,7 @@ type MicrofacetMaterial struct {
 	samplingMethod MicrofacetSamplingMethod
 	color          Spectrum
 	blinnExponent  float32
+	eta            float32
 }
 
 func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
@@ -37,19 +38,44 @@ func MakeMicrofacetMaterial(config map[string]interface{}) *MicrofacetMaterial {
 	colorConfig := config["color"].(map[string]interface{})
 	color := MakeSpectrumFromConfig(colorConfig)
 	blinnExponent := float32(config["blinnExponent"].(float64))
-	return &MicrofacetMaterial{samplingMethod, color, blinnExponent}
+	eta, _ := config["eta"].(float64)
+	return &MicrofacetMaterial{
+		samplingMethod, color, blinnExponent, float32(eta),
+	}
 }
 
 func (m *MicrofacetMaterial) computeEta(cosThO float32) float32 {
-	// TODO(akalin): Have an eta parameter.
-	return 0
+	if m.eta == 0 {
+		return 0
+	}
+
+	if cosThO >= 0 {
+		return m.eta
+	}
+
+	return 1 / m.eta
 }
 
 func (m *MicrofacetMaterial) computeFresnelTerm(eta, c float32) float32 {
-	// Assume perfect reflection for now (i.e., a Fresnel term of 1).
-	//
-	// TODO(akalin): Implement a real Fresnel term and refraction.
-	return 1
+	if eta <= 0 || eta == 1 {
+		// Assume total reflection for invalid/unspecified eta
+		// values.
+		return 1
+	}
+
+	gSq := eta - 1 + c*c
+	if gSq < 0 {
+		// Total internal reflection.
+		return 1
+	}
+
+	g := sqrtFloat32(gSq)
+
+	// The Fresnel equations for dielectrics with unpolarized
+	// light.
+	t1 := (g - c) / (g + c)
+	t2 := (c*(g+c) - 1) / (c*(g-c) + 1)
+	return 0.5 * t1 * t1 * (1 + t2*t2)
 }
 
 func (m *MicrofacetMaterial) computeG(
@@ -106,6 +132,8 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 	if woDotWh < _MICROFACET_COS_THETA_EPSILON {
 		return
 	}
+
+	// TODO(akalin): Handle refraction.
 
 	wi.Scale(&wh, 2*woDotWh)
 	wi.Sub(&wi, &wo)
@@ -177,6 +205,7 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 		(absCosThI < _MICROFACET_COS_THETA_EPSILON) {
 		return Spectrum{}
 	}
+	// TODO(akalin): Handle refraction.
 	if (cosThO >= 0) != (cosThI >= 0) {
 		return Spectrum{}
 	}
@@ -212,6 +241,7 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 		(absCosThI < _MICROFACET_COS_THETA_EPSILON) {
 		return 0
 	}
+	// TODO(akalin): Handle refraction.
 	if (cosThO >= 0) != (cosThI >= 0) {
 		return 0
 	}
