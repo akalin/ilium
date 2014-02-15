@@ -1,5 +1,7 @@
 package ilium
 
+import "math/rand"
+
 type MaterialTransportType int
 
 const (
@@ -9,7 +11,7 @@ const (
 
 type Material interface {
 	SampleWi(transportType MaterialTransportType,
-		u1, u2 float32, wo Vector3, n Normal3) (
+		u1, u2 float32, rng *rand.Rand, wo Vector3, n Normal3) (
 		wi Vector3, fDivPdf Spectrum, pdf float32)
 	ComputeF(transportType MaterialTransportType,
 		wo, wi Vector3, n Normal3) Spectrum

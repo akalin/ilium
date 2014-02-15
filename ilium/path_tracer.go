@@ -630,7 +630,7 @@ func (pt *PathTracer) SampleSensorPath(
 		u := wiSamples.GetSample(sampleIndex, rng)
 		wi, fDivPdf, pdf := intersection.Material.SampleWi(
 			MATERIAL_LIGHT_TRANSPORT,
-			u.U1, u.U2, wo, intersection.N)
+			u.U1, u.U2, rng, wo, intersection.N)
 		if fDivPdf.IsBlack() || pdf == 0 {
 			break
 		}

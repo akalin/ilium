@@ -1,6 +1,7 @@
 package ilium
 
 import "math"
+import "math/rand"
 
 type DiffuseMaterialSamplingMethod int
 
@@ -31,7 +32,7 @@ func MakeDiffuseMaterial(config map[string]interface{}) *DiffuseMaterial {
 }
 
 func (d *DiffuseMaterial) SampleWi(transportType MaterialTransportType,
-	u1, u2 float32, wo Vector3, n Normal3) (
+	u1, u2 float32, rng *rand.Rand, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	var r3 R3
 	switch d.samplingMethod {

@@ -1,5 +1,7 @@
 package ilium
 
+import "math/rand"
+
 type Light interface {
 	GetSampleConfig() SampleConfig
 	SampleSurface(sampleBundle SampleBundle) (
@@ -43,7 +45,7 @@ type LightMaterial struct {
 }
 
 func (lm *LightMaterial) SampleWi(transportType MaterialTransportType,
-	u1, u2 float32, wo Vector3, n Normal3) (
+	u1, u2 float32, rng *rand.Rand, wo Vector3, n Normal3) (
 	wi Vector3, fDivPdf Spectrum, pdf float32) {
 	panic("called unexpectedly")
 }
