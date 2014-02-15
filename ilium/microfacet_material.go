@@ -64,26 +64,31 @@ func (m *MicrofacetMaterial) computeEta(cosThO float32) float32 {
 	return 1 / m.eta
 }
 
-func (m *MicrofacetMaterial) computeFresnelTerm(eta, c float32) float32 {
+func (m *MicrofacetMaterial) computeFresnelTerm(eta, c float32) (F, g float32) {
 	if eta <= 0 || eta == 1 {
 		// Assume total reflection for invalid/unspecified eta
 		// values.
-		return 1
+		F = 1
+		g = 0
+		return
 	}
 
 	gSq := eta - 1 + c*c
 	if gSq < 0 {
 		// Total internal reflection.
-		return 1
+		F = 1
+		g = 0
+		return
 	}
 
-	g := sqrtFloat32(gSq)
+	g = sqrtFloat32(gSq)
 
 	// The Fresnel equations for dielectrics with unpolarized
 	// light.
 	t1 := (g - c) / (g + c)
 	t2 := (c*(g+c) - 1) / (c*(g-c) + 1)
-	return 0.5 * t1 * t1 * (1 + t2*t2)
+	F = 0.5 * t1 * t1 * (1 + t2*t2)
+	return
 }
 
 func (m *MicrofacetMaterial) computeG(
@@ -191,7 +196,7 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 	}
 
 	eta := m.computeEta(cosThO)
-	F := m.computeFresnelTerm(eta, woDotWh)
+	F, g := m.computeFresnelTerm(eta, woDotWh)
 
 	var microfacetTransportType microfacetTransportType
 	if F >= 1 {
@@ -209,7 +214,18 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		wi.Scale(&wh, 2*woDotWh)
 		wi.Sub(&wi, &wo)
 	case _MICROFACET_REFRACTION:
-		// TODO(akalin): Handle.
+		invEta := 1 / eta
+		var t1 float32
+		if cosThO >= 0 {
+			t1 = invEta * (woDotWh - g)
+		} else {
+			t1 = invEta * (woDotWh + g)
+		}
+		t2 := invEta
+		var v1, v2 Vector3
+		v1.Scale(&wh, t1)
+		v2.Scale(&wo, t2)
+		wi.Add(&v1, &v2)
 	}
 
 	cosThI := wi.DotNormal(&n)
@@ -233,13 +249,22 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
+	absWiDotWh := absFloat32(wi.Dot(&wh))
+
 	// For reflection,
 	// f = (color * D * F * G) / (4 * |cos(th_o) * cos(th_i)|) and
 	// pdf = (DPdf * F * |cos(th_h)|) / (4 * (w_o * w_h) * |cos(th_i)|), so
 	// f / pdf = ((color * (D/DPdf) * G * (w_o * w_h) /
 	//   |cos(th_o) * cos(th_h)|).
+	//
+	// For refraction,
+	// f = (color * D * (1 - F) * G * J * (w_i * w_h)) /
+	//   (cos(th_o) * cos(th_i)) and
+	// pdf = (DPdf * (1 - F) * J * |cos(th_h)|) / |cos(th_i)|, so
+	// f / pdf = (D/DPdf) * (color * G * (w_i * w_h)) /
+	//  |cos(th_o) * cos(th_h)|).
 	G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
-	fDivPdf.Scale(&m.color, (DDivPdf*G*woDotWh)/(absCosThO*absCosThH))
+	fDivPdf.Scale(&m.color, (DDivPdf*G*absWiDotWh)/(absCosThO*absCosThH))
 	pdf = (DPdf * F * absCosThH) / (4 * woDotWh * absCosThI)
 	return
 }
@@ -285,7 +310,7 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 	}
 
 	eta := m.computeEta(cosThO)
-	F := m.computeFresnelTerm(eta, woDotWh)
+	F, _ := m.computeFresnelTerm(eta, woDotWh)
 	absCosThH := absFloat32(wh.DotNormal(&n))
 	blinnD := m.computeBlinnD(absCosThH)
 	G := m.computeG(absCosThO, absCosThI, absCosThH, woDotWh)
@@ -321,7 +346,7 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 	}
 
 	eta := m.computeEta(cosThO)
-	F := m.computeFresnelTerm(eta, woDotWh)
+	F, _ := m.computeFresnelTerm(eta, woDotWh)
 	absCosThH := absFloat32(wh.DotNormal(&n))
 	DPdf := m.computeBlinnDPdf(absCosThH)
 	return (DPdf * F * absCosThH) / (4 * woDotWh * absCosThI)
