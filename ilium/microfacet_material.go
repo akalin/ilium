@@ -14,6 +14,13 @@ const (
 
 const _MICROFACET_COS_THETA_EPSILON float32 = 1e-7
 
+type microfacetTransportType int
+
+const (
+	_MICROFACET_REFLECTION microfacetTransportType = iota
+	_MICROFACET_REFRACTION microfacetTransportType = iota
+)
+
 type MicrofacetMaterial struct {
 	samplingMethod  MicrofacetSamplingMethod
 	color           Spectrum
@@ -171,9 +178,8 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	vh, DDivPdf, DPdf := m.sampleBlinnD(u1, u2)
+	vh, _, _ := m.sampleBlinnD(u1, u2)
 	cosThH := vh.Z
-	absCosThH := vh.Z
 
 	// Convert the sampled vector to be around (i, j, k=n). Note
 	// that this means that wo and wh may lie on different
@@ -191,13 +197,36 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	wi.Scale(&wh, 2*woDotWh)
-	wi.Sub(&wi, &wo)
+	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
+
+	var microfacetTransportType microfacetTransportType
+	if F >= 1 || randFloat32(rng) <= F {
+		microfacetTransportType = _MICROFACET_REFLECTION
+	} else {
+		microfacetTransportType = _MICROFACET_REFRACTION
+	}
+
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		wi.Scale(&wh, 2*woDotWh)
+		wi.Sub(&wi, &wo)
+	case _MICROFACET_REFRACTION:
+		// TODO(akalin): Handle.
+	}
 
 	cosThI := wi.DotNormal(&n)
-	if (cosThO >= 0) != (cosThI >= 0) {
-		wi = Vector3{}
-		return
+
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		if (cosThO >= 0) != (cosThI >= 0) {
+			wi = Vector3{}
+			return
+		}
+	case _MICROFACET_REFRACTION:
+		if (cosThO >= 0) == (cosThI >= 0) {
+			wi = Vector3{}
+			return
+		}
 	}
 
 	absCosThI := absFloat32(cosThI)
@@ -206,14 +235,29 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	// f = (color * D * F * G) / (4 * |cos(th_o) * cos(th_i)|) and
-	// pdf = (DPdf * |cos(th_h)|) / (4 * |w_o * w_h| * |cos(th_i)|), so
-	// f / pdf = (color * (D/DPdf) * F * G * |w_o * w_h|) /
-	//   |cos(th_o) * cos(th_h)|.
-	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThO)
-	G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
-	fDivPdf.Scale(&m.color, (DDivPdf*F*G*absWoDotWh)/(absCosThO*absCosThH))
-	pdf = (DPdf * absCosThH) / (4 * absWoDotWh * absCosThI)
+	// TODO(akalin): Use (|w_o * w_h| * G) / (absCosThO * absCosThH)
+	// for f/pdf.
+	f := m.ComputeF(transportType, wo, wi, n)
+	pdf = m.ComputePdf(transportType, wo, wi, n)
+	if f.IsBlack() || pdf == 0 {
+		wi = Vector3{}
+		return
+	}
+	fDivPdf.ScaleInv(&f, pdf)
+	return
+}
+
+func (m *MicrofacetMaterial) computeHalfVector(
+	wo, wi *Vector3, cosThO, cosThI float32) (
+	wh Vector3, microfacetTransportType microfacetTransportType) {
+	if (cosThO >= 0) == (cosThI >= 0) {
+		wh.Add(wo, wi)
+		wh.Normalize(&wh)
+		microfacetTransportType = _MICROFACET_REFLECTION
+	} else {
+		// TODO(akalin): Handle refraction.
+		microfacetTransportType = _MICROFACET_REFRACTION
+	}
 	return
 }
 
@@ -227,20 +271,17 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 		(absCosThI < _MICROFACET_COS_THETA_EPSILON) {
 		return Spectrum{}
 	}
-	if (cosThO >= 0) != (cosThI >= 0) {
+
+	wh, microfacetTransportType :=
+		m.computeHalfVector(&wo, &wi, cosThO, cosThI)
+
+	// TODO(akalin): Handle refraction.
+	if microfacetTransportType == _MICROFACET_REFRACTION {
 		return Spectrum{}
 	}
 
-	var wh Vector3
-	wh.Add(&wo, &wi)
-	wh.Normalize(&wh)
 	woDotWh := wo.Dot(&wh)
-	// By construction, wh is always in the same hemisphere as wo
-	// (with respect to n).
-	absWoDotWh := woDotWh
-
-	// This check is redundant due to how wh is constructed, but
-	// keep it around to be consistent with SampleWi().
+	absWoDotWh := absFloat32(woDotWh)
 	if absWoDotWh < _MICROFACET_COS_THETA_EPSILON {
 		return Spectrum{}
 	}
@@ -265,24 +306,24 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 		(absCosThI < _MICROFACET_COS_THETA_EPSILON) {
 		return 0
 	}
-	if (cosThO >= 0) != (cosThI >= 0) {
+
+	wh, microfacetTransportType :=
+		m.computeHalfVector(&wo, &wi, cosThO, cosThI)
+
+	// TODO(akalin): Handle refraction.
+	if microfacetTransportType == _MICROFACET_REFRACTION {
 		return 0
 	}
 
-	var wh Vector3
-	wh.Add(&wo, &wi)
-	wh.Normalize(&wh)
-	// By construction, wh is always in the same hemisphere as wo
-	// (with respect to n).
-	absWoDotWh := wo.Dot(&wh)
-
-	// This check is redundant due to how wh is constructed, but
-	// keep it around to be consistent with SampleWi().
+	woDotWh := wo.Dot(&wh)
+	absWoDotWh := absFloat32(woDotWh)
 	if absWoDotWh < _MICROFACET_COS_THETA_EPSILON {
 		return 0
 	}
 
-	absCosThH := absFloat32(wh.DotNormal(&n))
+	cosThH := wh.DotNormal(&n)
+	absCosThH := absFloat32(cosThH)
+	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
 	DPdf := m.computeBlinnDPdf(absCosThH)
-	return (DPdf * absCosThH) / (4 * absWoDotWh * absCosThI)
+	return (DPdf * F * absCosThH) / (4 * absWoDotWh * absCosThI)
 }
