@@ -37,12 +37,12 @@
     },
 
     {
-      "_comment": "Sphere.",
+      "_comment": "Left sphere (completely reflective).",
       "type": "GeometricPrimitive",
       "shape": {
         "type": "Sphere",
         "samplingMethod": "visibleFast",
-        "center": [ 0, 3, 0.1 ],
+        "center": [ -0.75, 3, 0.1 ],
         "radius": 0.6
       },
       "material": {
@@ -50,6 +50,24 @@
         "samplingMethod": "distributionCosine",
         "color": { "type": "rgb", "r": 0.7, "g": 0.9, "b": 0.7 },
         "blinnExponent": 2000
+      }
+    },
+
+    {
+      "_comment": "Right sphere (glass).",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.75, 3, 0.1 ],
+        "radius": 0.6
+      },
+      "material": {
+        "type": "MicrofacetMaterial",
+        "samplingMethod": "distributionCosine",
+        "color": { "type": "rgb", "r": 0.7, "g": 0.7, "b": 0.9 },
+        "blinnExponent": 2000,
+	"eta": 1.5
       }
     }
   ]
