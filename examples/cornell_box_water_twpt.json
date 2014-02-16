@@ -4,7 +4,7 @@
       "type": "PrimitiveList",
       "primitives": [
         {
-          "_include": "cornell_box_scene.json"
+          "_include": "cornell_box_water_scene.json"
         },
         {
           "_comment": "Sensors.",
@@ -14,13 +14,13 @@
             {
               "_comment": "Towards back wall.",
               "type": "PinholeCamera",
-              "outputPath": "cornell_box_path_tracer.png",
+              "outputPath": "cornell_box_water_twpt.png",
               "target":   [0, 1, 0],
               "up":       [0, 0, 1],
               "fov": 82,
               "width": 320,
               "height": 240,
-              "samplesPerPixel": 1
+              "samplesPerPixel": 16
             }
           ]
         }
@@ -29,8 +29,13 @@
   },
 
   "renderer": {
-    "type": "PathTracingRenderer",
-    "pathTypes": [ "emittedLight", "directLighting" ],
+    "type": "TwoWayPathTracingRenderer",
+    "pathTypes": [
+      "emittedLight",
+      "directLighting",
+      "emittedImportance",
+      "directSensor"
+    ],
     "weighingMethod": "power",
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,
