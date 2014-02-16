@@ -24,6 +24,25 @@
         "samplingMethod": "cosine",
         "emission": { "type": "rgb", "r": 51, "g": 46.8, "b": 41.1 }
       }
+    },
+
+    {
+      "_comment": "Top spherical light enclosure.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0, 3.75, 2.3 ],
+        "radius": 0.2
+      },
+      "material": {
+        "type": "MicrofacetMaterial",
+        "samplingMethod": "distributionCosine",
+        "color": { "type": "rgb", "r": 1, "g": 1, "b": 1 },
+        "blinnExponent": 2,
+	"etaAboveHorizon": 1.000277,
+	"etaBelowHorizon": 1.3330
+      }
     }
   ]
 }
