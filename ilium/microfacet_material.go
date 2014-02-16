@@ -258,7 +258,19 @@ func (m *MicrofacetMaterial) computeHalfVector(
 		wh.Normalize(&wh)
 		microfacetTransportType = _MICROFACET_REFLECTION
 	} else {
-		// TODO(akalin): Handle refraction.
+		var etaO, etaI float32
+		if cosThO >= 0 {
+			etaO = m.etaAboveHorizon
+			etaI = m.etaBelowHorizon
+		} else {
+			etaO = m.etaBelowHorizon
+			etaI = m.etaAboveHorizon
+		}
+		var v1, v2 Vector3
+		v1.Scale(wo, etaO)
+		v2.Scale(wi, etaI)
+		wh.Add(&v1, &v2)
+		wh.Normalize(&wh)
 		microfacetTransportType = _MICROFACET_REFRACTION
 	}
 	return
