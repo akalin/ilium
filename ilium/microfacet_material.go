@@ -276,6 +276,14 @@ func (m *MicrofacetMaterial) computeHalfVector(
 	return
 }
 
+func (m *MicrofacetMaterial) computeRefractionJacobian(
+	woDotWh, wiDotWh, etaO, etaI float32) float32 {
+	absWiDotWh := absFloat32(wiDotWh)
+	t := etaO*woDotWh + etaI*wiDotWh
+	J := (etaI * etaI * absWiDotWh) / (t * t)
+	return J
+}
+
 func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 	wo, wi Vector3, n Normal3) Spectrum {
 	cosThO := wo.DotNormal(&n)
@@ -290,11 +298,6 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 	wh, microfacetTransportType :=
 		m.computeHalfVector(&wo, &wi, cosThO, cosThI)
 
-	// TODO(akalin): Handle refraction.
-	if microfacetTransportType == _MICROFACET_REFRACTION {
-		return Spectrum{}
-	}
-
 	woDotWh := wo.Dot(&wh)
 	absWoDotWh := absFloat32(woDotWh)
 	if absWoDotWh < _MICROFACET_COS_THETA_EPSILON {
@@ -304,10 +307,21 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 	cosThH := wh.DotNormal(&n)
 	absCosThH := absFloat32(cosThH)
 	blinnD := m.computeBlinnD(absCosThH)
-	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
+	F, wiDotWh, etaO, etaI := m.computeRefractionTerms(woDotWh, cosThH)
 	G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
 	var f Spectrum
-	f.Scale(&m.color, (blinnD*F*G)/(4*absCosThO*absCosThI))
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		f.Scale(&m.color, (blinnD*F*G)/(4*absCosThO*absCosThI))
+	case _MICROFACET_REFRACTION:
+		if F == 1 {
+			// Total internal reflection.
+			return Spectrum{}
+		}
+		J := m.computeRefractionJacobian(woDotWh, wiDotWh, etaO, etaI)
+		f.Scale(&m.color,
+			(blinnD*(1-F)*G*J*absWoDotWh)/(absCosThO*absCosThI))
+	}
 	return f
 }
 
@@ -325,11 +339,6 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 	wh, microfacetTransportType :=
 		m.computeHalfVector(&wo, &wi, cosThO, cosThI)
 
-	// TODO(akalin): Handle refraction.
-	if microfacetTransportType == _MICROFACET_REFRACTION {
-		return 0
-	}
-
 	woDotWh := wo.Dot(&wh)
 	absWoDotWh := absFloat32(woDotWh)
 	if absWoDotWh < _MICROFACET_COS_THETA_EPSILON {
@@ -338,7 +347,18 @@ func (m *MicrofacetMaterial) ComputePdf(transportType MaterialTransportType,
 
 	cosThH := wh.DotNormal(&n)
 	absCosThH := absFloat32(cosThH)
-	F, _, _, _ := m.computeRefractionTerms(woDotWh, cosThH)
+	F, wiDotWh, etaO, etaI := m.computeRefractionTerms(woDotWh, cosThH)
 	DPdf := m.computeBlinnDPdf(absCosThH)
-	return (DPdf * F * absCosThH) / (4 * absWoDotWh * absCosThI)
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		return (DPdf * F * absCosThH) / (4 * absWoDotWh * absCosThI)
+	case _MICROFACET_REFRACTION:
+		if F == 1 {
+			// Total internal reflection.
+			return 0
+		}
+		J := m.computeRefractionJacobian(woDotWh, wiDotWh, etaO, etaI)
+		return (DPdf * (1 - F) * J * absCosThH) / absCosThI
+	}
+	return 0
 }
