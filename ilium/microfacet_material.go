@@ -178,7 +178,7 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 		return
 	}
 
-	vh, _, _ := m.sampleBlinnD(u1, u2)
+	vh, DDivPdf, DPdf := m.sampleBlinnD(u1, u2)
 	cosThH := vh.Z
 
 	// Convert the sampled vector to be around (i, j, k=n). Note
@@ -240,13 +240,16 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 
 	// TODO(akalin): Use (|w_o * w_h| * G) / (absCosThO * absCosThH)
 	// for f/pdf.
-	f := m.ComputeF(transportType, wo, wi, n)
-	pdf = m.ComputePdf(transportType, wo, wi, n)
-	if f.IsBlack() || pdf == 0 {
-		wi = Vector3{}
-		return
+	absCosThH := absFloat32(cosThH)
+	G := m.computeG(absCosThO, absCosThI, absCosThH, absWoDotWh)
+	fDivPdf.Scale(&m.color, (DDivPdf*G*absWoDotWh)/(absCosThO*absCosThH))
+	switch microfacetTransportType {
+	case _MICROFACET_REFLECTION:
+		pdf = (DPdf * F * absCosThH) / (4 * absWoDotWh * absCosThI)
+	case _MICROFACET_REFRACTION:
+		J := m.computeRefractionJacobian(woDotWh, wiDotWh, etaO, etaI)
+		pdf = (DPdf * (1 - F) * J * absCosThH) / absCosThI
 	}
-	fDivPdf.ScaleInv(&f, pdf)
 	return
 }
 
