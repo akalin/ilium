@@ -249,6 +249,9 @@ func (m *MicrofacetMaterial) SampleWi(transportType MaterialTransportType,
 	case _MICROFACET_REFRACTION:
 		J := m.computeRefractionJacobian(woDotWh, wiDotWh, etaO, etaI)
 		pdf = (DPdf * (1 - F) * J * absCosThH) / absCosThI
+		if transportType == MATERIAL_LIGHT_TRANSPORT {
+			fDivPdf.Scale(&fDivPdf, (etaI*etaI)/(etaO*etaO))
+		}
 	}
 	return
 }
@@ -324,6 +327,9 @@ func (m *MicrofacetMaterial) ComputeF(transportType MaterialTransportType,
 		J := m.computeRefractionJacobian(woDotWh, wiDotWh, etaO, etaI)
 		f.Scale(&m.color,
 			(blinnD*(1-F)*G*J*absWoDotWh)/(absCosThO*absCosThI))
+		if transportType == MATERIAL_LIGHT_TRANSPORT {
+			f.Scale(&f, (etaI*etaI)/(etaO*etaO))
+		}
 	}
 	return f
 }
