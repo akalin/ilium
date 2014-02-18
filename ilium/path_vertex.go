@@ -53,6 +53,9 @@ type PathVertex struct {
 	pEpsilon      float32
 	n             Normal3
 	alpha         Spectrum
+	// Used for incremental weight computation.
+	pFromPrev float32
+	gamma     float32
 	// Used by light and surface interaction vertices only.
 	light Light
 	// Used by surface interaction vertices only.
@@ -65,6 +68,7 @@ func MakeLightSuperVertex() PathVertex {
 		vertexType:    _PATH_VERTEX_LIGHT_SUPER_VERTEX,
 		transportType: MATERIAL_IMPORTANCE_TRANSPORT,
 		alpha:         MakeConstantSpectrum(1),
+		pFromPrev:     1,
 	}
 }
 
@@ -73,12 +77,13 @@ func MakeSensorSuperVertex() PathVertex {
 		vertexType:    _PATH_VERTEX_SENSOR_SUPER_VERTEX,
 		transportType: MATERIAL_LIGHT_TRANSPORT,
 		alpha:         MakeConstantSpectrum(1),
+		pFromPrev:     1,
 	}
 }
 
 func (pv *PathVertex) initializeSurfaceInteractionVertex(
 	context *PathContext, pvPrev *PathVertex, intersection *Intersection,
-	alpha Spectrum) {
+	alpha Spectrum, pFromPrev float32) {
 	var sensor Sensor
 	for i := 0; i < len(intersection.Sensors); i++ {
 		if intersection.Sensors[i] == context.Sensor {
@@ -93,6 +98,7 @@ func (pv *PathVertex) initializeSurfaceInteractionVertex(
 		pEpsilon:      intersection.PEpsilon,
 		n:             intersection.N,
 		alpha:         alpha,
+		pFromPrev:     pFromPrev,
 		light:         intersection.Light,
 		sensor:        sensor,
 		material:      intersection.Material,
@@ -111,21 +117,24 @@ func (pv *PathVertex) String() string {
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
 		return fmt.Sprintf(
-			"{%v (%v), p=%v (e=%f), n=%v, alpha=%v, light=%v}",
+			"{%v (%v), p=%v (e=%f), n=%v, alpha=%v, "+
+				"pFromPrev=%f, gamma=%f, light=%v}",
 			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
-			pv.n, pv.alpha, pv.light)
+			pv.n, pv.alpha, pv.pFromPrev, pv.gamma, pv.light)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
-		return fmt.Sprintf("{%v (%v), p=%v (e=%f), n=%v, alpha=%v}",
+		return fmt.Sprintf("{%v (%v), p=%v (e=%f), n=%v, alpha=%v, "+
+			"pFromPrev=%f, gamma=%f}",
 			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
-			pv.n, pv.alpha)
+			pv.n, pv.alpha, pv.pFromPrev, pv.gamma)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		return fmt.Sprintf("{%v (%v), p=%v (e=%f), "+
-			"n=%v, alpha=%v, light=%v, sensor=%v, "+
+		return fmt.Sprintf("{%v (%v), p=%v (e=%f), n=%v, alpha=%v, "+
+			"pFromPrev=%f, gamma=%f, light=%v, sensor=%v, "+
 			"material=%v}",
 			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
-			pv.n, pv.alpha, pv.light, pv.sensor, pv.material)
+			pv.n, pv.alpha, pv.pFromPrev, pv.gamma, pv.light,
+			pv.sensor, pv.material)
 	}
 
 	return fmt.Sprintf("{%v}", pv.vertexType)
@@ -198,7 +207,10 @@ func (pv *PathVertex) shouldContinue(
 
 func (pv *PathVertex) SampleNext(
 	context *PathContext, i int, rng *rand.Rand,
-	pvPrev, pvNext *PathVertex) bool {
+	pvPrevPrev, pvPrev, pvNext *PathVertex) bool {
+	if pvPrev != nil {
+		validateSampledPathEdge(context, pvPrevPrev, pvPrev)
+	}
 	validateSampledPathEdge(context, pvPrev, pv)
 
 	switch pv.vertexType {
@@ -220,6 +232,8 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
+		// TODO(akalin): Use real probabilities.
+		var pFromPrevNext float32 = 1
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 			transportType: pv.transportType,
@@ -227,6 +241,7 @@ func (pv *PathVertex) SampleNext(
 			pEpsilon:      pEpsilon,
 			n:             n,
 			alpha:         alphaNext,
+			pFromPrev:     pFromPrevNext,
 			light:         light,
 		}
 
@@ -244,6 +259,8 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
+		// TODO(akalin): Use real probabilities.
+		var pFromPrevNext float32 = 1
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
 			transportType: pv.transportType,
@@ -251,6 +268,7 @@ func (pv *PathVertex) SampleNext(
 			pEpsilon:      pEpsilon,
 			n:             n,
 			alpha:         alphaNext,
+			pFromPrev:     pFromPrevNext,
 		}
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
@@ -274,8 +292,10 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
+		// TODO(akalin): Use real probabilities.
+		var pFromPrevNext float32 = 1
 		pvNext.initializeSurfaceInteractionVertex(
-			context, pv, &intersection, alphaNext)
+			context, pv, &intersection, alphaNext, pFromPrevNext)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
 		wo, WeDirectionalDivPdf, pdfDirectional :=
@@ -299,8 +319,10 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
+		// TODO(akalin): Use real probabilities.
+		var pFromPrevNext float32 = 1
 		pvNext.initializeSurfaceInteractionVertex(
-			context, pv, &intersection, alphaNext)
+			context, pv, &intersection, alphaNext, pFromPrevNext)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		var wo Vector3
@@ -336,8 +358,10 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
+		// TODO(akalin): Use real probabilities.
+		var pFromPrevNext float32 = 1
 		pvNext.initializeSurfaceInteractionVertex(
-			context, pv, &intersection, alphaNext)
+			context, pv, &intersection, alphaNext, pFromPrevNext)
 
 	default:
 		panic(fmt.Sprintf(
@@ -345,6 +369,46 @@ func (pv *PathVertex) SampleNext(
 	}
 
 	validateSampledPathEdge(context, pv, pvNext)
+
+	if pvPrev != nil &&
+		pvPrev.vertexType != _PATH_VERTEX_LIGHT_SUPER_VERTEX &&
+		pvPrev.vertexType != _PATH_VERTEX_SENSOR_SUPER_VERTEX {
+		// TODO(akalin): Use real probabilities.
+		var pFromNextPrev float32 = 1
+
+		if !isFiniteFloat32(pvPrev.pFromPrev) ||
+			pvPrev.pFromPrev <= 0 {
+			panic(fmt.Sprintf(
+				"Invalid pFromPrev value for %v", pvPrev))
+		}
+		if !isFiniteFloat32(pFromNextPrev) || pFromNextPrev < 0 {
+			panic(fmt.Sprintf(
+				"Invalid pFromNextPrev value %f",
+				pFromNextPrev))
+		}
+
+		switch {
+		case pvPrev.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX ||
+			pvPrev.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+			pvPrev.gamma = 0
+
+		// TODO(akalin): Generalize this into a specularity
+		// check for pvPrevPrev and pvPrev.
+		case (pvPrevPrev.vertexType ==
+			_PATH_VERTEX_SENSOR_SUPER_VERTEX ||
+			pvPrevPrev.vertexType == _PATH_VERTEX_SENSOR_VERTEX) ||
+			(pvPrev.vertexType ==
+				_PATH_VERTEX_SENSOR_SUPER_VERTEX ||
+				pvPrev.vertexType ==
+					_PATH_VERTEX_SENSOR_VERTEX):
+			pvPrev.gamma = pvPrevPrev.gamma
+
+		default:
+			pvPrev.gamma = (1 + pvPrevPrev.gamma) *
+				(pFromNextPrev / pvPrev.pFromPrev)
+		}
+	}
+
 	return true
 }
 

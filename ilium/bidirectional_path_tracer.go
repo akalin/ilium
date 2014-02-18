@@ -61,18 +61,19 @@ func (bdpt *BidirectionalPathTracer) GetSampleConfig() SampleConfig {
 func (bdpt *BidirectionalPathTracer) generateSubpath(
 	pathContext *PathContext,
 	rng *rand.Rand, pvStart *PathVertex, maxEdgeCount int) []PathVertex {
-	var pvPrev *PathVertex
+	var pvPrevPrev, pvPrev *PathVertex
 	var pvNext PathVertex
 	subpath := []PathVertex{*pvStart}
 	// Add one for the edge from the super-vertex.
 	maxPathEdgeCount := maxEdgeCount + 1
 	for i := 0; i < maxPathEdgeCount; i++ {
 		if !subpath[len(subpath)-1].SampleNext(
-			pathContext, i, rng, pvPrev, &pvNext) {
+			pathContext, i, rng, pvPrevPrev, pvPrev, &pvNext) {
 			break
 		}
 
 		subpath = append(subpath, pvNext)
+		pvPrevPrev = pvPrev
 		pvPrev = &subpath[len(subpath)-2]
 	}
 	return subpath
