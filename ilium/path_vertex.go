@@ -232,17 +232,26 @@ func (pv *PathVertex) computeGamma(
 		pv.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX:
 		return 0
 
-	// TODO(akalin): Generalize this into a specularity check for
-	// pvPrev and pv.
-	case (pvPrev.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX ||
-		pvPrev.vertexType == _PATH_VERTEX_SENSOR_VERTEX) ||
-		(pv.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX ||
-			pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX):
+	case pvPrev.IsSpecular(context) || pv.IsSpecular(context):
 		return pvPrevGamma
 
 	default:
 		return (1 + pvPrevGamma) * (pFromNext / pv.pFromPrev)
 	}
+}
+
+func (pv *PathVertex) IsSpecular(context *PathContext) bool {
+	switch pv.vertexType {
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		// TODO(akalin): Forward to Sensor.HasSpecularPosition().
+		return true
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		// TODO(akalin): Forward to Sensor.HasSpecularDirection().
+		return true
+	}
+
+	return false
 }
 
 func (pv *PathVertex) SampleNext(
@@ -430,6 +439,14 @@ func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
 			"Invalid connection order (%v, %v)", pv, pvOther))
 	}
 
+	if pv.IsSpecular(context) {
+		panic(fmt.Sprintf("Invalid connection with %v", pv))
+	}
+
+	if pvOther.IsSpecular(context) {
+		panic(fmt.Sprintf("Invalid connection with %v", pvOther))
+	}
+
 	if pv.transportType == pvOther.transportType {
 		panic(fmt.Sprintf("Invalid connection %v <-> %v with the same "+
 			"transport type", pv, pvOther))
@@ -437,15 +454,11 @@ func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
 
 	switch {
 	case pv.vertexType == _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		if pvOther.vertexType != _PATH_VERTEX_SENSOR_SUPER_VERTEX &&
-			pvOther.vertexType != _PATH_VERTEX_SENSOR_VERTEX {
-			return
-		}
+		return
 
 	case pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX &&
 		pvOther.vertexType == _PATH_VERTEX_LIGHT_VERTEX:
-		// TODO(akalin): Support.
-		break
+		return
 	}
 
 	panic(fmt.Sprintf("Invalid connection %v <-> %v", pv, pvOther))
@@ -612,7 +625,6 @@ func (pv *PathVertex) ComputeWeight(
 func (pv *PathVertex) computeExpectedSubpathGamma(
 	context *PathContext,
 	pvAndPrevs, pvOtherAndPrevs []PathVertex) float32 {
-	// TODO(akalin): Handle specular vertices.
 	var rProd float32 = 1
 	var gamma float32 = 0
 	// Skip the super-vertex.
@@ -620,7 +632,9 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 		v := &pvAndPrevs[i]
 		vPrev := &pvAndPrevs[i-1]
 		validateSampledPathEdge(context, vPrev, v)
-
+		if v.IsSpecular(context) || vPrev.IsSpecular(context) {
+			continue
+		}
 		var fromNext float32
 		switch {
 		case i == len(pvAndPrevs)-1:

@@ -127,11 +127,6 @@ func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
 	}
 }
 
-// For now, assume that the first two path edges of z are fixed.
-//
-// TODO(akalin): Remove this restriction.
-const _SENSOR_FIXED_PATH_EDGE_COUNT int = 2
-
 func (bdpt *BidirectionalPathTracer) computePathCount(
 	pathContext *PathContext, ySubpath, zSubpath []PathVertex) int {
 	// s is the number of light vertices (not path vertices).
@@ -140,7 +135,17 @@ func (bdpt *BidirectionalPathTracer) computePathCount(
 	t := len(zSubpath) - 1
 	// Use the identity: s + t = k + 1.
 	k := s + t - 1
-	specularVertexCount := _SENSOR_FIXED_PATH_EDGE_COUNT
+	var specularVertexCount int
+	for i := 0; i < len(ySubpath); i++ {
+		if ySubpath[i].IsSpecular(pathContext) {
+			specularVertexCount++
+		}
+	}
+	for i := 0; i < len(zSubpath); i++ {
+		if zSubpath[i].IsSpecular(pathContext) {
+			specularVertexCount++
+		}
+	}
 	// n is the number of sampling methods using k combined edges.
 	return k + 2 - specularVertexCount
 }
@@ -148,7 +153,7 @@ func (bdpt *BidirectionalPathTracer) computePathCount(
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
 	pathContext *PathContext, ySubpath, zSubpath []PathVertex,
 	debugRecords *[]TracerDebugRecord) Spectrum {
-	tentativeMinT := _SENSOR_FIXED_PATH_EDGE_COUNT
+	tentativeMinT := 0
 	tentativeMaxT := minInt(k+1, len(zSubpath)-1)
 
 	if tentativeMinT > tentativeMaxT {
@@ -171,6 +176,16 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 	var Ck Spectrum
 	for s := minS; s <= maxS; s++ {
 		t := k + 1 - s
+		ys := &ySubpath[s]
+		if ys.IsSpecular(pathContext) {
+			continue
+		}
+
+		zt := &zSubpath[t]
+		if zt.IsSpecular(pathContext) {
+			continue
+		}
+
 		var ysPrevPrev, ysPrev *PathVertex
 		if s > 0 {
 			ysPrev = &ySubpath[s-1]
@@ -178,15 +193,15 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 				ysPrevPrev = &ySubpath[s-2]
 			}
 		}
-		ys := &ySubpath[s]
-		var ztPrevPrev *PathVertex
-		if t > 1 {
-			ztPrevPrev = &zSubpath[t-2]
+
+		var ztPrevPrev, ztPrev *PathVertex
+		if t > 0 {
+			ztPrev = &zSubpath[t-1]
+			if t > 1 {
+				ztPrevPrev = &zSubpath[t-2]
+			}
 		}
-		// TODO(akalin): Check for t > 0 when we don't assume
-		// the first two vertices of z are fixed.
-		ztPrev := &zSubpath[t-1]
-		zt := &zSubpath[t]
+
 		uCst := ys.ComputeUnweightedContribution(
 			pathContext, ysPrev, zt, ztPrev)
 
@@ -217,8 +232,8 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			}
 
 			expectedW = ys.ComputeExpectedWeight(
-				pathContext, ySubpath[0:s+1], zt,
-				zSubpath[_SENSOR_FIXED_PATH_EDGE_COUNT:t+1])
+				pathContext, ySubpath[0:s+1],
+				zt, zSubpath[0:t+1])
 			// TODO(akalin): Allow for small deviations.
 			if w != expectedW {
 				panic(fmt.Sprintf(
