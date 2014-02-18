@@ -85,21 +85,41 @@ func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
 		width := widthInt(bdpt.maxEdgeCount)
 
 		k := s + t - 1
-		var tagSuffix string
+		var kTagSuffix string
 		if k <= bdpt.debugMaxEdgeCount {
-			tagSuffix = fmt.Sprintf("%0*d", width, k)
+			kTagSuffix = fmt.Sprintf("%0*d", width, k)
 		} else {
-			tagSuffix = fmt.Sprintf(
+			kTagSuffix = fmt.Sprintf(
 				"%0*d-%0*d", width, bdpt.debugMaxEdgeCount+1,
 				width, bdpt.maxEdgeCount)
 		}
 
-		debugRecord := TracerDebugRecord{
-			Tag: "C" + tagSuffix,
+		CkDebugRecord := TracerDebugRecord{
+			Tag: "C" + kTagSuffix,
 			S:   *Cst,
 		}
 
-		*debugRecords = append(*debugRecords, debugRecord)
+		*debugRecords = append(*debugRecords, CkDebugRecord)
+
+		if bdpt.debugLevel >= 2 {
+			if k <= bdpt.debugMaxEdgeCount {
+				stTagSuffix := fmt.Sprintf(
+					"%0*d,%0*d", width, s, width, t)
+
+				CstDebugRecord := TracerDebugRecord{
+					Tag: "C" + stTagSuffix,
+					S:   *Cst,
+				}
+
+				uCstDebugRecord := TracerDebugRecord{
+					Tag: "uC" + stTagSuffix,
+					S:   *uCst,
+				}
+
+				*debugRecords = append(*debugRecords,
+					CstDebugRecord, uCstDebugRecord)
+			}
+		}
 	}
 }
 
