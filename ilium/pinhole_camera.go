@@ -219,7 +219,21 @@ func (pc *PinholeCamera) ComputeWePdfFromPoint(
 func (pc *PinholeCamera) ComputePixelPosition(
 	pSurface Point3, nSurface Normal3, wo Vector3) (
 	ok bool, x, y int) {
-	panic("Called unexpectedly")
+	cosThO := wo.Dot(&pc.frontHat)
+	if cosThO < PDF_COS_THETA_EPSILON {
+		return
+	}
+
+	xC, yC := pc.woToXy(wo, cosThO)
+	extent := pc.GetExtent()
+	if !extent.Contains(xC, yC) {
+		return
+	}
+
+	ok = true
+	x = int(xC)
+	y = int(yC)
+	return
 }
 
 func (pc *PinholeCamera) ComputeWeSpatial(pSurface Point3) Spectrum {

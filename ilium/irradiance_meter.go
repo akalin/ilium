@@ -178,7 +178,13 @@ func (im *IrradianceMeter) ComputeWePdfFromPoint(
 
 func (im *IrradianceMeter) ComputePixelPosition(
 	pSurface Point3, nSurface Normal3, wo Vector3) (ok bool, x, y int) {
-	panic("Called unexpectedly")
+	if wo.DotNormal(&nSurface) < 0 {
+		return
+	}
+	ok = true
+	x = 0
+	y = 0
+	return
 }
 
 func (im *IrradianceMeter) ComputeWeSpatial(pSurface Point3) Spectrum {
