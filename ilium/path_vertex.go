@@ -81,6 +81,11 @@ func MakeSensorSuperVertex() PathVertex {
 	}
 }
 
+func (pv *PathVertex) isSuperVertex() bool {
+	return pv.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX ||
+		pv.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX
+}
+
 func (pv *PathVertex) initializeSurfaceInteractionVertex(
 	context *PathContext, pvPrev *PathVertex, intersection *Intersection,
 	alpha Spectrum, pFromPrev float32) {
@@ -203,6 +208,38 @@ func (pv *PathVertex) shouldContinue(
 		albedo.ScaleInv(albedo, pContinue)
 	}
 	return true
+}
+
+func (pv *PathVertex) computeGamma(
+	context *PathContext, pvPrev *PathVertex,
+	pvPrevGamma, pFromNext float32) float32 {
+	validateSampledPathEdge(context, pvPrev, pv)
+	if pv.isSuperVertex() {
+		panic(fmt.Sprintf("Super vertex %v", pv))
+	}
+	if !isFiniteFloat32(pv.pFromPrev) || pv.pFromPrev <= 0 {
+		panic(fmt.Sprintf("Invalid pFromPrev value for %v", pv))
+	}
+	if !isFiniteFloat32(pFromNext) || pFromNext < 0 {
+		panic(fmt.Sprintf("Invalid pFromNext value %f", pFromNext))
+	}
+
+	switch {
+	case pv.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX ||
+		pv.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		return 0
+
+	// TODO(akalin): Generalize this into a specularity check for
+	// pvPrev and pv.
+	case (pvPrev.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX ||
+		pvPrev.vertexType == _PATH_VERTEX_SENSOR_VERTEX) ||
+		(pv.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX ||
+			pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX):
+		return pvPrevGamma
+
+	default:
+		return (1 + pvPrevGamma) * (pFromNext / pv.pFromPrev)
+	}
 }
 
 func (pv *PathVertex) SampleNext(
@@ -370,45 +407,16 @@ func (pv *PathVertex) SampleNext(
 
 	validateSampledPathEdge(context, pv, pvNext)
 
-	if pvPrev != nil &&
-		pvPrev.vertexType != _PATH_VERTEX_LIGHT_SUPER_VERTEX &&
-		pvPrev.vertexType != _PATH_VERTEX_SENSOR_SUPER_VERTEX {
+	if pvPrev != nil && !pvPrev.isSuperVertex() {
 		// TODO(akalin): Use real probabilities.
 		var pFromNextPrev float32 = 1
-
-		if !isFiniteFloat32(pvPrev.pFromPrev) ||
-			pvPrev.pFromPrev <= 0 {
-			panic(fmt.Sprintf(
-				"Invalid pFromPrev value for %v", pvPrev))
+		var pvPrevPrevGamma float32 = 0
+		if pvPrevPrev != nil {
+			pvPrevPrevGamma = pvPrevPrev.gamma
 		}
-		if !isFiniteFloat32(pFromNextPrev) || pFromNextPrev < 0 {
-			panic(fmt.Sprintf(
-				"Invalid pFromNextPrev value %f",
-				pFromNextPrev))
-		}
-
-		switch {
-		case pvPrev.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX ||
-			pvPrev.vertexType == _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-			pvPrev.gamma = 0
-
-		// TODO(akalin): Generalize this into a specularity
-		// check for pvPrevPrev and pvPrev.
-		case (pvPrevPrev.vertexType ==
-			_PATH_VERTEX_SENSOR_SUPER_VERTEX ||
-			pvPrevPrev.vertexType == _PATH_VERTEX_SENSOR_VERTEX) ||
-			(pvPrev.vertexType ==
-				_PATH_VERTEX_SENSOR_SUPER_VERTEX ||
-				pvPrev.vertexType ==
-					_PATH_VERTEX_SENSOR_VERTEX):
-			pvPrev.gamma = pvPrevPrev.gamma
-
-		default:
-			pvPrev.gamma = (1 + pvPrevPrev.gamma) *
-				(pFromNextPrev / pvPrev.pFromPrev)
-		}
+		pvPrev.gamma = pvPrev.computeGamma(
+			context, pvPrevPrev, pvPrevPrevGamma, pFromNextPrev)
 	}
-
 	return true
 }
 
@@ -547,4 +555,52 @@ func (pv *PathVertex) ComputeUnweightedContribution(
 	uC.Mul(&pv.alpha, &pvOther.alpha)
 	uC.Mul(&uC, &c)
 	return uC
+}
+
+func (pv *PathVertex) computeSubpathGamma(context *PathContext,
+	pvPrevPrev, pvPrev, pvOther, pvOtherPrev *PathVertex) float32 {
+	if pvPrev != nil {
+		validateSampledPathEdge(context, pvPrevPrev, pvPrev)
+	}
+	validateSampledPathEdge(context, pvPrev, pv)
+
+	var gammaPrevPrev float32 = 0
+	if pvPrevPrev != nil {
+		gammaPrevPrev = pvPrevPrev.gamma
+	}
+
+	var gammaPrev float32 = 0
+	if pvPrev != nil && !pvPrev.isSuperVertex() {
+		// TODO(akalin): Use real probabilities.
+		var pFromNextPrev float32 = 1
+		gammaPrev = pvPrev.computeGamma(
+			context, pvPrevPrev, gammaPrevPrev, pFromNextPrev)
+	}
+
+	var gamma float32 = 0
+	if !pv.isSuperVertex() {
+		// TODO(akalin): Use real probabilities.
+		var pFromNext float32 = 1
+		gamma = pv.computeGamma(context, pvPrev, gammaPrev, pFromNext)
+	}
+
+	return gamma
+}
+
+func (pv *PathVertex) ComputeWeight(
+	context *PathContext,
+	pvPrevPrev, pvPrev, pvOther,
+	pvOtherPrev, pvOtherPrevPrev *PathVertex) float32 {
+	if pv.vertexType >= pvOther.vertexType {
+		validateConnectingPathEdge(context, pv, pvOther)
+	} else {
+		validateConnectingPathEdge(context, pvOther, pv)
+	}
+
+	gamma := pv.computeSubpathGamma(
+		context, pvPrevPrev, pvPrev, pvOther, pvOtherPrev)
+	gammaOther := pvOther.computeSubpathGamma(
+		context, pvOtherPrevPrev, pvOtherPrev, pv, pvPrev)
+
+	return 1 / (gamma + 1 + gammaOther)
 }
