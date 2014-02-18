@@ -124,15 +124,28 @@ func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
 	}
 }
 
+// For now, assume that the first two path edges of z are fixed.
+//
+// TODO(akalin): Remove this restriction.
+const _SENSOR_FIXED_PATH_EDGE_COUNT int = 2
+
+func (bdpt *BidirectionalPathTracer) computePathCount(
+	pathContext *PathContext, ySubpath, zSubpath []PathVertex) int {
+	// s is the number of light vertices (not path vertices).
+	s := len(ySubpath) - 1
+	// t is the number of sensor vertices (not path vertices).
+	t := len(zSubpath) - 1
+	// Use the identity: s + t = k + 1.
+	k := s + t - 1
+	specularVertexCount := _SENSOR_FIXED_PATH_EDGE_COUNT
+	// n is the number of sampling methods using k combined edges.
+	return k + 2 - specularVertexCount
+}
+
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
 	pathContext *PathContext, ySubpath, zSubpath []PathVertex,
 	debugRecords *[]TracerDebugRecord) Spectrum {
-	// For now, assume that the first two path edges of z are
-	// fixed.
-	//
-	// TODO(akalin): Remove this restriction.
-	sensorFixedPathEdgeCount := 2
-	tentativeMinT := sensorFixedPathEdgeCount
+	tentativeMinT := _SENSOR_FIXED_PATH_EDGE_COUNT
 	tentativeMaxT := minInt(k+1, len(zSubpath)-1)
 
 	if tentativeMinT > tentativeMaxT {
@@ -152,23 +165,21 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 		return Spectrum{}
 	}
 
-	// n is the number of sampling methods using k combined edges.
-	specularVertexCount := sensorFixedPathEdgeCount
-	n := k + 2 - specularVertexCount
-	// TODO(akalin): Compute weights incrementally.
-	//
-	// TODO(akalin): Use multiple importance sampling to compute
-	// weights.
-	uniformWeight := 1 / float32(n)
-
 	var Ck Spectrum
 	for s := minS; s <= maxS; s++ {
 		t := k + 1 - s
-		var ysPrev *PathVertex
+		var ysPrevPrev, ysPrev *PathVertex
 		if s > 0 {
 			ysPrev = &ySubpath[s-1]
+			if s > 1 {
+				ysPrevPrev = &ySubpath[s-2]
+			}
 		}
 		ys := &ySubpath[s]
+		var ztPrevPrev *PathVertex
+		if t > 1 {
+			ztPrevPrev = &zSubpath[t-2]
+		}
 		// TODO(akalin): Check for t > 0 when we don't assume
 		// the first two vertices of z are fixed.
 		ztPrev := &zSubpath[t-1]
@@ -186,7 +197,21 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			continue
 		}
 
-		w := uniformWeight
+		w := ys.ComputeWeight(
+			pathContext, ysPrevPrev, ysPrev, zt, ztPrev, ztPrevPrev)
+		if !isFiniteFloat32(w) || w < 0 {
+			fmt.Printf("Invalid weight %v for s=%d, t=%d\n",
+				w, s, t)
+			continue
+		}
+		expectedW := 1 / float32(bdpt.computePathCount(
+			pathContext, ySubpath[0:s+1], zSubpath[0:t+1]))
+		if w != expectedW {
+			panic(fmt.Sprintf(
+				"(s=%d, t=%d) w=%f != expectedW=%f",
+				s, t, w, expectedW))
+		}
+
 		var Cst Spectrum
 		Cst.Scale(&uCst, w)
 		Ck.Add(&Ck, &Cst)
