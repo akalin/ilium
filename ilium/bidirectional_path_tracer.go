@@ -85,9 +85,9 @@ func (bdpt *BidirectionalPathTracer) generateSubpath(
 	return subpath
 }
 
-func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
-	s, t int, w float32, Cst, uCst *Spectrum,
-	debugRecords *[]TracerDebugRecord) {
+func (bdpt *BidirectionalPathTracer) makeCstDebugRecords(
+	s, t int, w float32, Cst, uCst *Spectrum) []TracerDebugRecord {
+	var debugRecords []TracerDebugRecord
 	if bdpt.debugLevel >= 1 {
 		width := widthInt(bdpt.maxEdgeCount)
 
@@ -106,7 +106,7 @@ func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
 			S:   *Cst,
 		}
 
-		*debugRecords = append(*debugRecords, CkDebugRecord)
+		debugRecords = append(debugRecords, CkDebugRecord)
 
 		if bdpt.debugLevel >= 2 {
 			if k <= bdpt.debugMaxEdgeCount {
@@ -123,11 +123,12 @@ func (bdpt *BidirectionalPathTracer) recordCstDebugInfo(
 					S:   *uCst,
 				}
 
-				*debugRecords = append(*debugRecords,
+				debugRecords = append(debugRecords,
 					CstDebugRecord, uCstDebugRecord)
 			}
 		}
 	}
+	return debugRecords
 }
 
 func (bdpt *BidirectionalPathTracer) computePathCount(
@@ -155,6 +156,7 @@ func (bdpt *BidirectionalPathTracer) computePathCount(
 
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
 	pathContext *PathContext, ySubpath, zSubpath []PathVertex,
+	lightRecords *[]TracerRecord,
 	debugRecords *[]TracerDebugRecord) Spectrum {
 	tentativeMinT := 0
 	tentativeMaxT := minInt(k+1, len(zSubpath)-1)
@@ -205,8 +207,9 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			}
 		}
 
-		uCst := ys.ComputeUnweightedContribution(
-			pathContext, ysPrev, zt, ztPrev)
+		uCst, contributionType, x, y :=
+			ys.ComputeUnweightedContribution(
+				pathContext, ysPrev, zt, ztPrev)
 
 		if !uCst.IsValid() {
 			fmt.Printf("Invalid contribution %v for s=%d, t=%d\n",
@@ -247,9 +250,25 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 
 		var Cst Spectrum
 		Cst.Scale(&uCst, w)
-		Ck.Add(&Ck, &Cst)
+		cstDebugRecords :=
+			bdpt.makeCstDebugRecords(s, t, w, &Cst, &uCst)
+		switch contributionType {
+		case TRACER_SENSOR_CONTRIBUTION:
+			Ck.Add(&Ck, &Cst)
+			*debugRecords = append(
+				*debugRecords, cstDebugRecords...)
 
-		bdpt.recordCstDebugInfo(s, t, w, &Cst, &uCst, debugRecords)
+		case TRACER_LIGHT_CONTRIBUTION:
+			record := TracerRecord{
+				TRACER_LIGHT_CONTRIBUTION,
+				pathContext.Sensor,
+				x,
+				y,
+				Cst,
+				cstDebugRecords,
+			}
+			*lightRecords = append(*lightRecords, record)
+		}
 	}
 
 	return Ck
@@ -322,7 +341,7 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	maxK := minInt(maxS+maxT-1, bdpt.maxEdgeCount)
 	for k := minK; k <= maxK; k++ {
 		Ck := bdpt.computeCk(k, &pathContext, ySubpath, zSubpath,
-			&sensorRecord.DebugRecords)
+			lightRecords, &sensorRecord.DebugRecords)
 		sensorRecord.WeLiDivPdf.Add(&sensorRecord.WeLiDivPdf, &Ck)
 	}
 

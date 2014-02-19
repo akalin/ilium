@@ -465,13 +465,16 @@ func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
 	panic(fmt.Sprintf("Invalid connection %v <-> %v", pv, pvOther))
 }
 
-func (pv *PathVertex) computeF(pvPrev *PathVertex, wi Vector3) Spectrum {
+func (pv *PathVertex) computeF(
+	context *PathContext,
+	x, y int, pvPrev *PathVertex, wi Vector3) Spectrum {
 	switch pv.vertexType {
 	case _PATH_VERTEX_LIGHT_VERTEX:
 		return pv.light.ComputeLeDirectional(pv.p, pv.n, wi)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
 		// TODO(akalin): Implement.
+		panic("Not implemented")
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		var wo Vector3
@@ -479,13 +482,53 @@ func (pv *PathVertex) computeF(pvPrev *PathVertex, wi Vector3) Spectrum {
 		return pv.material.ComputeF(pv.transportType, wo, wi, pv.n)
 	}
 
-	panic("Not implemented")
+	panic("Unexpectedly reached")
+}
+
+func (pv *PathVertex) computeConnectingEdgeContribution(
+	context *PathContext, x, y int,
+	pvPrev, pvOther, pvOtherPrev *PathVertex) Spectrum {
+	validateSampledPathEdge(context, pvPrev, pv)
+	validateSampledPathEdge(context, pvOtherPrev, pvOther)
+	validateConnectingPathEdge(context, pv, pvOther)
+
+	var wi Vector3
+	d := wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+	shadowRay := Ray{
+		pv.p, wi, pv.pEpsilon, d * (1.0 - pvOther.pEpsilon),
+	}
+	if context.Scene.Aggregate.Intersect(&shadowRay, nil) {
+		return Spectrum{}
+	}
+
+	f := pv.computeF(context, x, y, pvPrev, wi)
+	if f.IsBlack() {
+		return Spectrum{}
+	}
+
+	var wiOther Vector3
+	wiOther.Flip(&wi)
+	fOther := pvOther.computeF(context, x, y, pvOtherPrev, wiOther)
+	if fOther.IsBlack() {
+		return Spectrum{}
+	}
+
+	G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+	if G == 0 {
+		return Spectrum{}
+	}
+
+	var c Spectrum
+	c.Mul(&f, &fOther)
+	c.Scale(&c, G)
+	return c
 }
 
 // pv.vertexType >= pvOther.vertexType must hold.
 func (pv *PathVertex) computeConnectionContribution(
 	context *PathContext,
-	pvPrev, pvOther, pvOtherPrev *PathVertex) Spectrum {
+	pvPrev, pvOther, pvOtherPrev *PathVertex) (
+	c Spectrum, contributionType TracerContributionType, x, y int) {
 	validateSampledPathEdge(context, pvPrev, pv)
 	validateSampledPathEdge(context, pvOtherPrev, pvOther)
 	validateConnectingPathEdge(context, pv, pvOther)
@@ -498,81 +541,73 @@ func (pv *PathVertex) computeConnectionContribution(
 		switch pvOther.vertexType {
 		case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
 			if pv.light == nil {
-				return Spectrum{}
+				return
 			}
+
 			var wo Vector3
 			_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
-			return pv.light.ComputeLe(pv.p, pv.n, wo)
+			c = pv.light.ComputeLe(pv.p, pv.n, wo)
+			contributionType = TRACER_SENSOR_CONTRIBUTION
+			x = context.X
+			y = context.Y
+			return
 
 		case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
 			// TODO(akalin): Implement.
 			panic("Not implemented")
-			return Spectrum{}
+			return
+
+		case _PATH_VERTEX_SENSOR_VERTEX:
+			// TODO(akalin): Implement.
+			panic("Not implemented")
+			return
+
+		default:
+			contributionType = TRACER_SENSOR_CONTRIBUTION
+			x = context.X
+			y = context.Y
 		}
 
-		// The rest of the cases are handled below.
-
-		var wi Vector3
-		d := wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
-		shadowRay := Ray{
-			pv.p, wi, pv.pEpsilon, d * (1.0 - pvOther.pEpsilon),
-		}
-		if context.Scene.Aggregate.Intersect(&shadowRay, nil) {
-			return Spectrum{}
-		}
-
-		f := pv.computeF(pvPrev, wi)
-		if f.IsBlack() {
-			return Spectrum{}
-		}
-
-		var wiOther Vector3
-		wiOther.Flip(&wi)
-		fOther := pvOther.computeF(pvOtherPrev, wiOther)
-		if fOther.IsBlack() {
-			return Spectrum{}
-		}
-
-		G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
-		if G == 0 {
-			return Spectrum{}
-		}
-
-		var c Spectrum
-		c.Mul(&f, &fOther)
-		c.Scale(&c, G)
-		return c
+		c = pv.computeConnectingEdgeContribution(
+			context, x, y, pvPrev, pvOther, pvOtherPrev)
+		return
 
 	case pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX &&
 		pvOther.vertexType == _PATH_VERTEX_LIGHT_VERTEX:
-		// TODO(akalin): Implement.
-		panic("Not implemented")
+
+		// TODO(akalin): Fill in contributionType, x, and y.
+
+		c = pv.computeConnectingEdgeContribution(
+			context, x, y, pvPrev, pvOther, pvOtherPrev)
+		return
 	}
 
 	panic("Unexpectedly reached")
-	return Spectrum{}
+	return
 }
 
 func (pv *PathVertex) ComputeUnweightedContribution(
-	context *PathContext,
-	pvPrev, pvOther, pvOtherPrev *PathVertex) Spectrum {
-	var c Spectrum
-	if pv.vertexType >= pvOther.vertexType {
-		c = pv.computeConnectionContribution(
-			context, pvPrev, pvOther, pvOtherPrev)
-	} else {
-		c = pvOther.computeConnectionContribution(
-			context, pvOtherPrev, pv, pvPrev)
+	context *PathContext, pvPrev, pvOther, pvOtherPrev *PathVertex) (
+	uC Spectrum, contributionType TracerContributionType,
+	x, y int) {
+	if pv.vertexType < pvOther.vertexType {
+		pv, pvPrev, pvOther, pvOtherPrev =
+			pvOther, pvOtherPrev, pv, pvPrev
 	}
+
+	c, contributionType, x, y := pv.computeConnectionContribution(
+		context, pvPrev, pvOther, pvOtherPrev)
 
 	if c.IsBlack() {
-		return Spectrum{}
+		contributionType = 0
+		x = 0
+		y = 0
+		return
 	}
 
-	var uC Spectrum
 	uC.Mul(&pv.alpha, &pvOther.alpha)
 	uC.Mul(&uC, &c)
-	return uC
+	return
 }
 
 func (pv *PathVertex) computeSubpathGamma(context *PathContext,
