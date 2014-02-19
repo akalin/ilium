@@ -473,8 +473,7 @@ func (pv *PathVertex) computeF(
 		return pv.light.ComputeLeDirectional(pv.p, pv.n, wi)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
-		// TODO(akalin): Implement.
-		panic("Not implemented")
+		return context.Sensor.ComputeWeDirectional(x, y, pv.p, pv.n, wi)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		var wo Vector3
@@ -565,9 +564,16 @@ func (pv *PathVertex) computeConnectionContribution(
 			return
 
 		case _PATH_VERTEX_SENSOR_VERTEX:
-			// TODO(akalin): Implement.
-			panic("Not implemented")
-			return
+			contributionType = TRACER_LIGHT_CONTRIBUTION
+			var wiOther Vector3
+			_ = wiOther.GetDirectionAndDistance(&pvOther.p, &pv.p)
+			var ok bool
+			ok, x, y =
+				context.Sensor.ComputePixelPosition(
+					pvOther.p, pvOther.n, wiOther)
+			if !ok {
+				return
+			}
 
 		default:
 			contributionType = TRACER_SENSOR_CONTRIBUTION
@@ -582,7 +588,14 @@ func (pv *PathVertex) computeConnectionContribution(
 	case pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX &&
 		pvOther.vertexType == _PATH_VERTEX_LIGHT_VERTEX:
 
-		// TODO(akalin): Fill in contributionType, x, and y.
+		contributionType = TRACER_LIGHT_CONTRIBUTION
+		var wi Vector3
+		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+		var ok bool
+		ok, x, y = context.Sensor.ComputePixelPosition(pv.p, pv.n, wi)
+		if !ok {
+			return
+		}
 
 		c = pv.computeConnectingEdgeContribution(
 			context, x, y, pvPrev, pvOther, pvOtherPrev)
