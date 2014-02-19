@@ -553,8 +553,15 @@ func (pv *PathVertex) computeConnectionContribution(
 			return
 
 		case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-			// TODO(akalin): Implement.
-			panic("Not implemented")
+			if pv.sensor == nil {
+				return
+			}
+
+			var wo Vector3
+			_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+			x, y, c = pv.sensor.ComputePixelPositionAndWe(
+				pv.p, pv.n, wo)
+			contributionType = TRACER_LIGHT_CONTRIBUTION
 			return
 
 		case _PATH_VERTEX_SENSOR_VERTEX:
