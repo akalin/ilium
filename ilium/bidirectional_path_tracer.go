@@ -8,6 +8,7 @@ type BidirectionalPathTracer struct {
 	russianRouletteContribution TracerRussianRouletteContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
+	recordLightContributions    bool
 	debugLevel                  int
 	debugMaxEdgeCount           int
 }
@@ -16,11 +17,13 @@ func (bdpt *BidirectionalPathTracer) InitializeBidirectionalPathTracer(
 	checkWeights bool,
 	russianRouletteContribution TracerRussianRouletteContribution,
 	russianRouletteState *RussianRouletteState,
-	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
+	maxEdgeCount int, recordLightContributions bool,
+	debugLevel, debugMaxEdgeCount int) {
 	bdpt.checkWeights = checkWeights
 	bdpt.russianRouletteContribution = russianRouletteContribution
 	bdpt.russianRouletteState = russianRouletteState
 	bdpt.maxEdgeCount = maxEdgeCount
+	bdpt.recordLightContributions = recordLightContributions
 	bdpt.debugLevel = debugLevel
 	bdpt.debugMaxEdgeCount = debugMaxEdgeCount
 }
@@ -280,16 +283,17 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	// vs. "edge") take into account these super-vertices.
 
 	pathContext := PathContext{
-		RussianRouletteState: bdpt.russianRouletteState,
-		LightBundle:          lightBundle,
-		SensorBundle:         sensorBundle,
-		ChooseLightSample:    chooseLightSample,
-		LightWiSamples:       lightWiSamples,
-		SensorWiSamples:      sensorWiSamples,
-		Scene:                scene,
-		Sensor:               sensor,
-		X:                    x,
-		Y:                    y,
+		RecordLightContributions: bdpt.recordLightContributions,
+		RussianRouletteState:     bdpt.russianRouletteState,
+		LightBundle:              lightBundle,
+		SensorBundle:             sensorBundle,
+		ChooseLightSample:        chooseLightSample,
+		LightWiSamples:           lightWiSamples,
+		SensorWiSamples:          sensorWiSamples,
+		Scene:                    scene,
+		Sensor:                   sensor,
+		X:                        x,
+		Y:                        y,
 	}
 
 	// ySubpath is the light subpath.

@@ -21,6 +21,8 @@ func MakeBidirectionalPathTracingRenderer(
 
 	maxEdgeCount := int(config["maxEdgeCount"].(float64))
 
+	recordLightContributions := config["recordLightContributions"].(bool)
+
 	var debugLevel int
 	if debugLevelConfig, ok := config["debugLevel"]; ok {
 		debugLevel = int(debugLevelConfig.(float64))
@@ -47,7 +49,7 @@ func MakeBidirectionalPathTracingRenderer(
 	}
 	ptr.tracer.InitializeBidirectionalPathTracer(
 		checkWeights, russianRouletteContribution,
-		russianRouletteState, maxEdgeCount,
+		russianRouletteState, maxEdgeCount, recordLightContributions,
 		debugLevel, debugMaxEdgeCount)
 	return ptr
 }

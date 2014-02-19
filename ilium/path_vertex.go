@@ -4,15 +4,16 @@ import "fmt"
 import "math/rand"
 
 type PathContext struct {
-	RussianRouletteState *RussianRouletteState
-	LightBundle          SampleBundle
-	SensorBundle         SampleBundle
-	ChooseLightSample    Sample1D
-	LightWiSamples       Sample2DArray
-	SensorWiSamples      Sample2DArray
-	Scene                *Scene
-	Sensor               Sensor
-	X, Y                 int
+	RecordLightContributions bool
+	RussianRouletteState     *RussianRouletteState
+	LightBundle              SampleBundle
+	SensorBundle             SampleBundle
+	ChooseLightSample        Sample1D
+	LightWiSamples           Sample2DArray
+	SensorWiSamples          Sample2DArray
+	Scene                    *Scene
+	Sensor                   Sensor
+	X, Y                     int
 }
 
 type pathVertexType int
@@ -243,12 +244,12 @@ func (pv *PathVertex) computeGamma(
 func (pv *PathVertex) IsSpecular(context *PathContext) bool {
 	switch pv.vertexType {
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-		// TODO(akalin): Forward to Sensor.HasSpecularPosition().
-		return true
+		return !context.RecordLightContributions ||
+			context.Sensor.HasSpecularPosition()
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
-		// TODO(akalin): Forward to Sensor.HasSpecularDirection().
-		return true
+		return !context.RecordLightContributions ||
+			context.Sensor.HasSpecularDirection()
 	}
 
 	return false
