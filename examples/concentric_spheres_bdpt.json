@@ -18,6 +18,7 @@
     "russianRouletteMaxProbability": 1,
     "maxEdgeCount": 2,
     "recordLightContributions": true,
+    "directSampleLight": false,
     "sampler": {
       "type": "IndependentSampler"
     }
