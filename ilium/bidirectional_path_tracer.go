@@ -10,6 +10,7 @@ type BidirectionalPathTracer struct {
 	maxEdgeCount                int
 	recordLightContributions    bool
 	directSampleLight           bool
+	directSampleSensor          bool
 	debugLevel                  int
 	debugMaxEdgeCount           int
 }
@@ -18,7 +19,8 @@ func (bdpt *BidirectionalPathTracer) InitializeBidirectionalPathTracer(
 	checkWeights bool,
 	russianRouletteContribution TracerRussianRouletteContribution,
 	russianRouletteState *RussianRouletteState,
-	maxEdgeCount int, recordLightContributions, directSampleLight bool,
+	maxEdgeCount int, recordLightContributions,
+	directSampleLight, directSampleSensor bool,
 	debugLevel, debugMaxEdgeCount int) {
 	bdpt.checkWeights = checkWeights
 	bdpt.russianRouletteContribution = russianRouletteContribution
@@ -26,6 +28,7 @@ func (bdpt *BidirectionalPathTracer) InitializeBidirectionalPathTracer(
 	bdpt.maxEdgeCount = maxEdgeCount
 	bdpt.recordLightContributions = recordLightContributions
 	bdpt.directSampleLight = directSampleLight
+	bdpt.directSampleSensor = directSampleSensor
 	bdpt.debugLevel = debugLevel
 	bdpt.debugMaxEdgeCount = debugMaxEdgeCount
 }

@@ -23,6 +23,7 @@ func MakeBidirectionalPathTracingRenderer(
 
 	recordLightContributions := config["recordLightContributions"].(bool)
 	directSampleLight := config["directSampleLight"].(bool)
+	directSampleSensor := config["directSampleSensor"].(bool)
 
 	var debugLevel int
 	if debugLevelConfig, ok := config["debugLevel"]; ok {
@@ -51,7 +52,7 @@ func MakeBidirectionalPathTracingRenderer(
 	ptr.tracer.InitializeBidirectionalPathTracer(
 		checkWeights, russianRouletteContribution, russianRouletteState,
 		maxEdgeCount, recordLightContributions, directSampleLight,
-		debugLevel, debugMaxEdgeCount)
+		directSampleSensor, debugLevel, debugMaxEdgeCount)
 	return ptr
 }
 

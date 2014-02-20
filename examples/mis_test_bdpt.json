@@ -39,6 +39,7 @@
     "maxEdgeCount": 100,
     "recordLightContributions": true,
     "directSampleLight": true,
+    "directSampleSensor": false,
     "sampler": {
       "type": "IndependentSampler"
     }
