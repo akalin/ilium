@@ -60,6 +60,28 @@ func (bdpt *BidirectionalPathTracer) GetSampleConfig() SampleConfig {
 		numWiSamples,
 	}
 
+	if bdpt.directSampleLight {
+		// Direct-sample the light for each s=1 path (of which
+		// there are maxInteriorVertexCount, since you lose
+		// one for the light vertex, but you gain one from the
+		// sensor vertex).
+		numDirectLightingSamples := minInt(3, maxInteriorVertexCount)
+		directLightingSample1DLengths := []int{
+			// One to pick the light.
+			numDirectLightingSamples,
+			// One to sample the light.
+			numDirectLightingSamples,
+		}
+		directLightingSample2DLengths := []int{
+			// One to sample the light.
+			numDirectLightingSamples,
+		}
+		sample1DLengths = append(
+			sample1DLengths, directLightingSample1DLengths...)
+		sample2DLengths = append(
+			sample2DLengths, directLightingSample2DLengths...)
+	}
+
 	return SampleConfig{
 		Sample1DLengths: sample1DLengths,
 		Sample2DLengths: sample2DLengths,
@@ -157,8 +179,8 @@ func (bdpt *BidirectionalPathTracer) computePathCount(
 }
 
 func (bdpt *BidirectionalPathTracer) computeCk(k int,
-	pathContext *PathContext, ySubpath, zSubpath []PathVertex,
-	lightRecords *[]TracerRecord,
+	pathContext *PathContext, rng *rand.Rand,
+	ySubpath, zSubpath []PathVertex, lightRecords *[]TracerRecord,
 	debugRecords *[]TracerDebugRecord) Spectrum {
 	tentativeMinT := 0
 	tentativeMaxT := minInt(k+1, len(zSubpath)-1)
@@ -207,6 +229,15 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			if t > 1 {
 				ztPrevPrev = &zSubpath[t-2]
 			}
+		}
+
+		if s == 1 && bdpt.directSampleLight {
+			var ysDirect PathVertex
+			if !ysPrev.SampleDirect(
+				pathContext, k, rng, zt, &ysDirect) {
+				continue
+			}
+			ys = &ysDirect
 		}
 
 		uCst, contributionType, x, y :=
@@ -298,6 +329,14 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	lightWiSamples := tracerBundle.Samples2D[0]
 	sensorWiSamples := tracerBundle.Samples2D[1]
 
+	var directLighting1DSamples []Sample1DArray
+	var directLighting2DSamples []Sample2DArray
+
+	if bdpt.directSampleLight {
+		directLighting1DSamples = tracerBundle.Samples1D[1:3]
+		directLighting2DSamples = tracerBundle.Samples2D[2:3]
+	}
+
 	// Note that, compared to Veach's formulation, we have extra
 	// vertices (the light and sensor "super-vertices") in our
 	// paths. Terms prefixed by path (e.g., "path edge"
@@ -311,10 +350,12 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 		ChooseLightSample:        chooseLightSample,
 		LightWiSamples:           lightWiSamples,
 		SensorWiSamples:          sensorWiSamples,
-		Scene:                    scene,
-		Sensor:                   sensor,
-		X:                        x,
-		Y:                        y,
+		DirectLighting1DSamples:  directLighting1DSamples,
+		DirectLighting2DSamples:  directLighting2DSamples,
+		Scene:  scene,
+		Sensor: sensor,
+		X:      x,
+		Y:      y,
 	}
 
 	// ySubpath is the light subpath.
@@ -342,7 +383,7 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	// Use the identity: s + t = k + 1.
 	maxK := minInt(maxS+maxT-1, bdpt.maxEdgeCount)
 	for k := minK; k <= maxK; k++ {
-		Ck := bdpt.computeCk(k, &pathContext, ySubpath, zSubpath,
+		Ck := bdpt.computeCk(k, &pathContext, rng, ySubpath, zSubpath,
 			lightRecords, &sensorRecord.DebugRecords)
 		sensorRecord.WeLiDivPdf.Add(&sensorRecord.WeLiDivPdf, &Ck)
 	}
