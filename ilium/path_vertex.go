@@ -13,6 +13,8 @@ type PathContext struct {
 	SensorWiSamples          Sample2DArray
 	DirectLighting1DSamples  []Sample1DArray
 	DirectLighting2DSamples  []Sample2DArray
+	DirectSensor1DSamples    []Sample1DArray
+	DirectSensor2DSamples    []Sample2DArray
 	Scene                    *Scene
 	Sensor                   Sensor
 	X, Y                     int
@@ -313,9 +315,9 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities, but also
-		// account for the direct-sampled sensor vertex if it
-		// is being used.
+		// TODO(akalin): Use real probabilities.
+		//
+		// TODO(akalin): Account for direct sensor sampling.
 		var pFromPrevNext float32 = 1
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
@@ -378,6 +380,8 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		// TODO(akalin): Use real probabilities.
+		//
+		// TODO(akalin): Account for direct sensor sampling.
 		var pFromPrevNext float32 = 1
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -500,7 +504,51 @@ func (pv *PathVertex) SampleDirect(
 		}
 
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-		panic("Not implemented")
+		switch pvOther.vertexType {
+		case _PATH_VERTEX_LIGHT_VERTEX:
+			fallthrough
+
+		case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+			sampleIndex := k - 1
+			u := context.DirectSensor1DSamples[0].GetSample(
+				sampleIndex, rng)
+			v := context.DirectSensor2DSamples[0].GetSample(
+				sampleIndex, rng)
+
+			WeSpatialDivPdf, pdfDirect, p, pEpsilon, n :=
+				context.Sensor.SampleWeSpatialFromPoint(
+					u.U, v.U1, v.U2, pvOther.p,
+					pvOther.pEpsilon, pvOther.n)
+			if WeSpatialDivPdf.IsBlack() || pdfDirect == 0 {
+				return false
+			}
+
+			G := computeG(p, n, pvOther.p, pvOther.n)
+			WeSpatialDivPdf.ScaleInv(&WeSpatialDivPdf, G)
+
+			albedo := &WeSpatialDivPdf
+			var alphaNext Spectrum
+			alphaNext.Mul(&pv.alpha, albedo)
+			// TODO(akalin): Use real probabilities.
+			//
+			// TODO(akalin): Account for direct sensor sampling.
+			var pFromPrevNext float32 = 1
+			*pvNext = PathVertex{
+				vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
+				transportType: pv.transportType,
+				p:             p,
+				pEpsilon:      pEpsilon,
+				n:             n,
+				alpha:         alphaNext,
+				pFromPrev:     pFromPrevNext,
+			}
+			return true
+
+		default:
+			panic(fmt.Sprintf(
+				"Invalid path vertex for direct sampling %v",
+				pvOther))
+		}
 
 	default:
 		panic(fmt.Sprintf(
