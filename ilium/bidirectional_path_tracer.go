@@ -41,7 +41,14 @@ func (bdpt *BidirectionalPathTracer) hasSomethingToDo() bool {
 	return true
 }
 
-func (bdpt *BidirectionalPathTracer) GetSampleConfig() SampleConfig {
+func (bdpt *BidirectionalPathTracer) shouldDirectSampleSensor(
+	sensor Sensor) bool {
+	return bdpt.directSampleSensor && bdpt.recordLightContributions &&
+		!sensor.HasSpecularDirection()
+}
+
+func (bdpt *BidirectionalPathTracer) GetSampleConfig(
+	sensor Sensor) SampleConfig {
 	if !bdpt.hasSomethingToDo() {
 		return SampleConfig{}
 	}
@@ -83,6 +90,26 @@ func (bdpt *BidirectionalPathTracer) GetSampleConfig() SampleConfig {
 			sample1DLengths, directLightingSample1DLengths...)
 		sample2DLengths = append(
 			sample2DLengths, directLightingSample2DLengths...)
+	}
+
+	if bdpt.shouldDirectSampleSensor(sensor) {
+		// Direct-sample the sensor for each t=1 path (of
+		// which there are maxInteriorVertexCount, since you
+		// lose one for the sensor vertex, but you gain one
+		// from the light vertex).
+		numDirectSensorSamples := minInt(3, maxInteriorVertexCount)
+		directSensorSample1DLengths := []int{
+			// One to sample the sensor.
+			numDirectSensorSamples,
+		}
+		directSensorSample2DLengths := []int{
+			// One to sample the sensor.
+			numDirectSensorSamples,
+		}
+		sample1DLengths = append(
+			sample1DLengths, directSensorSample1DLengths...)
+		sample2DLengths = append(
+			sample2DLengths, directSensorSample2DLengths...)
 	}
 
 	return SampleConfig{
@@ -243,6 +270,19 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			ys = &ysDirect
 		}
 
+		// Arbitrarily pick direct lighting over direct sensor
+		// sampling for light-sensor paths.
+		if t == 1 &&
+			bdpt.shouldDirectSampleSensor(pathContext.Sensor) &&
+			(s != 1 || !bdpt.directSampleLight) {
+			var ztDirect PathVertex
+			if !ztPrev.SampleDirect(
+				pathContext, k, rng, ys, &ztDirect) {
+				continue
+			}
+			zt = &ztDirect
+		}
+
 		uCst, contributionType, x, y :=
 			ys.ComputeUnweightedContribution(
 				pathContext, ysPrev, zt, ztPrev)
@@ -334,10 +374,19 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 
 	var directLighting1DSamples []Sample1DArray
 	var directLighting2DSamples []Sample2DArray
+	var directSensor1DSamples []Sample1DArray
+	var directSensor2DSamples []Sample2DArray
 
 	if bdpt.directSampleLight {
 		directLighting1DSamples = tracerBundle.Samples1D[1:3]
 		directLighting2DSamples = tracerBundle.Samples2D[2:3]
+		if bdpt.shouldDirectSampleSensor(sensor) {
+			directSensor1DSamples = tracerBundle.Samples1D[3:4]
+			directSensor2DSamples = tracerBundle.Samples2D[3:4]
+		}
+	} else if bdpt.shouldDirectSampleSensor(sensor) {
+		directSensor1DSamples = tracerBundle.Samples1D[1:2]
+		directSensor2DSamples = tracerBundle.Samples2D[2:3]
 	}
 
 	// Note that, compared to Veach's formulation, we have extra
@@ -355,6 +404,8 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 		SensorWiSamples:          sensorWiSamples,
 		DirectLighting1DSamples:  directLighting1DSamples,
 		DirectLighting2DSamples:  directLighting2DSamples,
+		DirectSensor1DSamples:    directSensor1DSamples,
+		DirectSensor2DSamples:    directSensor2DSamples,
 		Scene:  scene,
 		Sensor: sensor,
 		X:      x,

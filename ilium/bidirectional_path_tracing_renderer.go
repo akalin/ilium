@@ -98,7 +98,7 @@ func (bdptr *BidirectionalPathTracingRenderer) processBlocks(
 		lightConfig, maxSampleCount)
 	sensorSampleStorage := bdptr.sampler.AllocateSampleStorage(
 		sensor.GetSampleConfig(), maxSampleCount)
-	tracerConfig := bdptr.tracer.GetSampleConfig()
+	tracerConfig := bdptr.tracer.GetSampleConfig(sensor)
 	tracerSampleStorage := bdptr.sampler.AllocateSampleStorage(
 		tracerConfig, maxSampleCount)
 	for block := range inputCh {
