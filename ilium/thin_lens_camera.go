@@ -198,6 +198,48 @@ func (tlc *ThinLensCamera) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (tlc *ThinLensCamera) SampleWeSpatialFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	WeSpatialDivPdf Spectrum, pdf float32,
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3) {
+	// Find the point on the lens.
+	// TODO(akalin): Use concentric sampling.
+	pLens, pLensEpsilon, nLens, _ := tlc.disk.SampleSurface(v1, v2)
+
+	var wo Vector3
+	r := wo.GetDirectionAndDistance(&pLens, &p)
+	absCosThO := absFloat32(wo.DotNormal(&nLens))
+
+	var wi Vector3
+	wi.Flip(&wo)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+
+	wc := tlc.woToWc(&wo, &pLens, &nLens)
+	absCosThC := absFloat32(wc.DotNormal(&nLens))
+
+	// This check is slight different from the one in
+	// SamplePixelPositionAndWeFromPoint(), since we don't need to
+	// check directions.
+	if absCosThI < PDF_COS_THETA_EPSILON ||
+		absCosThO < PDF_COS_THETA_EPSILON ||
+		absCosThC < PDF_COS_THETA_EPSILON ||
+		r < PDF_R_EPSILON {
+		return
+	}
+
+	// WeSpatial = 1 / Area(disk), and the spatial pdf
+	// w.r.t. surface area is also 1 / Area(disk), so
+	// pdf = 1 / (Area(disk) * G(p <-> im.position)) =
+	// r^2 / (Area(disk) * |cos(thI) * cos(thO)|).
+	WeSpatialDivPdf =
+		MakeConstantSpectrum((absCosThI * absCosThO) / (r * r))
+	pdf = (r * r) / (tlc.disk.SurfaceArea() * absCosThI * absCosThO)
+	pSurface = pLens
+	pSurfaceEpsilon = pLensEpsilon
+	nSurface = nLens
+	return
+}
+
 func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3,
@@ -251,7 +293,7 @@ func (tlc *ThinLensCamera) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
-func (tlc *ThinLensCamera) ComputeWePdfFromPoint(
+func (tlc *ThinLensCamera) ComputePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
 	// Since wi is known to intersect this sensor from p, no need
 	// to do any checking.

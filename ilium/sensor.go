@@ -135,11 +135,31 @@ type Sensor interface {
 	// advantage of the fact that only points directly visible
 	// from the given point will be used, and returns the pixel
 	// coordinates at the sampled point, the inverse-pdf-weighted
-	// emitted importance from the sampled point, the value of the
-	// pdf at the sampled point, a vector pointing to the sampled
-	// point, the sampled point itself, the normal at the sampled
-	// point, and a shadow ray to use to test whether the sampled
-	// point is visible from the given one.
+	// spatial component of the emitted importance from the
+	// sampled point, the value of the pdf at the sampled point,
+	// the sampled point itself, and the normal at the sampled
+	// point.
+	//
+	// May return a black value for the weighted importance or 0
+	// for the pdf, in which case the returned values must not be
+	// used.
+	//
+	// For now, can be assumed to only be called when
+	// HasSpecularDirection() returns false.
+	SampleWeSpatialFromPoint(
+		u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+		WeSpatialDivPdf Spectrum, pdf float32,
+		pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3)
+
+	// Samples the surface of the sensor, possible taking
+	// advantage of the fact that only points directly visible
+	// from the given point will be used, and returns the
+	// inverse-pdf-weighted emitted importance from the sampled
+	// point, the value of the pdf at the sampled point, a vector
+	// pointing to the sampled point, the sampled point itself,
+	// the normal at the sampled point, and a shadow ray to use to
+	// test whether the sampled point is visible from the given
+	// one.
 	//
 	// May return a black value for the weighted importance or 0
 	// for the pdf, in which case the returned values must not be
@@ -153,7 +173,7 @@ type Sensor interface {
 		pSurface Point3, nSurface Normal3, shadowRay Ray)
 
 	// Returns the value of the pdf of the distribution used by
-	// SamplePixelPositionAndWeFromPoint() with respect to
+	// Sample{WeSpatial,PixelPositionAndWe}FromPoint() with respect to
 	// projected solid angle at the closest intersection point on
 	// the sensor from the ray (p, wi), or 0 if no such point
 	// exists.
@@ -167,7 +187,7 @@ type Sensor interface {
 	// Note that even if (p, wi) is expected to intersect this
 	// light, 0 may still be returned due to floating point
 	// inaccuracies.
-	ComputeWePdfFromPoint(
+	ComputePdfFromPoint(
 		x, y int,
 		p Point3, pEpsilon float32, n Normal3, wi Vector3) float32
 

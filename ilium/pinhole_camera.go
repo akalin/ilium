@@ -154,6 +154,40 @@ func (pc *PinholeCamera) woToXy(wo Vector3, cosThO float32) (xC, yC float32) {
 	return
 }
 
+func (pc *PinholeCamera) SampleWeSpatialFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	WeSpatialDivPdf Spectrum, pdf float32,
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3) {
+	var wo Vector3
+	r := wo.GetDirectionAndDistance(&pc.position, &p)
+	var wi Vector3
+	wi.Flip(&wo)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+	absCosThO := absFloat32(wo.Dot(&pc.frontHat))
+	// This check is slight different from the one in
+	// SamplePixelPositionAndWeFromPoint(), since we don't need to
+	// check the direction.
+	if absCosThI < PDF_COS_THETA_EPSILON ||
+		absCosThO < PDF_COS_THETA_EPSILON || r < PDF_R_EPSILON {
+		return
+	}
+
+	// To compute WeSpatial, recall that WeSpatial is set so that
+	// WeSpatial/p = 1, where p is the pdf with respect to surface
+	// area of sampling the pinhole point.
+	//
+	// The spatial pdf w.r.t. surface area is just 1 (with an
+	// implicit delta distribution), so WeSpatial = p = 1, and
+	// pdf = 1 / G(p <-> im.position) = r^2 / |cos(thI) * cos(thO)|.
+	// (See PointShape.)
+	WeSpatialDivPdf =
+		MakeConstantSpectrum((absCosThI * absCosThO) / (r * r))
+	pdf = (r * r) / (absCosThI * absCosThO)
+	pSurface = pc.position
+	nSurface = Normal3(pc.frontHat)
+	return
+}
+
 func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3,
@@ -201,7 +235,7 @@ func (pc *PinholeCamera) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
-func (pc *PinholeCamera) ComputeWePdfFromPoint(
+func (pc *PinholeCamera) ComputePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
 	r := pc.position.Distance(&p)
 	absCosThI := absFloat32(wi.DotNormal(&n))

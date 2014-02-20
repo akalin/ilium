@@ -275,7 +275,7 @@ func (pt *ParticleTracer) computeEmittedImportanceWeight(
 		case TRACER_UNIFORM_WEIGHTS:
 			sensorWeightTracker.AddP(pVertexIndex, 1)
 		case TRACER_POWER_WEIGHTS:
-			directSensorPdf := sensor.ComputeWePdfFromPoint(
+			directSensorPdf := sensor.ComputePdfFromPoint(
 				x, y, pPrev, pEpsilonPrev, nPrev, wiPrev)
 			sensorWeightTracker.AddP(pVertexIndex, directSensorPdf)
 		}

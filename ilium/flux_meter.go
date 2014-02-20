@@ -137,6 +137,16 @@ func (fm *FluxMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (fm *FluxMeter) SampleWeSpatialFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	WeSpatialDivPdf Spectrum, pdf float32,
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3) {
+	pSurface, pSurfaceEpsilon, nSurface, pdf =
+		fm.shapeSet.SampleSurfaceFromPoint(u, v1, v2, p, pEpsilon, n)
+	WeSpatialDivPdf = MakeConstantSpectrum(math.Pi / pdf)
+	return
+}
+
 func (fm *FluxMeter) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3,
@@ -152,7 +162,7 @@ func (fm *FluxMeter) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
-func (fm *FluxMeter) ComputeWePdfFromPoint(
+func (fm *FluxMeter) ComputePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
 	return fm.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }

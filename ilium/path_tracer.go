@@ -191,7 +191,7 @@ func (pt *PathTracer) addVertexQs(
 			case TRACER_UNIFORM_WEIGHTS:
 				weightTracker.AddQ(0, 1)
 			case TRACER_POWER_WEIGHTS:
-				pdfDirect := sensor.ComputeWePdfFromPoint(
+				pdfDirect := sensor.ComputePdfFromPoint(
 					x, y, pNext, pEpsilonNext,
 					nNext, woNext)
 				weightTracker.AddQ(0, pdfDirect)

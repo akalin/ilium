@@ -136,6 +136,36 @@ func (im *IrradianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (im *IrradianceMeter) SampleWeSpatialFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	WeSpatialDivPdf Spectrum, pdf float32,
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3) {
+	var wi Vector3
+	r := wi.GetDirectionAndDistance(&p, &im.position)
+	var wo Vector3
+	wo.Flip(&wi)
+	absCosThI := absFloat32(wi.DotNormal(&n))
+	absCosThO := absFloat32(wo.DotNormal((*Normal3)(&im.k)))
+	// This check is slight different from the one in
+	// SamplePixelPositionAndWeFromPoint(), since we don't need to
+	// check the direction.
+	if absCosThI < PDF_COS_THETA_EPSILON ||
+		absCosThO < PDF_COS_THETA_EPSILON || r < PDF_R_EPSILON {
+		return
+	}
+
+	// The spatial pdf w.r.t. surface area is just 1 (with an
+	// implicit delta distribution), so
+	// pdf = 1 / G(p <-> im.position) = r^2 / |cos(thI) * cos(thO)|.
+	// (See PointShape.)
+	WeSpatialDivPdf =
+		MakeConstantSpectrum((absCosThI * absCosThO) / (r * r))
+	pdf = (r * r) / (absCosThI * absCosThO)
+	pSurface = im.position
+	nSurface = Normal3(im.k)
+	return
+}
+
 func (im *IrradianceMeter) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3,
@@ -161,7 +191,7 @@ func (im *IrradianceMeter) SamplePixelPositionAndWeFromPoint(
 	return
 }
 
-func (im *IrradianceMeter) ComputeWePdfFromPoint(
+func (im *IrradianceMeter) ComputePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
 	r := im.position.Distance(&p)
 	absCosThI := absFloat32(wi.DotNormal(&n))

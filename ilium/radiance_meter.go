@@ -80,6 +80,13 @@ func (rm *RadianceMeter) SampleRay(x, y int, sampleBundle SampleBundle) (
 	return
 }
 
+func (rm *RadianceMeter) SampleWeSpatialFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	WeSpatialDivPdf Spectrum, pdf float32,
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3) {
+	panic("Called unexpectedly")
+}
+
 func (rm *RadianceMeter) SamplePixelPositionAndWeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	x, y int, WeDivPdf Spectrum, pdf float32, wi Vector3,
@@ -87,7 +94,7 @@ func (rm *RadianceMeter) SamplePixelPositionAndWeFromPoint(
 	panic("Called unexpectedly")
 }
 
-func (rm *RadianceMeter) ComputeWePdfFromPoint(
+func (rm *RadianceMeter) ComputePdfFromPoint(
 	x, y int, p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
 	panic("Called unexpectedly")
 }

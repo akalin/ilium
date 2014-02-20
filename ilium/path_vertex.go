@@ -313,7 +313,9 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities.
+		// TODO(akalin): Use real probabilities, but also
+		// account for the direct-sampled sensor vertex if it
+		// is being used.
 		var pFromPrevNext float32 = 1
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
