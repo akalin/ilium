@@ -268,7 +268,7 @@ func (pt *PathTracer) computeEmittedLightWeight(
 		case TRACER_POWER_WEIGHTS:
 			pChooseLight := scene.ComputeLightPdf(light)
 			directLightingPdf :=
-				light.ComputeLePdfFromPoint(
+				light.ComputePdfFromPoint(
 					pPrev, pEpsilonPrev, nPrev, wiPrev)
 			weightTracker.AddP(
 				pVertexIndex, pChooseLight*directLightingPdf)

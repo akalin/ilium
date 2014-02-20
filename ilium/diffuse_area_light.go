@@ -117,6 +117,20 @@ func (d *DiffuseAreaLight) SampleRay(sampleBundle SampleBundle) (
 	return
 }
 
+func (d *DiffuseAreaLight) SampleLeSpatialFromPoint(
+	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
+	LeSpatialDivPdf Spectrum, pdf float32,
+	pSurface Point3, pSurfaceEpsilon float32, nSurface Normal3) {
+	pSurface, pSurfaceEpsilon, nSurface, pdf =
+		d.shapeSet.SampleSurfaceFromPoint(u, v1, v2, p, pEpsilon, n)
+	if pdf == 0 {
+		return
+	}
+	LeSpatial := d.ComputeLeSpatial(pSurface)
+	LeSpatialDivPdf.ScaleInv(&LeSpatial, pdf)
+	return
+}
+
 func (d *DiffuseAreaLight) SampleLeFromPoint(
 	u, v1, v2 float32, p Point3, pEpsilon float32, n Normal3) (
 	LeDivPdf Spectrum, pdf float32, wi Vector3,
@@ -135,7 +149,7 @@ func (d *DiffuseAreaLight) SampleLeFromPoint(
 	return
 }
 
-func (d *DiffuseAreaLight) ComputeLePdfFromPoint(
+func (d *DiffuseAreaLight) ComputePdfFromPoint(
 	p Point3, pEpsilon float32, n Normal3, wi Vector3) float32 {
 	return d.shapeSet.ComputePdfFromPoint(p, pEpsilon, n, wi)
 }
