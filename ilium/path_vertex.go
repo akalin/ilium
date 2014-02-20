@@ -11,6 +11,8 @@ type PathContext struct {
 	ChooseLightSample        Sample1D
 	LightWiSamples           Sample2DArray
 	SensorWiSamples          Sample2DArray
+	DirectLighting1DSamples  []Sample1DArray
+	DirectLighting2DSamples  []Sample2DArray
 	Scene                    *Scene
 	Sensor                   Sensor
 	X, Y                     int
@@ -283,6 +285,8 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		// TODO(akalin): Use real probabilities.
+		//
+		// TODO(akalin): Account for direct lighting.
 		var pFromPrevNext float32 = 1
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
@@ -343,6 +347,8 @@ func (pv *PathVertex) SampleNext(
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
 		// TODO(akalin): Use real probabilities.
+		//
+		// TODO(akalin): Account for direct lighting.
 		var pFromPrevNext float32 = 1
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -432,6 +438,74 @@ func (pv *PathVertex) SampleNext(
 			context, pvPrevPrev, pvPrevPrevGamma, pFromNextPrev)
 	}
 	return true
+}
+
+func (pv *PathVertex) SampleDirect(
+	context *PathContext, k int, rng *rand.Rand,
+	pvOther, pvNext *PathVertex) bool {
+	switch pv.vertexType {
+	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		switch pvOther.vertexType {
+		case _PATH_VERTEX_SENSOR_VERTEX:
+			fallthrough
+
+		case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+			sampleIndex := k - 1
+			u := context.DirectLighting1DSamples[0].GetSample(
+				sampleIndex, rng)
+			v := context.DirectLighting1DSamples[1].GetSample(
+				sampleIndex, rng)
+			w := context.DirectLighting2DSamples[0].GetSample(
+				sampleIndex, rng)
+
+			light, pChooseLight :=
+				context.Scene.SampleLight(u.U)
+			LeSpatialDivPdf, pdfDirect, p, pEpsilon, n :=
+				light.SampleLeSpatialFromPoint(
+					v.U, w.U1, w.U2, pvOther.p,
+					pvOther.pEpsilon, pvOther.n)
+			if LeSpatialDivPdf.IsBlack() || pdfDirect == 0 {
+				return false
+			}
+
+			G := computeG(p, n, pvOther.p, pvOther.n)
+			LeSpatialDivPdf.ScaleInv(
+				&LeSpatialDivPdf, pChooseLight*G)
+
+			albedo := &LeSpatialDivPdf
+			var alphaNext Spectrum
+			alphaNext.Mul(&pv.alpha, albedo)
+			// TODO(akalin): Use real probabilities.
+			//
+			// TODO(akalin): Account for direct lighting.
+			var pFromPrevNext float32 = 1
+			*pvNext = PathVertex{
+				vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
+				transportType: pv.transportType,
+				p:             p,
+				pEpsilon:      pEpsilon,
+				n:             n,
+				alpha:         alphaNext,
+				pFromPrev:     pFromPrevNext,
+				light:         light,
+			}
+			return true
+
+		default:
+			panic(fmt.Sprintf(
+				"Invalid path vertex for direct sampling %v",
+				pvOther))
+		}
+
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		panic("Not implemented")
+
+	default:
+		panic(fmt.Sprintf(
+			"Invalid path vertex for direct sampling %v", pv))
+	}
+
+	panic("Unexpectedly reached")
 }
 
 func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
