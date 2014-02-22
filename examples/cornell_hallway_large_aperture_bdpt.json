@@ -47,7 +47,7 @@
     "russianRouletteMaxProbability": 0.95,
     "russianRouletteDelta": 1,
     "maxEdgeCount": 100,
-    "recordLightContributions": false,
+    "recordLightContributions": true,
     "directSampleLight": false,
     "directSampleSensor": false,
     "sampler": {

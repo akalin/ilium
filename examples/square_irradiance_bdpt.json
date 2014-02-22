@@ -18,7 +18,7 @@
     "russianRouletteStartIndex": 2,
     "russianRouletteMaxProbability": 1,
     "maxEdgeCount": 2,
-    "recordLightContributions": false,
+    "recordLightContributions": true,
     "directSampleLight": false,
     "directSampleSensor": false,
     "sampler": {
