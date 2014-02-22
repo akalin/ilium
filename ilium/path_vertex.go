@@ -912,8 +912,18 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 
 	switch pv.vertexType {
 	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		if pvOther.vertexType !=
+			_PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+			panic("Unexpectedly reached")
+		}
+
 		// TODO(akalin): Account for direct lighting.
-		panic("Not implemented")
+		if pvOther.light == nil {
+			return 0
+		}
+		pChooseLight := context.Scene.ComputeLightPdf(pvOther.light)
+		pSpatial := pvOther.light.ComputeLeSpatialPdf(pvOther.p)
+		return pChooseLight * pSpatial
 
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
 		// TODO(akalin): Account for direct sensor sampling.
@@ -921,14 +931,35 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
 		// TODO(akalin): Account for direct lighting.
-		panic("Not implemented")
+		var wi Vector3
+		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+		G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+		pdfDirectional := pv.light.ComputeLeDirectionalPdf(
+			pv.p, pv.n, wi)
+		return pdfDirectional * G
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
 		// TODO(akalin): Account for direct sensor sampling.
 		panic("Not implemented")
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		panic("Not implemented")
+		switch pvOther.vertexType {
+		case _PATH_VERTEX_LIGHT_VERTEX:
+			fallthrough
+
+		case _PATH_VERTEX_SENSOR_VERTEX:
+			fallthrough
+
+		case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+			var wo Vector3
+			_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+			var wi Vector3
+			_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+			G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+			pdf := pv.material.ComputePdf(
+				pv.transportType, wo, wi, pv.n)
+			return pdf * G
+		}
 	}
 
 	panic("Unexpectedly reached")
