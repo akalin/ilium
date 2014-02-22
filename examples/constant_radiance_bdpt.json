@@ -38,6 +38,7 @@
 
   "renderer": {
     "type": "BidirectionalPathTracingRenderer",
+    "weighingMethod": "uniform",
     "checkWeights": true,
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,

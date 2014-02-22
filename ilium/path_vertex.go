@@ -4,6 +4,8 @@ import "fmt"
 import "math/rand"
 
 type PathContext struct {
+	WeighingMethod           TracerWeighingMethod
+	Beta                     float32
 	RecordLightContributions bool
 	RussianRouletteState     *RussianRouletteState
 	LightBundle              SampleBundle
@@ -241,7 +243,8 @@ func (pv *PathVertex) computeGamma(
 		return pvPrevGamma
 
 	default:
-		return (1 + pvPrevGamma) * (pFromNext / pv.pFromPrev)
+		r := pFromNext / pv.pFromPrev
+		return (1 + pvPrevGamma) * powFloat32(r, context.Beta)
 	}
 }
 
@@ -828,7 +831,8 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 		default:
 			fromNext = v.pFromNext
 		}
-		rProd *= fromNext / v.pFromPrev
+		r := fromNext / v.pFromPrev
+		rProd *= powFloat32(r, context.Beta)
 		gamma += rProd
 	}
 	return gamma

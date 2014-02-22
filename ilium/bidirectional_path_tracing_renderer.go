@@ -14,6 +14,9 @@ type BidirectionalPathTracingRenderer struct {
 
 func MakeBidirectionalPathTracingRenderer(
 	config map[string]interface{}) *BidirectionalPathTracingRenderer {
+	weighingMethod, beta :=
+		MakeTracerWeighingMethod(config["weighingMethod"].(string))
+
 	checkWeights := config["checkWeights"].(bool)
 
 	russianRouletteContribution := TRACER_RUSSIAN_ROULETTE_ALPHA
@@ -50,9 +53,10 @@ func MakeBidirectionalPathTracingRenderer(
 		sampler:      sampler,
 	}
 	ptr.tracer.InitializeBidirectionalPathTracer(
-		checkWeights, russianRouletteContribution, russianRouletteState,
-		maxEdgeCount, recordLightContributions, directSampleLight,
-		directSampleSensor, debugLevel, debugMaxEdgeCount)
+		weighingMethod, beta, checkWeights, russianRouletteContribution,
+		russianRouletteState, maxEdgeCount, recordLightContributions,
+		directSampleLight, directSampleSensor, debugLevel,
+		debugMaxEdgeCount)
 	return ptr
 }
 

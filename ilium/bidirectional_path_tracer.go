@@ -4,6 +4,8 @@ import "fmt"
 import "math/rand"
 
 type BidirectionalPathTracer struct {
+	weighingMethod              TracerWeighingMethod
+	beta                        float32
 	checkWeights                bool
 	russianRouletteContribution TracerRussianRouletteContribution
 	russianRouletteState        *RussianRouletteState
@@ -16,12 +18,14 @@ type BidirectionalPathTracer struct {
 }
 
 func (bdpt *BidirectionalPathTracer) InitializeBidirectionalPathTracer(
-	checkWeights bool,
+	weighingMethod TracerWeighingMethod, beta float32, checkWeights bool,
 	russianRouletteContribution TracerRussianRouletteContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount int, recordLightContributions,
 	directSampleLight, directSampleSensor bool,
 	debugLevel, debugMaxEdgeCount int) {
+	bdpt.weighingMethod = weighingMethod
+	bdpt.beta = beta
 	bdpt.checkWeights = checkWeights
 	bdpt.russianRouletteContribution = russianRouletteContribution
 	bdpt.russianRouletteState = russianRouletteState
@@ -305,15 +309,20 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			continue
 		}
 		if bdpt.checkWeights {
-			expectedW := 1 / float32(bdpt.computePathCount(
-				pathContext, ySubpath[0:s+1], zSubpath[0:t+1]))
-			if w != expectedW {
-				panic(fmt.Sprintf(
-					"(s=%d, t=%d) w=%f != expectedW=%f",
-					s, t, w, expectedW))
+			if bdpt.weighingMethod == TRACER_UNIFORM_WEIGHTS {
+				expectedW :=
+					1 / float32(bdpt.computePathCount(
+						pathContext, ySubpath[0:s+1],
+						zSubpath[0:t+1]))
+				if w != expectedW {
+					panic(fmt.Sprintf(
+						"(s=%d, t=%d) "+
+							"w=%f != expectedW=%f",
+						s, t, w, expectedW))
+				}
 			}
 
-			expectedW = ys.ComputeExpectedWeight(
+			expectedW := ys.ComputeExpectedWeight(
 				pathContext, ySubpath[0:s+1],
 				zt, zSubpath[0:t+1])
 			// TODO(akalin): Allow for small deviations.
@@ -395,6 +404,8 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	// vs. "edge") take into account these super-vertices.
 
 	pathContext := PathContext{
+		WeighingMethod: bdpt.weighingMethod,
+		Beta:           bdpt.beta,
 		RecordLightContributions: bdpt.recordLightContributions,
 		RussianRouletteState:     bdpt.russianRouletteState,
 		LightBundle:              lightBundle,
