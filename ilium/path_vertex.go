@@ -926,8 +926,17 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 		return pChooseLight * pSpatial
 
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		if pvOther.vertexType !=
+			_PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+			panic("Unexpectedly reached")
+		}
+
 		// TODO(akalin): Account for direct sensor sampling.
-		panic("Not implemented")
+		if pvOther.sensor == nil {
+			return 0
+		}
+		pSpatial := pvOther.sensor.ComputeWeSpatialPdf(pvOther.p)
+		return pSpatial
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
 		// TODO(akalin): Account for direct lighting.
@@ -940,7 +949,18 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
 		// TODO(akalin): Account for direct sensor sampling.
-		panic("Not implemented")
+		var wi Vector3
+		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+		ok, x, y := context.Sensor.ComputePixelPosition(pv.p, pv.n, wi)
+		if !ok {
+			return 0
+		}
+		G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+		pdfDirectional := context.Sensor.ComputeWeDirectionalPdf(
+			x, y, pv.p, pv.n, wi)
+		extent := context.Sensor.GetExtent()
+		pdfPixel := 1 / float32(extent.GetPixelCount())
+		return pdfDirectional * G * pdfPixel
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		switch pvOther.vertexType {
