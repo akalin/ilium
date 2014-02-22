@@ -289,10 +289,16 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities.
-		//
-		// TODO(akalin): Account for direct lighting.
-		var pFromPrevNext float32 = 1
+		var pFromPrevNext float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromPrevNext = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			//
+			// TODO(akalin): Account for direct lighting.
+			panic("Not implemented")
+		}
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 			transportType: pv.transportType,
@@ -318,10 +324,16 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities.
-		//
-		// TODO(akalin): Account for direct sensor sampling.
-		var pFromPrevNext float32 = 1
+		var pFromPrevNext float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromPrevNext = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			//
+			// TODO(akalin): Account for direct sensor sampling.
+			panic("Not implemented")
+		}
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
 			transportType: pv.transportType,
@@ -353,10 +365,16 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities.
-		//
-		// TODO(akalin): Account for direct lighting.
-		var pFromPrevNext float32 = 1
+		var pFromPrevNext float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromPrevNext = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			//
+			// TODO(akalin): Account for direct lighting.
+			panic("Not implemented")
+		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
 
@@ -382,10 +400,16 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities.
-		//
-		// TODO(akalin): Account for direct sensor sampling.
-		var pFromPrevNext float32 = 1
+		var pFromPrevNext float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromPrevNext = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			//
+			// TODO(akalin): Account for direct sensor sampling.
+			panic("Not implemented")
+		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
 
@@ -423,8 +447,14 @@ func (pv *PathVertex) SampleNext(
 
 		var alphaNext Spectrum
 		alphaNext.Mul(&pv.alpha, albedo)
-		// TODO(akalin): Use real probabilities.
-		var pFromPrevNext float32 = 1
+		var pFromPrevNext float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromPrevNext = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			panic("Not implemented")
+		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
 
@@ -436,8 +466,14 @@ func (pv *PathVertex) SampleNext(
 	validateSampledPathEdge(context, pv, pvNext)
 
 	if pvPrev != nil && !pvPrev.isSuperVertex() {
-		// TODO(akalin): Use real probabilities.
-		var pFromNextPrev float32 = 1
+		var pFromNextPrev float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromNextPrev = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			panic("Not implemented")
+		}
 		var pvPrevPrevGamma float32 = 0
 		if pvPrevPrev != nil {
 			pvPrevPrevGamma = pvPrevPrev.gamma
@@ -484,10 +520,16 @@ func (pv *PathVertex) SampleDirect(
 			albedo := &LeSpatialDivPdf
 			var alphaNext Spectrum
 			alphaNext.Mul(&pv.alpha, albedo)
-			// TODO(akalin): Use real probabilities.
-			//
-			// TODO(akalin): Account for direct lighting.
-			var pFromPrevNext float32 = 1
+			var pFromPrevNext float32
+			switch context.WeighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				pFromPrevNext = 1
+			case TRACER_POWER_WEIGHTS:
+				// TODO(akalin): Use real probabilities.
+				//
+				// TODO(akalin): Account for direct lighting.
+				panic("Not implemented")
+			}
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 				transportType: pv.transportType,
@@ -532,10 +574,17 @@ func (pv *PathVertex) SampleDirect(
 			albedo := &WeSpatialDivPdf
 			var alphaNext Spectrum
 			alphaNext.Mul(&pv.alpha, albedo)
-			// TODO(akalin): Use real probabilities.
-			//
-			// TODO(akalin): Account for direct sensor sampling.
-			var pFromPrevNext float32 = 1
+			var pFromPrevNext float32
+			switch context.WeighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				pFromPrevNext = 1
+			case TRACER_POWER_WEIGHTS:
+				// TODO(akalin): Use real probabilities.
+				//
+				// TODO(akalin): Account for direct
+				// sensor sampling.
+				panic("Not implemented")
+			}
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
 				transportType: pv.transportType,
@@ -771,16 +820,28 @@ func (pv *PathVertex) computeSubpathGamma(context *PathContext,
 
 	var gammaPrev float32 = 0
 	if pvPrev != nil && !pvPrev.isSuperVertex() {
-		// TODO(akalin): Use real probabilities.
-		var pFromNextPrev float32 = 1
+		var pFromNextPrev float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromNextPrev = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			panic("Not implemented")
+		}
 		gammaPrev = pvPrev.computeGamma(
 			context, pvPrevPrev, gammaPrevPrev, pFromNextPrev)
 	}
 
 	var gamma float32 = 0
 	if !pv.isSuperVertex() {
-		// TODO(akalin): Use real probabilities.
-		var pFromNext float32 = 1
+		var pFromNext float32
+		switch context.WeighingMethod {
+		case TRACER_UNIFORM_WEIGHTS:
+			pFromNext = 1
+		case TRACER_POWER_WEIGHTS:
+			// TODO(akalin): Use real probabilities.
+			panic("Not implemented")
+		}
 		gamma = pv.computeGamma(context, pvPrev, gammaPrev, pFromNext)
 	}
 
@@ -821,12 +882,24 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 		var fromNext float32
 		switch {
 		case i == len(pvAndPrevs)-1:
-			// TODO(akalin): Use real probabilities.
-			var pFromNext float32 = 1
+			var pFromNext float32
+			switch context.WeighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				pFromNext = 1
+			case TRACER_POWER_WEIGHTS:
+				// TODO(akalin): Use real probabilities.
+				panic("Not implemented")
+			}
 			fromNext = pFromNext
 		case i == len(pvAndPrevs)-2:
-			// TODO(akalin): Use real probabilities.
-			var pFromNextPrev float32 = 1
+			var pFromNextPrev float32
+			switch context.WeighingMethod {
+			case TRACER_UNIFORM_WEIGHTS:
+				pFromNextPrev = 1
+			case TRACER_POWER_WEIGHTS:
+				// TODO(akalin): Use real probabilities.
+				panic("Not implemented")
+			}
 			fromNext = pFromNextPrev
 		default:
 			fromNext = v.pFromNext
