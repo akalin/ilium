@@ -852,7 +852,53 @@ func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 		panic(fmt.Sprintf("Unexpected vertex %v", pv))
 	}
 
-	panic("Not implemented")
+	var wo Vector3
+	_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+	G := computeG(pv.p, pv.n, pvPrev.p, pvPrev.n)
+
+	switch pvOther.vertexType {
+	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		if pv.light == nil {
+			return 0
+		}
+
+		// TODO(akalin): Account for direct lighting.
+		pdfDirectional := pv.light.ComputeLeDirectionalPdf(
+			pv.p, pv.n, wo)
+		return pdfDirectional * G
+
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		if pv.sensor == nil {
+			return 0
+		}
+
+		// TODO(akalin): Account for direct sensor sampling.
+		ok, x, y := pv.sensor.ComputePixelPosition(
+			pv.p, pv.n, wo)
+		if !ok {
+			return 0
+		}
+		pdfDirectional := pv.sensor.ComputeWeDirectionalPdf(
+			x, y, pv.p, pv.n, wo)
+		extent := context.Sensor.GetExtent()
+		pdfPixel := 1 / float32(extent.GetPixelCount())
+		return pdfDirectional * G * pdfPixel
+
+	case _PATH_VERTEX_LIGHT_VERTEX:
+		fallthrough
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		fallthrough
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		var wi Vector3
+		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+		pdf := pv.material.ComputePdf(
+			pv.transportType.AdjointType(), wi, wo, pv.n)
+		return pdf * G
+	}
+
+	panic("Unexpectedly reached")
 }
 
 func (pv *PathVertex) computeConnectionPdfForwardSA(
