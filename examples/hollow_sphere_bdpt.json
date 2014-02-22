@@ -32,16 +32,16 @@
 
   "renderer": {
     "type": "BidirectionalPathTracingRenderer",
-    "weighingMethod": "uniform",
+    "weighingMethod": "balanced",
     "checkWeights": true,
     "russianRouletteMethod": "proportional",
     "russianRouletteStartIndex": 5,
     "russianRouletteMaxProbability": 0.95,
     "russianRouletteDelta": 1,
     "maxEdgeCount": 100,
-    "recordLightContributions": true,
-    "directSampleLight": true,
-    "directSampleSensor": true,
+    "recordLightContributions": false,
+    "directSampleLight": false,
+    "directSampleSensor": false,
     "sampler": {
       "type": "IndependentSampler"
     }

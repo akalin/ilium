@@ -12,15 +12,15 @@
 
   "renderer": {
     "type": "BidirectionalPathTracingRenderer",
-    "weighingMethod": "uniform",
+    "weighingMethod": "power",
     "checkWeights": true,
     "russianRouletteMethod": "fixed",
     "russianRouletteStartIndex": 2,
     "russianRouletteMaxProbability": 1,
     "maxEdgeCount": 2,
-    "recordLightContributions": true,
-    "directSampleLight": true,
-    "directSampleSensor": true,
+    "recordLightContributions": false,
+    "directSampleLight": false,
+    "directSampleSensor": false,
     "sampler": {
       "type": "IndependentSampler"
     }
