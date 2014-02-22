@@ -266,24 +266,28 @@ func (pv *PathVertex) computePdfBackwardsSA(
 	context *PathContext, pvPrev, pvNext *PathVertex) float32 {
 	validateSampledPathEdge(context, pvPrev, pv)
 	validateSampledPathEdge(context, pv, pvNext)
-	switch pv.vertexType {
-	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
-		panic("Not implemented")
-
-	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-		panic("Not implemented")
-
-	case _PATH_VERTEX_LIGHT_VERTEX:
-		panic("Not implemented")
-
-	case _PATH_VERTEX_SENSOR_VERTEX:
-		panic("Not implemented")
-
-	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		panic("Not implemented")
+	// pvPrev not being a super-vertex means that it's a light,
+	// sensor, or surface interaction vertex, and so if pv was
+	// sampled from pvPrev, it must be just a surface interaction
+	// vertex (and so must pvNext).
+	if pvPrev.isSuperVertex() {
+		panic(fmt.Sprintf("Super vertex %v", pvPrev))
+	}
+	if pv.vertexType != _PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+		panic(fmt.Sprintf("Unexpected vertex %v", pv))
+	}
+	if pvNext.vertexType != _PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+		panic(fmt.Sprintf("Unexpected vertex %v", pvNext))
 	}
 
-	panic("Unexpectedly reached")
+	var wo Vector3
+	_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
+	var wi Vector3
+	_ = wi.GetDirectionAndDistance(&pv.p, &pvNext.p)
+	G := computeG(pv.p, pv.n, pvPrev.p, pvPrev.n)
+	pdf := pv.material.ComputePdf(
+		pv.transportType.AdjointType(), wi, wo, pv.n)
+	return pdf * G
 }
 
 func (pv *PathVertex) SampleNext(
@@ -318,10 +322,8 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			//
 			// TODO(akalin): Account for direct lighting.
-			panic("Not implemented")
+			pFromPrevNext = pChooseLight * pdfSpatial
 		}
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
@@ -353,10 +355,8 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			//
 			// TODO(akalin): Account for direct sensor sampling.
-			panic("Not implemented")
+			pFromPrevNext = pdfSpatial
 		}
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
@@ -394,10 +394,10 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			//
 			// TODO(akalin): Account for direct lighting.
-			panic("Not implemented")
+			G := computeG(
+				pv.p, pv.n, intersection.P, intersection.N)
+			pFromPrevNext = pdfDirectional * G
 		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -429,10 +429,12 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			//
 			// TODO(akalin): Account for direct sensor sampling.
-			panic("Not implemented")
+			G := computeG(
+				pv.p, pv.n, intersection.P, intersection.N)
+			extent := context.Sensor.GetExtent()
+			pdfPixel := 1 / float32(extent.GetPixelCount())
+			pFromPrevNext = pdfDirectional * G * pdfPixel
 		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -476,8 +478,9 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			panic("Not implemented")
+			G := computeG(
+				pv.p, pv.n, intersection.P, intersection.N)
+			pFromPrevNext = pdf * G
 		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -495,8 +498,8 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromNextPrev = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			panic("Not implemented")
+			pFromNextPrev = pv.computePdfBackwardsSA(
+				context, pvPrev, pvNext)
 		}
 		var pvPrevPrevGamma float32 = 0
 		if pvPrevPrev != nil {

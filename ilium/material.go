@@ -1,11 +1,25 @@
 package ilium
 
+import "fmt"
+
 type MaterialTransportType int
 
 const (
 	MATERIAL_LIGHT_TRANSPORT      MaterialTransportType = iota
 	MATERIAL_IMPORTANCE_TRANSPORT MaterialTransportType = iota
 )
+
+func (t MaterialTransportType) AdjointType() MaterialTransportType {
+	switch t {
+	case MATERIAL_LIGHT_TRANSPORT:
+		return MATERIAL_IMPORTANCE_TRANSPORT
+
+	case MATERIAL_IMPORTANCE_TRANSPORT:
+		return MATERIAL_LIGHT_TRANSPORT
+	}
+
+	panic(fmt.Sprintf("unknown transport type %d", t))
+}
 
 func (t MaterialTransportType) String() string {
 	switch t {
