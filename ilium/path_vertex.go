@@ -833,6 +833,61 @@ func (pv *PathVertex) ComputeUnweightedContribution(
 	return
 }
 
+func (pv *PathVertex) computeConnectionPdfBackwardsSA(
+	context *PathContext, pvPrev, pvOther *PathVertex) float32 {
+	validateSampledPathEdge(context, pvPrev, pv)
+	if pv.vertexType >= pvOther.vertexType {
+		validateConnectingPathEdge(context, pv, pvOther)
+	} else {
+		validateConnectingPathEdge(context, pvOther, pv)
+	}
+	// pvPrev not being a super-vertex means that it's a light,
+	// sensor, or surface interaction vertex, and so if pv was
+	// sampled from pvPrev, it must be just a surface interaction
+	// vertex.
+	if pvPrev.isSuperVertex() {
+		panic(fmt.Sprintf("Super vertex %v", pvPrev))
+	}
+	if pv.vertexType != _PATH_VERTEX_SURFACE_INTERACTION_VERTEX {
+		panic(fmt.Sprintf("Unexpected vertex %v", pv))
+	}
+
+	panic("Not implemented")
+}
+
+func (pv *PathVertex) computeConnectionPdfForwardSA(
+	context *PathContext, pvPrev, pvOther *PathVertex) float32 {
+	validateSampledPathEdge(context, pvPrev, pv)
+	if pv.vertexType >= pvOther.vertexType {
+		validateConnectingPathEdge(context, pv, pvOther)
+	} else {
+		validateConnectingPathEdge(context, pvOther, pv)
+	}
+
+	switch pv.vertexType {
+	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		// TODO(akalin): Account for direct lighting.
+		panic("Not implemented")
+
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		// TODO(akalin): Account for direct sensor sampling.
+		panic("Not implemented")
+
+	case _PATH_VERTEX_LIGHT_VERTEX:
+		// TODO(akalin): Account for direct lighting.
+		panic("Not implemented")
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		// TODO(akalin): Account for direct sensor sampling.
+		panic("Not implemented")
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		panic("Not implemented")
+	}
+
+	panic("Unexpectedly reached")
+}
+
 func (pv *PathVertex) computeSubpathGamma(context *PathContext,
 	pvPrevPrev, pvPrev, pvOther, pvOtherPrev *PathVertex) float32 {
 	if pvPrev != nil {
@@ -852,8 +907,8 @@ func (pv *PathVertex) computeSubpathGamma(context *PathContext,
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromNextPrev = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			panic("Not implemented")
+			pFromNextPrev = pv.computeConnectionPdfBackwardsSA(
+				context, pvPrev, pvOther)
 		}
 		gammaPrev = pvPrev.computeGamma(
 			context, pvPrevPrev, gammaPrevPrev, pFromNextPrev)
@@ -866,8 +921,8 @@ func (pv *PathVertex) computeSubpathGamma(context *PathContext,
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Use real probabilities.
-			panic("Not implemented")
+			pFromNext = pvOther.computeConnectionPdfForwardSA(
+				context, pvOtherPrev, pv)
 		}
 		gamma = pv.computeGamma(context, pvPrev, gammaPrev, pFromNext)
 	}
@@ -898,6 +953,15 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 	pvAndPrevs, pvOtherAndPrevs []PathVertex) float32 {
 	var rProd float32 = 1
 	var gamma float32 = 0
+	var pvPrev *PathVertex
+	if len(pvAndPrevs) > 1 {
+		pvPrev = &pvAndPrevs[len(pvAndPrevs)-2]
+	}
+	pvOther := &pvOtherAndPrevs[len(pvOtherAndPrevs)-1]
+	var pvOtherPrev *PathVertex
+	if len(pvOtherAndPrevs) > 1 {
+		pvOtherPrev = &pvOtherAndPrevs[len(pvOtherAndPrevs)-2]
+	}
 	// Skip the super-vertex.
 	for i := len(pvAndPrevs) - 1; i >= 1; i-- {
 		v := &pvAndPrevs[i]
@@ -914,8 +978,9 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 			case TRACER_UNIFORM_WEIGHTS:
 				pFromNext = 1
 			case TRACER_POWER_WEIGHTS:
-				// TODO(akalin): Use real probabilities.
-				panic("Not implemented")
+				pFromNext = pvOther.
+					computeConnectionPdfForwardSA(
+					context, pvOtherPrev, pv)
 			}
 			fromNext = pFromNext
 		case i == len(pvAndPrevs)-2:
@@ -924,8 +989,9 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 			case TRACER_UNIFORM_WEIGHTS:
 				pFromNextPrev = 1
 			case TRACER_POWER_WEIGHTS:
-				// TODO(akalin): Use real probabilities.
-				panic("Not implemented")
+				pFromNextPrev =
+					pv.computeConnectionPdfBackwardsSA(
+						context, pvPrev, pvOther)
 			}
 			fromNext = pFromNextPrev
 		default:
