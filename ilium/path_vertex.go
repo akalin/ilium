@@ -262,6 +262,30 @@ func (pv *PathVertex) IsSpecular(context *PathContext) bool {
 	return false
 }
 
+func (pv *PathVertex) computePdfBackwardsSA(
+	context *PathContext, pvPrev, pvNext *PathVertex) float32 {
+	validateSampledPathEdge(context, pvPrev, pv)
+	validateSampledPathEdge(context, pv, pvNext)
+	switch pv.vertexType {
+	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
+		panic("Not implemented")
+
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		panic("Not implemented")
+
+	case _PATH_VERTEX_LIGHT_VERTEX:
+		panic("Not implemented")
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		panic("Not implemented")
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		panic("Not implemented")
+	}
+
+	panic("Unexpectedly reached")
+}
+
 func (pv *PathVertex) SampleNext(
 	context *PathContext, i int, rng *rand.Rand,
 	pvPrevPrev, pvPrev, pvNext *PathVertex) bool {
