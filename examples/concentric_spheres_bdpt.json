@@ -12,6 +12,7 @@
 
   "renderer": {
     "type": "BidirectionalPathTracingRenderer",
+    "checkWeights": true,
     "russianRouletteMethod": "fixed",
     "russianRouletteStartIndex": 2,
     "russianRouletteMaxProbability": 1,

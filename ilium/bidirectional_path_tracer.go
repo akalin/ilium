@@ -4,6 +4,7 @@ import "fmt"
 import "math/rand"
 
 type BidirectionalPathTracer struct {
+	checkWeights                bool
 	russianRouletteContribution TracerRussianRouletteContribution
 	russianRouletteState        *RussianRouletteState
 	maxEdgeCount                int
@@ -12,9 +13,11 @@ type BidirectionalPathTracer struct {
 }
 
 func (bdpt *BidirectionalPathTracer) InitializeBidirectionalPathTracer(
+	checkWeights bool,
 	russianRouletteContribution TracerRussianRouletteContribution,
 	russianRouletteState *RussianRouletteState,
 	maxEdgeCount, debugLevel, debugMaxEdgeCount int) {
+	bdpt.checkWeights = checkWeights
 	bdpt.russianRouletteContribution = russianRouletteContribution
 	bdpt.russianRouletteState = russianRouletteState
 	bdpt.maxEdgeCount = maxEdgeCount
@@ -204,12 +207,14 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 				w, s, t)
 			continue
 		}
-		expectedW := 1 / float32(bdpt.computePathCount(
-			pathContext, ySubpath[0:s+1], zSubpath[0:t+1]))
-		if w != expectedW {
-			panic(fmt.Sprintf(
-				"(s=%d, t=%d) w=%f != expectedW=%f",
-				s, t, w, expectedW))
+		if bdpt.checkWeights {
+			expectedW := 1 / float32(bdpt.computePathCount(
+				pathContext, ySubpath[0:s+1], zSubpath[0:t+1]))
+			if w != expectedW {
+				panic(fmt.Sprintf(
+					"(s=%d, t=%d) w=%f != expectedW=%f",
+					s, t, w, expectedW))
+			}
 		}
 
 		var Cst Spectrum
