@@ -215,6 +215,16 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 					"(s=%d, t=%d) w=%f != expectedW=%f",
 					s, t, w, expectedW))
 			}
+
+			expectedW = ys.ComputeExpectedWeight(
+				pathContext, ySubpath[0:s+1], zt,
+				zSubpath[_SENSOR_FIXED_PATH_EDGE_COUNT:t+1])
+			// TODO(akalin): Allow for small deviations.
+			if w != expectedW {
+				panic(fmt.Sprintf(
+					"(s=%d, t=%d) w=%f != expectedW=%f",
+					s, t, w, expectedW))
+			}
 		}
 
 		var Cst Spectrum
