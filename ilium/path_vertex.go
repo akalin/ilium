@@ -53,9 +53,12 @@ type PathVertex struct {
 	pEpsilon      float32
 	n             Normal3
 	alpha         Spectrum
-	// Used for incremental weight computation.
+	// Used for (incremental and non-incremental) weight
+	// computations.
 	pFromPrev float32
-	gamma     float32
+	pFromNext float32
+	// Used for incremental weight computation.
+	gamma float32
 	// Used by light and surface interaction vertices only.
 	light Light
 	// Used by surface interaction vertices only.
@@ -414,6 +417,7 @@ func (pv *PathVertex) SampleNext(
 		if pvPrevPrev != nil {
 			pvPrevPrevGamma = pvPrevPrev.gamma
 		}
+		pvPrev.pFromNext = pFromNextPrev
 		pvPrev.gamma = pvPrev.computeGamma(
 			context, pvPrevPrev, pvPrevPrevGamma, pFromNextPrev)
 	}
