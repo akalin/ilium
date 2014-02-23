@@ -608,3 +608,51 @@ func (pv *PathVertex) ComputeWeight(
 
 	return 1 / (gamma + 1 + gammaOther)
 }
+
+func (pv *PathVertex) computeExpectedSubpathGamma(
+	context *PathContext,
+	pvAndPrevs, pvOtherAndPrevs []PathVertex) float32 {
+	// TODO(akalin): Handle specular vertices.
+	var rProd float32 = 1
+	var gamma float32 = 0
+	// Skip the super-vertex.
+	for i := len(pvAndPrevs) - 1; i >= 1; i-- {
+		v := &pvAndPrevs[i]
+		vPrev := &pvAndPrevs[i-1]
+		validateSampledPathEdge(context, vPrev, v)
+
+		var fromNext float32
+		switch {
+		case i == len(pvAndPrevs)-1:
+			// TODO(akalin): Use real probabilities.
+			var pFromNext float32 = 1
+			fromNext = pFromNext
+		case i == len(pvAndPrevs)-2:
+			// TODO(akalin): Use real probabilities.
+			var pFromNextPrev float32 = 1
+			fromNext = pFromNextPrev
+		default:
+			fromNext = v.pFromNext
+		}
+		rProd *= fromNext / v.pFromPrev
+		gamma += rProd
+	}
+	return gamma
+}
+
+func (pv *PathVertex) ComputeExpectedWeight(
+	context *PathContext, pvAndPrevs []PathVertex,
+	pvOther *PathVertex, pvOtherAndPrevs []PathVertex) float32 {
+	if pv.vertexType >= pvOther.vertexType {
+		validateConnectingPathEdge(context, pv, pvOther)
+	} else {
+		validateConnectingPathEdge(context, pvOther, pv)
+	}
+
+	gamma := pv.computeExpectedSubpathGamma(
+		context, pvAndPrevs, pvOtherAndPrevs)
+	gammaOther := pvOther.computeExpectedSubpathGamma(
+		context, pvOtherAndPrevs, pvAndPrevs)
+
+	return 1 / (gamma + 1 + gammaOther)
+}
