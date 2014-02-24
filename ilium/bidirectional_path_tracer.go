@@ -404,10 +404,14 @@ func (bdpt *BidirectionalPathTracer) SamplePaths(
 	// paths. Terms prefixed by path (e.g., "path edge"
 	// vs. "edge") take into account these super-vertices.
 
+	shouldDirectSampleLight := bdpt.directSampleLight
+	shouldDirectSampleSensor := bdpt.shouldDirectSampleSensor(sensor)
 	pathContext := PathContext{
 		WeighingMethod: bdpt.weighingMethod,
 		Beta:           bdpt.beta,
 		RecordLightContributions: bdpt.recordLightContributions,
+		ShouldDirectSampleLight:  shouldDirectSampleLight,
+		ShouldDirectSampleSensor: shouldDirectSampleSensor,
 		RussianRouletteState:     bdpt.russianRouletteState,
 		LightBundle:              lightBundle,
 		SensorBundle:             sensorBundle,

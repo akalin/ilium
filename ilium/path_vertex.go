@@ -7,6 +7,8 @@ type PathContext struct {
 	WeighingMethod           TracerWeighingMethod
 	Beta                     float32
 	RecordLightContributions bool
+	ShouldDirectSampleLight  bool
+	ShouldDirectSampleSensor bool
 	RussianRouletteState     *RussianRouletteState
 	LightBundle              SampleBundle
 	SensorBundle             SampleBundle
