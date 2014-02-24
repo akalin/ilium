@@ -236,9 +236,23 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 		return Spectrum{}
 	}
 
+	var ySubpathDirect [2]PathVertex
+	if bdpt.directSampleLight {
+		ySubpathDirect[0] = ySubpath[0]
+	}
+
+	var zSubpathDirect [2]PathVertex
+	if bdpt.shouldDirectSampleSensor(pathContext.Sensor) {
+		zSubpathDirect[0] = zSubpath[0]
+	}
+
 	var Ck Spectrum
 	for s := minS; s <= maxS; s++ {
 		t := k + 1 - s
+
+		ySubpathS := ySubpath[0 : s+1]
+		zSubpathT := zSubpath[0 : t+1]
+
 		ys := &ySubpath[s]
 		if ys.IsSpecular(pathContext) {
 			continue
@@ -266,12 +280,13 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 		}
 
 		if s == 1 && bdpt.directSampleLight {
-			var ysDirect PathVertex
-			if !ysPrev.SampleDirect(
-				pathContext, k, rng, zt, &ysDirect) {
+			if !ySubpathDirect[0].SampleDirect(
+				pathContext, k, rng, zt, &ySubpathDirect[1]) {
 				continue
 			}
-			ys = &ysDirect
+			ySubpathS = ySubpathDirect[0:2]
+			ysPrev = &ySubpathDirect[0]
+			ys = &ySubpathDirect[1]
 		}
 
 		// Arbitrarily pick direct lighting over direct sensor
@@ -279,12 +294,13 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 		if t == 1 &&
 			bdpt.shouldDirectSampleSensor(pathContext.Sensor) &&
 			(s != 1 || !bdpt.directSampleLight) {
-			var ztDirect PathVertex
-			if !ztPrev.SampleDirect(
-				pathContext, k, rng, ys, &ztDirect) {
+			if !zSubpathDirect[0].SampleDirect(
+				pathContext, k, rng, ys, &zSubpathDirect[1]) {
 				continue
 			}
-			zt = &ztDirect
+			zSubpathT = zSubpathDirect[0:2]
+			ztPrev = &zSubpathDirect[0]
+			zt = &zSubpathDirect[1]
 		}
 
 		uCst, contributionType, x, y :=
@@ -312,8 +328,8 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			if bdpt.weighingMethod == TRACER_UNIFORM_WEIGHTS {
 				expectedW :=
 					1 / float32(bdpt.computePathCount(
-						pathContext, ySubpath[0:s+1],
-						zSubpath[0:t+1]))
+						pathContext, ySubpathS,
+						zSubpathT))
 				if w != expectedW {
 					panic(fmt.Sprintf(
 						"(s=%d, t=%d) "+
@@ -323,8 +339,7 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			}
 
 			expectedW := ys.ComputeExpectedWeight(
-				pathContext, ySubpath[0:s+1],
-				zt, zSubpath[0:t+1])
+				pathContext, ySubpathS, zt, zSubpathT)
 			// TODO(akalin): Consider more robust
 			// comparisons.
 			if absFloat32(w-expectedW) > 1e-6 {
