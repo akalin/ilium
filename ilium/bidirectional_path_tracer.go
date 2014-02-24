@@ -325,8 +325,9 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 			expectedW := ys.ComputeExpectedWeight(
 				pathContext, ySubpath[0:s+1],
 				zt, zSubpath[0:t+1])
-			// TODO(akalin): Allow for small deviations.
-			if w != expectedW {
+			// TODO(akalin): Consider more robust
+			// comparisons.
+			if absFloat32(w-expectedW) > 1e-6 {
 				panic(fmt.Sprintf(
 					"(s=%d, t=%d) w=%f != expectedW=%f",
 					s, t, w, expectedW))
