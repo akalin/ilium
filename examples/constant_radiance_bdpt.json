@@ -46,7 +46,7 @@
     "russianRouletteDelta": 1,
     "maxEdgeCount": 100,
     "recordLightContributions": true,
-    "directSampleLight": false,
+    "directSampleLight": true,
     "directSampleSensor": false,
     "sampler": {
       "type": "IndependentSampler"
