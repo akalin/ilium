@@ -352,7 +352,12 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Account for direct lighting.
+			// If direct lighting is being used, we
+			// account for it in the
+			// _PATH_VERTEX_LIGHT_VERTEX case
+			// below. (Also, subpaths ending at the light
+			// vertex are always replaced with the
+			// direct-lighting subpath.)
 			pFromPrevNext = pChooseLight * pdfSpatial
 		}
 		*pvNext = PathVertex{
@@ -426,10 +431,40 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Account for direct lighting.
-			G := computeG(
-				pv.p, pv.n, intersection.P, intersection.N)
-			pFromPrevNext = pdfDirectional * G
+			if context.ShouldDirectSampleLight {
+				// Adjust both spatial and directional
+				// PDFs.
+
+				var wi Vector3
+				wi.Flip(&wo)
+				pDirect := pv.light.ComputePdfFromPoint(
+					intersection.P, intersection.PEpsilon,
+					intersection.N, wi)
+				if pDirect == 0 {
+					// This may happen in rare cases.
+					return false
+				}
+
+				pA := pv.pFromPrev
+
+				// The spatial correction factor is
+				// just p_D / p_A.
+				pChooseLight :=
+					context.Scene.ComputeLightPdf(pv.light)
+				G := computeG(pv.p, pv.n,
+					intersection.P, intersection.N)
+				pv.pFromPrev = pChooseLight * pDirect * G
+
+				// The directional correction factor
+				// is p_A / p_D, so a factor of G
+				// cancels out.
+				pFromPrevNext = (pdfDirectional * pA) /
+					(pChooseLight * pDirect)
+			} else {
+				G := computeG(pv.p, pv.n,
+					intersection.P, intersection.N)
+				pFromPrevNext = pdfDirectional * G
+			}
 		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -584,10 +619,9 @@ func (pv *PathVertex) SampleDirect(
 			case TRACER_UNIFORM_WEIGHTS:
 				pFromPrevNext = 1
 			case TRACER_POWER_WEIGHTS:
-				// TODO(akalin): Use real probabilities.
-				//
-				// TODO(akalin): Account for direct lighting.
-				panic("Not implemented")
+				// The spatial correction factor is
+				// just p_D / p_A.
+				pFromPrevNext = pChooseLight * pdfDirect * G
 			}
 
 			pv.flags |= _PATH_VERTEX_USES_DIRECT_LIGHTING
@@ -888,6 +922,32 @@ func (pv *PathVertex) ComputeUnweightedContribution(
 	return
 }
 
+func (pv *PathVertex) computeLeDirectionalPdf(
+	context *PathContext, pvOther *PathVertex) float32 {
+	var wo Vector3
+	_ = wo.GetDirectionAndDistance(&pv.p, &pvOther.p)
+	pDirectional := pv.light.ComputeLeDirectionalPdf(pv.p, pv.n, wo)
+
+	if context.ShouldDirectSampleLight {
+		var wi Vector3
+		wi.Flip(&wo)
+		pDirect := pv.light.ComputePdfFromPoint(
+			pvOther.p, pvOther.pEpsilon, pvOther.n, wi)
+		if pDirect == 0 {
+			// This may happen in rare cases.
+			return 0
+		}
+
+		pSurface := pv.light.ComputeLeSpatialPdf(pv.p)
+		// The directional correction factor is p_A / p_D, so
+		// the pChooseLight and G factors cancel out.
+		return (pDirectional * pSurface) / pDirect
+	}
+
+	G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+	return pDirectional * G
+}
+
 func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 	context *PathContext, pvPrev, pvOther *PathVertex) float32 {
 	validateSampledPathEdge(context, pvPrev, pv)
@@ -907,25 +967,21 @@ func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 		panic(fmt.Sprintf("Unexpected vertex %v", pv))
 	}
 
-	var wo Vector3
-	_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
-	G := computeG(pv.p, pv.n, pvPrev.p, pvPrev.n)
-
 	switch pvOther.vertexType {
 	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
 		if pv.light == nil {
 			return 0
 		}
 
-		// TODO(akalin): Account for direct lighting.
-		pdfDirectional := pv.light.ComputeLeDirectionalPdf(
-			pv.p, pv.n, wo)
-		return pdfDirectional * G
+		return pv.computeLeDirectionalPdf(context, pvPrev)
 
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
 		if pv.sensor == nil {
 			return 0
 		}
+
+		var wo Vector3
+		_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
 
 		// TODO(akalin): Account for direct sensor sampling.
 		ok, x, y := pv.sensor.ComputePixelPosition(
@@ -933,6 +989,7 @@ func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 		if !ok {
 			return 0
 		}
+		G := computeG(pv.p, pv.n, pvPrev.p, pvPrev.n)
 		pdfDirectional := pv.sensor.ComputeWeDirectionalPdf(
 			x, y, pv.p, pv.n, wo)
 		extent := context.Sensor.GetExtent()
@@ -946,8 +1003,11 @@ func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 		fallthrough
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		var wo Vector3
+		_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
 		var wi Vector3
 		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
+		G := computeG(pv.p, pv.n, pvPrev.p, pvPrev.n)
 		pdf := pv.material.ComputePdf(
 			pv.transportType.AdjointType(), wi, wo, pv.n)
 		return pdf * G
@@ -957,7 +1017,8 @@ func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 }
 
 func (pv *PathVertex) computeConnectionPdfForwardSA(
-	context *PathContext, pvPrev, pvOther *PathVertex) float32 {
+	context *PathContext, pvPrev,
+	pvOther, pvOtherPrev *PathVertex) float32 {
 	validateSampledPathEdge(context, pvPrev, pv)
 	if pv.vertexType >= pvOther.vertexType {
 		validateConnectingPathEdge(context, pv, pvOther)
@@ -972,11 +1033,24 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 			panic("Unexpectedly reached")
 		}
 
-		// TODO(akalin): Account for direct lighting.
 		if pvOther.light == nil {
 			return 0
 		}
 		pChooseLight := context.Scene.ComputeLightPdf(pvOther.light)
+		if context.ShouldDirectSampleLight {
+			// The spatial correction factor is just
+			// p_D / p_A.
+			var wi Vector3
+			_ = wi.GetDirectionAndDistance(
+				&pvOtherPrev.p, &pvOther.p)
+			pDirect := pvOther.light.ComputePdfFromPoint(
+				pvOtherPrev.p, pvOtherPrev.pEpsilon,
+				pvOtherPrev.n, wi)
+			G := computeG(pvOther.p, pvOther.n,
+				pvOtherPrev.p, pvOtherPrev.n)
+			return pDirect * G * pChooseLight
+		}
+
 		pSpatial := pvOther.light.ComputeLeSpatialPdf(pvOther.p)
 		return pChooseLight * pSpatial
 
@@ -994,13 +1068,7 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 		return pSpatial
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
-		// TODO(akalin): Account for direct lighting.
-		var wi Vector3
-		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
-		G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
-		pdfDirectional := pv.light.ComputeLeDirectionalPdf(
-			pv.p, pv.n, wi)
-		return pdfDirectional * G
+		return pv.computeLeDirectionalPdf(context, pvOther)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
 		// TODO(akalin): Account for direct sensor sampling.
@@ -1074,7 +1142,7 @@ func (pv *PathVertex) computeSubpathGamma(context *PathContext,
 			pFromNext = 1
 		case TRACER_POWER_WEIGHTS:
 			pFromNext = pvOther.computeConnectionPdfForwardSA(
-				context, pvOtherPrev, pv)
+				context, pvOtherPrev, pv, pvPrev)
 		}
 		gamma = pv.computeGamma(context, pvPrev, gammaPrev, pFromNext)
 	}
@@ -1134,7 +1202,7 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 			case TRACER_POWER_WEIGHTS:
 				pFromNext = pvOther.
 					computeConnectionPdfForwardSA(
-					context, pvOtherPrev, pv)
+					context, pvOtherPrev, pv, pvPrev)
 			}
 			fromNext = pFromNext
 		case i == len(pvAndPrevs)-2:
