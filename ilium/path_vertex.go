@@ -402,7 +402,13 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Account for direct sensor sampling.
+			// If direct sensor sampling is being used, we
+			// account for it in the
+			// _PATH_VERTEX_SENSOR_VERTEX case
+			// below. (Unlike with direct lighting,
+			// subpaths ending at the sensor vertex are
+			// not always replaced with the direct-sensor
+			// subpath.)
 			pFromPrevNext = pdfSpatial
 		}
 		*pvNext = PathVertex{
@@ -512,12 +518,42 @@ func (pv *PathVertex) SampleNext(
 		case TRACER_UNIFORM_WEIGHTS:
 			pFromPrevNext = 1
 		case TRACER_POWER_WEIGHTS:
-			// TODO(akalin): Account for direct sensor sampling.
-			G := computeG(
-				pv.p, pv.n, intersection.P, intersection.N)
 			extent := context.Sensor.GetExtent()
 			pdfPixel := 1 / float32(extent.GetPixelCount())
-			pFromPrevNext = pdfDirectional * G * pdfPixel
+			if context.ShouldDirectSampleSensor {
+				// Adjust both spatial and directional
+				// PDFs.
+
+				var wi Vector3
+				wi.Flip(&wo)
+				pDirect := context.Sensor.ComputePdfFromPoint(
+					context.X, context.Y,
+					intersection.P, intersection.PEpsilon,
+					intersection.N, wi)
+				if pDirect == 0 {
+					// This may happen in rare cases.
+					return false
+				}
+
+				pA := pv.pFromPrev
+
+				// The spatial correction factor is
+				// just p_D / p_A.
+				G := computeG(pv.p, pv.n,
+					intersection.P, intersection.N)
+				pv.pFromPrev = pDirect * G
+
+				// The directional correction factor
+				// is p_A / p_D, so a factor of G
+				// cancels out.
+				pFromPrevNext =
+					(pdfDirectional * pdfPixel * pA) /
+						pDirect
+			} else {
+				G := computeG(pv.p, pv.n,
+					intersection.P, intersection.N)
+				pFromPrevNext = pdfDirectional * G * pdfPixel
+			}
 		}
 		pvNext.initializeSurfaceInteractionVertex(
 			context, pv, &intersection, alphaNext, pFromPrevNext)
@@ -692,11 +728,9 @@ func (pv *PathVertex) SampleDirect(
 			case TRACER_UNIFORM_WEIGHTS:
 				pFromPrevNext = 1
 			case TRACER_POWER_WEIGHTS:
-				// TODO(akalin): Use real probabilities.
-				//
-				// TODO(akalin): Account for direct
-				// sensor sampling.
-				panic("Not implemented")
+				// The spatial correction factor is
+				// just p_D / p_A.
+				pFromPrevNext = pdfDirect * G
 			}
 			pv.flags |= _PV_USES_DIRECT_SENSOR
 			*pvNext = PathVertex{
@@ -1006,6 +1040,43 @@ func (pv *PathVertex) computeLeDirectionalPdf(
 	return pDirectional * G
 }
 
+func (pv *PathVertex) computeWeDirectionalPdf(
+	context *PathContext, sensor Sensor, pvOther *PathVertex) float32 {
+	var wo Vector3
+	_ = wo.GetDirectionAndDistance(&pv.p, &pvOther.p)
+	ok, x, y := sensor.ComputePixelPosition(pv.p, pv.n, wo)
+	if !ok {
+		return 0
+	}
+
+	pDirectional := sensor.ComputeWeDirectionalPdf(x, y, pv.p, pv.n, wo)
+	extent := sensor.GetExtent()
+	pdfPixel := 1 / float32(extent.GetPixelCount())
+
+	// Direct lighting takes precedence over direct sensor
+	// sampling for sensor <-> light paths.
+	if context.ShouldDirectSampleSensor &&
+		(!context.ShouldDirectSampleLight ||
+			pvOther.vertexType != _PATH_VERTEX_LIGHT_VERTEX) {
+		var wi Vector3
+		wi.Flip(&wo)
+		pDirect := sensor.ComputePdfFromPoint(
+			x, y, pvOther.p, pvOther.pEpsilon, pvOther.n, wi)
+		if pDirect == 0 {
+			// This may happen in rare cases.
+			return 0
+		}
+
+		pSurface := sensor.ComputeWeSpatialPdf(pv.p)
+		// The directional correction factor is p_A / p_D, so
+		// the G factor cancels out.
+		return (pDirectional * pdfPixel * pSurface) / pDirect
+	}
+
+	G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
+	return pDirectional * G * pdfPixel
+}
+
 func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 	context *PathContext, pvPrev, pvOther *PathVertex) float32 {
 	validateSampledPathEdge(context, pvPrev, pv)
@@ -1038,21 +1109,7 @@ func (pv *PathVertex) computeConnectionPdfBackwardsSA(
 			return 0
 		}
 
-		var wo Vector3
-		_ = wo.GetDirectionAndDistance(&pv.p, &pvPrev.p)
-
-		// TODO(akalin): Account for direct sensor sampling.
-		ok, x, y := pv.sensor.ComputePixelPosition(
-			pv.p, pv.n, wo)
-		if !ok {
-			return 0
-		}
-		G := computeG(pv.p, pv.n, pvPrev.p, pvPrev.n)
-		pdfDirectional := pv.sensor.ComputeWeDirectionalPdf(
-			x, y, pv.p, pv.n, wo)
-		extent := context.Sensor.GetExtent()
-		pdfPixel := 1 / float32(extent.GetPixelCount())
-		return pdfDirectional * G * pdfPixel
+		return pv.computeWeDirectionalPdf(context, pv.sensor, pvPrev)
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
 		fallthrough
@@ -1118,10 +1175,36 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 			panic("Unexpectedly reached")
 		}
 
-		// TODO(akalin): Account for direct sensor sampling.
 		if pvOther.sensor == nil {
 			return 0
 		}
+		// Direct lighting takes precedence over direct sensor
+		// sampling for sensor <-> light paths.
+		if context.ShouldDirectSampleSensor &&
+			(!context.ShouldDirectSampleLight ||
+				pvOtherPrev.vertexType !=
+					_PATH_VERTEX_LIGHT_VERTEX) {
+			// The spatial correction factor is just
+			// p_D / p_A.
+			var wi Vector3
+			_ = wi.GetDirectionAndDistance(
+				&pvOtherPrev.p, &pvOther.p)
+			var wo Vector3
+			wo.Flip(&wi)
+			ok, x, y := pvOther.sensor.ComputePixelPosition(
+				pvOther.p, pvOther.n, wo)
+			if !ok {
+				return 0
+			}
+
+			pDirect := pvOther.sensor.ComputePdfFromPoint(
+				x, y, pvOtherPrev.p, pvOtherPrev.pEpsilon,
+				pvOtherPrev.n, wi)
+			G := computeG(pvOther.p, pvOther.n,
+				pvOtherPrev.p, pvOtherPrev.n)
+			return pDirect * G
+		}
+
 		pSpatial := pvOther.sensor.ComputeWeSpatialPdf(pvOther.p)
 		return pSpatial
 
@@ -1129,19 +1212,8 @@ func (pv *PathVertex) computeConnectionPdfForwardSA(
 		return pv.computeLeDirectionalPdf(context, pvOther)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
-		// TODO(akalin): Account for direct sensor sampling.
-		var wi Vector3
-		_ = wi.GetDirectionAndDistance(&pv.p, &pvOther.p)
-		ok, x, y := context.Sensor.ComputePixelPosition(pv.p, pv.n, wi)
-		if !ok {
-			return 0
-		}
-		G := computeG(pv.p, pv.n, pvOther.p, pvOther.n)
-		pdfDirectional := context.Sensor.ComputeWeDirectionalPdf(
-			x, y, pv.p, pv.n, wi)
-		extent := context.Sensor.GetExtent()
-		pdfPixel := 1 / float32(extent.GetPixelCount())
-		return pdfDirectional * G * pdfPixel
+		return pv.computeWeDirectionalPdf(
+			context, context.Sensor, pvOther)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
 		switch pvOther.vertexType {
