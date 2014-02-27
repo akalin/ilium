@@ -38,6 +38,12 @@ func (pt *PathTracer) hasSomethingToDo() bool {
 	return pt.pathTypes.HasContributions(TRACER_SENSOR_CONTRIBUTION)
 }
 
+func (pt *PathTracer) shouldIncludeRR() bool {
+	// For now, include Russian roulette probabilities in weights
+	// only if we don't have backwards paths turned on.
+	return !pt.pathTypes.HasContributions(TRACER_LIGHT_CONTRIBUTION)
+}
+
 func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	if !pt.hasSomethingToDo() {
 		return SampleConfig{}
@@ -354,11 +360,7 @@ func (pt *PathTracer) computeDirectLightingWeight(
 				MATERIAL_LIGHT_TRANSPORT, wo, wi,
 				intersection.N)
 			var pContinue float32 = 1
-			// Don't use Russian roulette probabilities in
-			// weights if we have backwards paths turned
-			// on.
-			if !pt.pathTypes.HasContributions(
-				TRACER_LIGHT_CONTRIBUTION) {
+			if pt.shouldIncludeRR() {
 				pContinue =
 					GetContinueProbabilityFromIntersection(
 						pt.russianRouletteContribution,
@@ -475,9 +477,7 @@ func (pt *PathTracer) updatePathWeight(
 	case TRACER_UNIFORM_WEIGHTS:
 		weightTracker.AddP(pVertexIndex, 1)
 	case TRACER_POWER_WEIGHTS:
-		// Don't use Russian roulette probabilities in weights
-		// if we have backwards paths turned on.
-		if pt.pathTypes.HasContributions(TRACER_LIGHT_CONTRIBUTION) {
+		if !pt.shouldIncludeRR() {
 			pContinue = 1
 		}
 		weightTracker.AddP(pVertexIndex, pContinue*pdfBsdf)
