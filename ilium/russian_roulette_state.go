@@ -46,6 +46,10 @@ func MakeRussianRouletteState(
 	}
 }
 
+func (rrs *RussianRouletteState) IsContinueProbabilityLocal() bool {
+	return rrs.startIndex == 0
+}
+
 func (rrs *RussianRouletteState) IsLocalContinueProbabilityFixed() bool {
 	return rrs.method == RUSSIAN_ROULETTE_FIXED
 }

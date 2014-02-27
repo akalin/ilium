@@ -41,7 +41,10 @@ func (pt *ParticleTracer) hasSomethingToDo() bool {
 func (pt *ParticleTracer) shouldIncludeRR() bool {
 	// For now, include Russian roulette probabilities in weights
 	// only if we don't have backwards paths turned on.
-	return !pt.pathTypes.HasContributions(TRACER_SENSOR_CONTRIBUTION)
+	return !pt.pathTypes.HasContributions(TRACER_SENSOR_CONTRIBUTION) ||
+		(pt.russianRouletteState.IsContinueProbabilityLocal() &&
+			pt.russianRouletteContribution ==
+				TRACER_RUSSIAN_ROULETTE_ALBEDO)
 }
 
 func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {

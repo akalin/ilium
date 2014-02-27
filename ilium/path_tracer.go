@@ -41,7 +41,10 @@ func (pt *PathTracer) hasSomethingToDo() bool {
 func (pt *PathTracer) shouldIncludeRR() bool {
 	// For now, include Russian roulette probabilities in weights
 	// only if we don't have backwards paths turned on.
-	return !pt.pathTypes.HasContributions(TRACER_LIGHT_CONTRIBUTION)
+	return !pt.pathTypes.HasContributions(TRACER_LIGHT_CONTRIBUTION) ||
+		(pt.russianRouletteState.IsContinueProbabilityLocal() &&
+			pt.russianRouletteContribution ==
+				TRACER_RUSSIAN_ROULETTE_ALBEDO)
 }
 
 func (pt *PathTracer) GetSampleConfig() SampleConfig {
