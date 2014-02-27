@@ -143,6 +143,33 @@ func MakeTracerWeighingMethod(weighingMethodString string) (
 	}
 }
 
+func ComputePdfForWeight(
+	weighingMethod TracerWeighingMethod,
+	russianRouletteState *RussianRouletteState,
+	material Material, transportType MaterialTransportType,
+	wo, wi Vector3, n Normal3) float32 {
+	switch weighingMethod {
+	case TRACER_UNIFORM_WEIGHTS:
+		return 1
+	case TRACER_POWER_WEIGHTS:
+		pdf := material.ComputePdf(transportType, wo, wi, n)
+		var pContinue float32 = 1
+		if pdf > 0 && russianRouletteState != nil {
+			var albedo Spectrum
+			if !russianRouletteState.
+				IsLocalContinueProbabilityFixed() {
+				f := material.ComputeF(
+					transportType, wo, wi, n)
+				albedo.ScaleInv(&f, pdf)
+			}
+			pContinue = russianRouletteState.
+				GetLocalContinueProbability(&albedo)
+		}
+		return pdf * pContinue
+	}
+	panic("Unexpectedly reached")
+}
+
 type TracerRussianRouletteContribution int
 
 const (

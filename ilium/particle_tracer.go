@@ -179,20 +179,22 @@ func (pt *ParticleTracer) addVertexQs(
 	sensor Sensor, light Light, pNext Point3, pEpsilonNext float32,
 	nNext Normal3, woNext, wiNext Vector3, materialNext Material,
 	pChooseLight float32) {
+	var effectiveRussianRouletteState *RussianRouletteState
+	if pt.shouldIncludeRR() {
+		effectiveRussianRouletteState = pt.russianRouletteState
+	}
 	if qVertexIndex == 0 {
 		if pt.pathTypes.HasAlternatePath(
 			TRACER_EMITTED_LIGHT_PATH, edgeCount, sensor) {
+			pdf := ComputePdfForWeight(
+				pt.weighingMethod,
+				effectiveRussianRouletteState,
+				materialNext, MATERIAL_LIGHT_TRANSPORT,
+				wiNext, woNext, nNext)
+
 			// One for the direction to the light from
 			// vertex 1.
-			switch pt.weighingMethod {
-			case TRACER_UNIFORM_WEIGHTS:
-				weightTracker.AddQ(0, 1)
-			case TRACER_POWER_WEIGHTS:
-				pdfAdjoint := materialNext.ComputePdf(
-					MATERIAL_LIGHT_TRANSPORT,
-					wiNext, woNext, nNext)
-				weightTracker.AddQ(0, pdfAdjoint)
-			}
+			weightTracker.AddQ(0, pdf)
 		}
 
 		if pt.pathTypes.HasAlternatePath(
@@ -209,17 +211,13 @@ func (pt *ParticleTracer) addVertexQs(
 			}
 		}
 	} else if pt.hasBackwardsPath(edgeCount, sensor) {
+		pdf := ComputePdfForWeight(
+			pt.weighingMethod, effectiveRussianRouletteState,
+			materialNext, MATERIAL_LIGHT_TRANSPORT,
+			wiNext, woNext, nNext)
 		// One for the direction to this vertex from the next
 		// vertex.
-		switch pt.weighingMethod {
-		case TRACER_UNIFORM_WEIGHTS:
-			weightTracker.AddQ(qVertexIndex, 1)
-		case TRACER_POWER_WEIGHTS:
-			pdfAdjoint := materialNext.ComputePdf(
-				MATERIAL_LIGHT_TRANSPORT,
-				wiNext, woNext, nNext)
-			weightTracker.AddQ(qVertexIndex, pdfAdjoint)
-		}
+		weightTracker.AddQ(qVertexIndex, pdf)
 	}
 }
 
