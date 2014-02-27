@@ -46,16 +46,16 @@ func MakeRussianRouletteState(
 	}
 }
 
-func (rrs *RussianRouletteState) IsContinueProbabilityFixed(i int) bool {
-	return i < rrs.startIndex || rrs.method == RUSSIAN_ROULETTE_FIXED
+func (rrs *RussianRouletteState) IsLocalContinueProbabilityFixed() bool {
+	return rrs.method == RUSSIAN_ROULETTE_FIXED
 }
 
-func (rrs *RussianRouletteState) GetContinueProbability(
-	i int, t *Spectrum) float32 {
-	if i < rrs.startIndex {
-		return 1
-	}
+func (rrs *RussianRouletteState) IsContinueProbabilityFixed(i int) bool {
+	return i < rrs.startIndex || rrs.IsLocalContinueProbabilityFixed()
+}
 
+func (rrs *RussianRouletteState) GetLocalContinueProbability(
+	t *Spectrum) float32 {
 	var pContinueRaw float32
 	switch rrs.method {
 	case RUSSIAN_ROULETTE_FIXED:
@@ -68,4 +68,13 @@ func (rrs *RussianRouletteState) GetContinueProbability(
 	}
 
 	return minFloat32(1, maxFloat32(0, pContinueRaw))
+}
+
+func (rrs *RussianRouletteState) GetContinueProbability(
+	i int, t *Spectrum) float32 {
+	if i < rrs.startIndex {
+		return 1
+	}
+
+	return rrs.GetLocalContinueProbability(t)
 }
