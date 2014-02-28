@@ -82,26 +82,6 @@ func (pt *PathTracer) GetSampleConfig() SampleConfig {
 	}
 }
 
-func (pt *PathTracer) getContinueProbabilityFromIntersection(
-	edgeCount int, alpha, f *Spectrum, fPdf float32) float32 {
-	if fPdf == 0 {
-		return 0
-	}
-
-	var t Spectrum
-	if !pt.russianRouletteState.IsContinueProbabilityFixed(edgeCount) {
-		var albedo Spectrum
-		albedo.ScaleInv(f, fPdf)
-		switch pt.russianRouletteContribution {
-		case TRACER_RUSSIAN_ROULETTE_ALPHA:
-			t.Mul(alpha, &albedo)
-		case TRACER_RUSSIAN_ROULETTE_ALBEDO:
-			t = albedo
-		}
-	}
-	return pt.russianRouletteState.GetContinueProbability(edgeCount, &t)
-}
-
 func (pt *PathTracer) recordWLeAlphaDebugInfo(
 	edgeCount int, w float32, wLeAlpha, f1, f2 *Spectrum,
 	f1Name, f2Name string, debugRecords *[]PathTracerDebugRecord) {
@@ -286,7 +266,9 @@ func (pt *PathTracer) sampleDirectLighting(
 		case TRACER_POWER_WEIGHTS:
 			emittedPdf := material.ComputePdf(
 				MATERIAL_LIGHT_TRANSPORT, wo, wi, n)
-			pContinue := pt.getContinueProbabilityFromIntersection(
+			pContinue := GetContinueProbabilityFromIntersection(
+				pt.russianRouletteContribution,
+				pt.russianRouletteState,
 				edgeCount-1, alpha, &f, emittedPdf)
 			pdfRatio :=
 				(pContinue * emittedPdf) / (pChooseLight * pdf)

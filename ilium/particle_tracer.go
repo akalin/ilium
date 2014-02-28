@@ -100,26 +100,6 @@ func (pt *ParticleTracer) GetSampleConfig(sensors []Sensor) SampleConfig {
 	}
 }
 
-func (pt *ParticleTracer) getContinueProbabilityFromIntersection(
-	edgeCount int, alpha, f *Spectrum, fPdf float32) float32 {
-	if fPdf == 0 {
-		return 0
-	}
-
-	var t Spectrum
-	if !pt.russianRouletteState.IsContinueProbabilityFixed(edgeCount) {
-		var albedo Spectrum
-		albedo.ScaleInv(f, fPdf)
-		switch pt.russianRouletteContribution {
-		case TRACER_RUSSIAN_ROULETTE_ALPHA:
-			t.Mul(alpha, &albedo)
-		case TRACER_RUSSIAN_ROULETTE_ALBEDO:
-			t = albedo
-		}
-	}
-	return pt.russianRouletteState.GetContinueProbability(edgeCount, &t)
-}
-
 func (pt *ParticleTracer) makeWWeAlphaDebugRecords(
 	edgeCount int, sensor Sensor, w float32, wWeAlpha, f1, f2 *Spectrum,
 	f1Name, f2Name string) []ParticleDebugRecord {
@@ -342,10 +322,12 @@ func (pt *ParticleTracer) directSampleSensors(
 				emittedPdf := material.ComputePdf(
 					MATERIAL_IMPORTANCE_TRANSPORT,
 					wo, wi, n)
-				pContinue := pt.
-					getContinueProbabilityFromIntersection(
-					sensorEdgeCount-1, alpha, &f,
-					emittedPdf)
+				pContinue :=
+					GetContinueProbabilityFromIntersection(
+						pt.russianRouletteContribution,
+						pt.russianRouletteState,
+						sensorEdgeCount-1, alpha, &f,
+						emittedPdf)
 				pdfRatio := (pContinue * emittedPdf) / pdf
 				invW += powFloat32(pdfRatio, pt.beta)
 			}

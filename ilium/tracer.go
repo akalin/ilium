@@ -135,3 +135,25 @@ func MakeTracerRussianRouletteContribution(
 			contributionString)
 	}
 }
+
+func GetContinueProbabilityFromIntersection(
+	russianRouletteContribution TracerRussianRouletteContribution,
+	russianRouletteState *RussianRouletteState,
+	edgeCount int, alpha, f *Spectrum, fPdf float32) float32 {
+	if fPdf == 0 {
+		return 0
+	}
+
+	var t Spectrum
+	if !russianRouletteState.IsContinueProbabilityFixed(edgeCount) {
+		var albedo Spectrum
+		albedo.ScaleInv(f, fPdf)
+		switch russianRouletteContribution {
+		case TRACER_RUSSIAN_ROULETTE_ALPHA:
+			t.Mul(alpha, &albedo)
+		case TRACER_RUSSIAN_ROULETTE_ALBEDO:
+			t = albedo
+		}
+	}
+	return russianRouletteState.GetContinueProbability(edgeCount, &t)
+}
