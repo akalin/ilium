@@ -1,0 +1,195 @@
+{
+  "_comment" : [
+    "The scene is a series of concentric spheres alternating between ",
+    "emitters (inward) and flux meters (outward). The measured flux is ",
+    "simply 4 * Le * pi^2 * r^2, and the radii of the spheres are chosen ",
+    "so that the expected fluxes are simple numbers."
+  ],
+
+  "type": "InlinePrimitiveList",
+  "primitives": [
+    {
+      "_comment": "r=5 light sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 5,
+        "flipNormal": true
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.5 }
+      }
+    },
+
+    {
+      "_comment": "r=2/pi sensor sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.6366197723675814
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over 2/pi sensor sphere (expected phi=8)",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    },
+
+    {
+      "_comment": "r=0.5 light sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.5,
+        "flipNormal": true
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.5 }
+      }
+    },
+
+    {
+      "_comment": "r=3/(2*pi) sensor sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.477464829275686
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over 3/(2*pi) sensor sphere (expected phi=4.5)",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    },
+
+    {
+      "_comment": "r=0.4 light sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.4,
+        "flipNormal": true
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.5 }
+      }
+    },
+
+    {
+      "_comment": "r=1/pi sensor sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.3183098861837907
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over 1/pi sensor sphere (expected phi=2)",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    },
+
+    {
+      "_comment": "r=0.3 light sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.3,
+        "flipNormal": true
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "light": {
+        "type": "DiffuseAreaLight",
+        "samplingMethod": "cosine",
+        "emission": { "type": "rgb", "r": 0.5, "g": 0.5, "b": 0.5 }
+      }
+    },
+
+    {
+      "_comment": "r=1/(2*pi) sensor sphere.",
+      "type": "GeometricPrimitive",
+      "shape": {
+        "type": "Sphere",
+        "samplingMethod": "visibleFast",
+        "center": [ 0.0, -0.5, 0.0 ],
+        "radius": 0.15915494309189535
+      },
+      "material": {
+        "type": "DiffuseMaterial",
+        "samplingMethod": "cosine",
+        "rho": { "type": "rgb", "r": 0.0, "g": 0.0, "b": 0.0 }
+      },
+      "sensors": [
+        {
+          "type": "FluxMeter",
+          "description": "over 1/(2*pi) sensor sphere (expected phi=0.5)",
+          "samplingMethod": "cosine",
+          "sampleCount": 32
+        }
+      ]
+    }
+  ]
+}

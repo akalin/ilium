@@ -1,0 +1,25 @@
+{
+  "scene": {
+    "aggregate": {
+      "type": "PrimitiveList",
+      "primitives": [
+        {
+          "_include": "concentric_spheres_scene.json"
+        }
+      ]
+    }
+  },
+
+  "renderer": {
+    "type": "PathTracingRenderer",
+    "pathTypes": [ "emittedLight", "directLighting" ],
+    "weighingMethod": "power",
+    "russianRouletteMethod": "fixed",
+    "russianRouletteStartIndex": 2,
+    "russianRouletteMaxProbability": 1,
+    "maxEdgeCount": 2,
+    "sampler": {
+      "type": "IndependentSampler"
+    }
+  }
+}
