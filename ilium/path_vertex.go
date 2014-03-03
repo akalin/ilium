@@ -61,6 +61,7 @@ type pathVertexFlags int
 const (
 	_PV_USES_DIRECT_LIGHTING         pathVertexFlags = 1 << iota
 	_PV_USES_DIRECT_LIGHTING_WEIGHTS pathVertexFlags = 1 << iota
+	_PV_USES_DIRECT_SENSOR           pathVertexFlags = 1 << iota
 )
 
 func (flags pathVertexFlags) String() string {
@@ -72,6 +73,10 @@ func (flags pathVertexFlags) String() string {
 	if (flags & _PV_USES_DIRECT_LIGHTING_WEIGHTS) != 0 {
 		flagStrings = append(
 			flagStrings, "USES_DIRECT_LIGHTING_WEIGHTS")
+	}
+
+	if (flags & _PV_USES_DIRECT_SENSOR) != 0 {
+		flagStrings = append(flagStrings, "USES_DIRECT_SENSOR")
 	}
 
 	return "{" + strings.Join(flagStrings, ", ") + "}"
@@ -693,6 +698,7 @@ func (pv *PathVertex) SampleDirect(
 				// sensor sampling.
 				panic("Not implemented")
 			}
+			pv.flags |= _PV_USES_DIRECT_SENSOR
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
 				transportType: pv.transportType,
@@ -760,10 +766,29 @@ func validateConnectingLightVertex(context *PathContext, pv *PathVertex) {
 	}
 }
 
-func validateConnectingSensorVertex(context *PathContext, pv *PathVertex) {
+func validateConnectingSensorVertex(
+	context *PathContext, pv, pvOther *PathVertex) {
 	if pv.IsSpecular(context) {
 		panic(fmt.Sprintf(
 			"Invalid specular connecting sensor vertex %v", pv))
+	}
+
+	// Direct lighting takes precedence over direct sensor
+	// sampling for sensor <-> light paths.
+	shouldUseDirectSensorSampling := context.ShouldDirectSampleSensor &&
+		pv.vertexType == _PATH_VERTEX_SENSOR_VERTEX &&
+		(!context.ShouldDirectSampleLight ||
+			pvOther.vertexType != _PATH_VERTEX_LIGHT_VERTEX)
+
+	usesDirectSensorSampling := pv.flags&_PV_USES_DIRECT_SENSOR != 0
+
+	if usesDirectSensorSampling != shouldUseDirectSensorSampling {
+		panic(fmt.Sprintf(
+			"Invalid connecting sensor vertex %v "+
+				"(uses direct sensor sampling = %t, "+
+				"expected %t)",
+			pv, usesDirectSensorSampling,
+			shouldUseDirectSensorSampling))
 	}
 }
 
@@ -1188,7 +1213,7 @@ func (pv *PathVertex) ComputeWeight(
 	pvPrevPrev, pvPrev, pvOther,
 	pvOtherPrev, pvOtherPrevPrev *PathVertex) float32 {
 	validateConnectingLightVertex(context, pv)
-	validateConnectingSensorVertex(context, pvOther)
+	validateConnectingSensorVertex(context, pvOther, pv)
 	if pv.vertexType >= pvOther.vertexType {
 		validateConnectingPathEdge(context, pv, pvOther)
 	} else {
@@ -1263,7 +1288,7 @@ func (pv *PathVertex) ComputeExpectedWeight(
 	context *PathContext, pvAndPrevs []PathVertex,
 	pvOther *PathVertex, pvOtherAndPrevs []PathVertex) float32 {
 	validateConnectingLightVertex(context, pv)
-	validateConnectingSensorVertex(context, pvOther)
+	validateConnectingSensorVertex(context, pvOther, pv)
 	if pv.vertexType >= pvOther.vertexType {
 		validateConnectingPathEdge(context, pv, pvOther)
 	} else {
