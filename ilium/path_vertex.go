@@ -2,6 +2,7 @@ package ilium
 
 import "fmt"
 import "math/rand"
+import "strings"
 
 type PathContext struct {
 	WeighingMethod           TracerWeighingMethod
@@ -57,8 +58,17 @@ func (t pathVertexType) String() string {
 
 type pathVertexFlags int
 
+const (
+	_PATH_VERTEX_USES_DIRECT_LIGHTING pathVertexFlags = 1 << iota
+)
+
 func (flags pathVertexFlags) String() string {
-	return "{}"
+	var flagStrings []string
+	if (flags & _PATH_VERTEX_USES_DIRECT_LIGHTING) != 0 {
+		flagStrings = append(flagStrings, "USES_DIRECT_LIGHTING")
+	}
+
+	return "{" + strings.Join(flagStrings, ", ") + "}"
 }
 
 type PathVertex struct {
@@ -579,6 +589,8 @@ func (pv *PathVertex) SampleDirect(
 				// TODO(akalin): Account for direct lighting.
 				panic("Not implemented")
 			}
+
+			pv.flags |= _PATH_VERTEX_USES_DIRECT_LIGHTING
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 				transportType: pv.transportType,
@@ -661,18 +673,37 @@ func (pv *PathVertex) SampleDirect(
 	panic("Unexpectedly reached")
 }
 
+func validateConnectingLightVertex(context *PathContext, pv *PathVertex) {
+	if pv.IsSpecular(context) {
+		panic(fmt.Sprintf(
+			"Invalid specular connecting light vertex %v", pv))
+	}
+
+	shouldUseDirectLighting := context.ShouldDirectSampleLight &&
+		pv.vertexType == _PATH_VERTEX_LIGHT_VERTEX
+
+	usesDirectLighting :=
+		(pv.flags & _PATH_VERTEX_USES_DIRECT_LIGHTING) != 0
+
+	if usesDirectLighting != shouldUseDirectLighting {
+		panic(fmt.Sprintf(
+			"Invalid connecting light vertex %v "+
+				"(uses direct lighting = %t, expected %t)", pv,
+			usesDirectLighting, shouldUseDirectLighting))
+	}
+}
+
+func validateConnectingSensorVertex(context *PathContext, pv *PathVertex) {
+	if pv.IsSpecular(context) {
+		panic(fmt.Sprintf(
+			"Invalid specular connecting sensor vertex %v", pv))
+	}
+}
+
 func validateConnectingPathEdge(context *PathContext, pv, pvOther *PathVertex) {
 	if pv.vertexType < pvOther.vertexType {
 		panic(fmt.Sprintf(
 			"Invalid connection order (%v, %v)", pv, pvOther))
-	}
-
-	if pv.IsSpecular(context) {
-		panic(fmt.Sprintf("Invalid connection with %v", pv))
-	}
-
-	if pvOther.IsSpecular(context) {
-		panic(fmt.Sprintf("Invalid connection with %v", pvOther))
 	}
 
 	if pv.transportType == pvOther.transportType {
@@ -1055,6 +1086,8 @@ func (pv *PathVertex) ComputeWeight(
 	context *PathContext,
 	pvPrevPrev, pvPrev, pvOther,
 	pvOtherPrev, pvOtherPrevPrev *PathVertex) float32 {
+	validateConnectingLightVertex(context, pv)
+	validateConnectingSensorVertex(context, pvOther)
 	if pv.vertexType >= pvOther.vertexType {
 		validateConnectingPathEdge(context, pv, pvOther)
 	} else {
@@ -1128,6 +1161,8 @@ func (pv *PathVertex) computeExpectedSubpathGamma(
 func (pv *PathVertex) ComputeExpectedWeight(
 	context *PathContext, pvAndPrevs []PathVertex,
 	pvOther *PathVertex, pvOtherAndPrevs []PathVertex) float32 {
+	validateConnectingLightVertex(context, pv)
+	validateConnectingSensorVertex(context, pvOther)
 	if pv.vertexType >= pvOther.vertexType {
 		validateConnectingPathEdge(context, pv, pvOther)
 	} else {
