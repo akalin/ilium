@@ -47,12 +47,6 @@ func (bdpt *BidirectionalPathTracer) hasSomethingToDo() bool {
 
 func (bdpt *BidirectionalPathTracer) shouldDirectSampleSensor(
 	sensor Sensor) bool {
-	// TODO(akalin): Remove this restriction.
-	if bdpt.weighingMethod == TRACER_POWER_WEIGHTS &&
-		bdpt.directSampleLight {
-		return false
-	}
-
 	return bdpt.directSampleSensor && bdpt.recordLightContributions &&
 		!sensor.HasSpecularDirection()
 }
