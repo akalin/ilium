@@ -53,9 +53,16 @@ func (t pathVertexType) String() string {
 	return "<Unknown path vertex type>"
 }
 
+type pathVertexFlags int
+
+func (flags pathVertexFlags) String() string {
+	return "{}"
+}
+
 type PathVertex struct {
 	vertexType    pathVertexType
 	transportType MaterialTransportType
+	flags         pathVertexFlags
 	p             Point3
 	pEpsilon      float32
 	n             Normal3
@@ -109,6 +116,7 @@ func (pv *PathVertex) initializeSurfaceInteractionVertex(
 	*pv = PathVertex{
 		vertexType:    _PATH_VERTEX_SURFACE_INTERACTION_VERTEX,
 		transportType: pvPrev.transportType,
+		flags:         pvPrev.flags,
 		p:             intersection.P,
 		pEpsilon:      intersection.PEpsilon,
 		n:             intersection.N,
@@ -123,42 +131,52 @@ func (pv *PathVertex) initializeSurfaceInteractionVertex(
 func (pv *PathVertex) String() string {
 	switch pv.vertexType {
 	case _PATH_VERTEX_LIGHT_SUPER_VERTEX:
-		return fmt.Sprintf("{%v (%v), alpha=%v}",
-			pv.vertexType, pv.transportType, pv.alpha)
+		return fmt.Sprintf("{%v (%v), flags=%v, alpha=%v}",
+			pv.vertexType, pv.transportType, pv.flags, pv.alpha)
 
 	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
-		return fmt.Sprintf("{%v (%v), alpha=%v}",
-			pv.vertexType, pv.transportType, pv.alpha)
+		return fmt.Sprintf("{%v (%v), flags=%v, alpha=%v}",
+			pv.vertexType, pv.transportType, pv.flags, pv.alpha)
 
 	case _PATH_VERTEX_LIGHT_VERTEX:
 		return fmt.Sprintf(
-			"{%v (%v), p=%v (e=%f), n=%v, alpha=%v, "+
+			"{%v (%v), flags=%v, p=%v (e=%f), n=%v, alpha=%v, "+
 				"pFromPrev=%f, gamma=%f, light=%v}",
-			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
-			pv.n, pv.alpha, pv.pFromPrev, pv.gamma, pv.light)
+			pv.vertexType, pv.transportType, pv.flags, pv.p,
+			pv.pEpsilon, pv.n, pv.alpha, pv.pFromPrev,
+			pv.gamma, pv.light)
 
 	case _PATH_VERTEX_SENSOR_VERTEX:
-		return fmt.Sprintf("{%v (%v), p=%v (e=%f), n=%v, alpha=%v, "+
-			"pFromPrev=%f, gamma=%f}",
-			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
-			pv.n, pv.alpha, pv.pFromPrev, pv.gamma)
+		return fmt.Sprintf("{%v (%v), flags=%v, p=%v (e=%f), n=%v, "+
+			"alpha=%v, pFromPrev=%f, gamma=%f}",
+			pv.vertexType, pv.transportType, pv.flags, pv.p,
+			pv.pEpsilon, pv.n, pv.alpha, pv.pFromPrev, pv.gamma)
 
 	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
-		return fmt.Sprintf("{%v (%v), p=%v (e=%f), n=%v, alpha=%v, "+
-			"pFromPrev=%f, gamma=%f, light=%v, sensor=%v, "+
-			"material=%v}",
-			pv.vertexType, pv.transportType, pv.p, pv.pEpsilon,
-			pv.n, pv.alpha, pv.pFromPrev, pv.gamma, pv.light,
-			pv.sensor, pv.material)
+		return fmt.Sprintf("{%v (%v), flags=%v, p=%v (e=%f), n=%v, "+
+			"alpha=%v, pFromPrev=%f, gamma=%f, light=%v, "+
+			"sensor=%v, material=%v}",
+			pv.vertexType, pv.transportType, pv.flags, pv.p,
+			pv.pEpsilon, pv.n, pv.alpha, pv.pFromPrev, pv.gamma,
+			pv.light, pv.sensor, pv.material)
 	}
 
 	return fmt.Sprintf("{%v}", pv.vertexType)
 }
 
 func validateSampledPathEdge(context *PathContext, pv, pvNext *PathVertex) {
-	if pv != nil && pv.transportType != pvNext.transportType {
-		panic(fmt.Sprintf("Sampled path edge with non-matching "+
-			"transport types %v -> %v", pv, pvNext))
+	if pv != nil {
+		if pv.transportType != pvNext.transportType {
+			panic(fmt.Sprintf(
+				"Sampled path edge with non-matching "+
+					"transport types %v -> %v", pv, pvNext))
+		}
+
+		if pv.flags != pvNext.flags {
+			panic(fmt.Sprintf(
+				"Sampled path edge with non-matching "+
+					"flags %v -> %v", pv, pvNext))
+		}
 	}
 
 	switch {
@@ -328,6 +346,7 @@ func (pv *PathVertex) SampleNext(
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 			transportType: pv.transportType,
+			flags:         pv.flags,
 			p:             p,
 			pEpsilon:      pEpsilon,
 			n:             n,
@@ -361,6 +380,7 @@ func (pv *PathVertex) SampleNext(
 		*pvNext = PathVertex{
 			vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
 			transportType: pv.transportType,
+			flags:         pv.flags,
 			p:             p,
 			pEpsilon:      pEpsilon,
 			n:             n,
@@ -560,6 +580,7 @@ func (pv *PathVertex) SampleDirect(
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 				transportType: pv.transportType,
+				flags:         pv.flags,
 				p:             p,
 				pEpsilon:      pEpsilon,
 				n:             n,
@@ -615,6 +636,7 @@ func (pv *PathVertex) SampleDirect(
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_SENSOR_VERTEX,
 				transportType: pv.transportType,
+				flags:         pv.flags,
 				p:             p,
 				pEpsilon:      pEpsilon,
 				n:             n,
