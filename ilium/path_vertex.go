@@ -59,13 +59,19 @@ func (t pathVertexType) String() string {
 type pathVertexFlags int
 
 const (
-	_PATH_VERTEX_USES_DIRECT_LIGHTING pathVertexFlags = 1 << iota
+	_PV_USES_DIRECT_LIGHTING         pathVertexFlags = 1 << iota
+	_PV_USES_DIRECT_LIGHTING_WEIGHTS pathVertexFlags = 1 << iota
 )
 
 func (flags pathVertexFlags) String() string {
 	var flagStrings []string
-	if (flags & _PATH_VERTEX_USES_DIRECT_LIGHTING) != 0 {
+	if (flags & _PV_USES_DIRECT_LIGHTING) != 0 {
 		flagStrings = append(flagStrings, "USES_DIRECT_LIGHTING")
+	}
+
+	if (flags & _PV_USES_DIRECT_LIGHTING_WEIGHTS) != 0 {
+		flagStrings = append(
+			flagStrings, "USES_DIRECT_LIGHTING_WEIGHTS")
 	}
 
 	return "{" + strings.Join(flagStrings, ", ") + "}"
@@ -460,6 +466,11 @@ func (pv *PathVertex) SampleNext(
 				// cancels out.
 				pFromPrevNext = (pdfDirectional * pA) /
 					(pChooseLight * pDirect)
+
+				pvPrev.flags |=
+					_PV_USES_DIRECT_LIGHTING_WEIGHTS
+				pv.flags |=
+					_PV_USES_DIRECT_LIGHTING_WEIGHTS
 			} else {
 				G := computeG(pv.p, pv.n,
 					intersection.P, intersection.N)
@@ -622,9 +633,10 @@ func (pv *PathVertex) SampleDirect(
 				// The spatial correction factor is
 				// just p_D / p_A.
 				pFromPrevNext = pChooseLight * pdfDirect * G
+				pv.flags |= _PV_USES_DIRECT_LIGHTING_WEIGHTS
 			}
 
-			pv.flags |= _PATH_VERTEX_USES_DIRECT_LIGHTING
+			pv.flags |= _PV_USES_DIRECT_LIGHTING
 			*pvNext = PathVertex{
 				vertexType:    _PATH_VERTEX_LIGHT_VERTEX,
 				transportType: pv.transportType,
@@ -716,14 +728,35 @@ func validateConnectingLightVertex(context *PathContext, pv *PathVertex) {
 	shouldUseDirectLighting := context.ShouldDirectSampleLight &&
 		pv.vertexType == _PATH_VERTEX_LIGHT_VERTEX
 
-	usesDirectLighting :=
-		(pv.flags & _PATH_VERTEX_USES_DIRECT_LIGHTING) != 0
+	usesDirectLighting := (pv.flags & _PV_USES_DIRECT_LIGHTING) != 0
 
 	if usesDirectLighting != shouldUseDirectLighting {
 		panic(fmt.Sprintf(
 			"Invalid connecting light vertex %v "+
 				"(uses direct lighting = %t, expected %t)", pv,
 			usesDirectLighting, shouldUseDirectLighting))
+	}
+
+	// The light super-vertex may have the
+	// _PV_USES_DIRECT_LIGHTING_WEIGHTS flag set or not depending
+	// on the length of the subpath it generated.
+	if pv.vertexType == _PATH_VERTEX_LIGHT_SUPER_VERTEX {
+		return
+	}
+
+	shouldUseDirectLightingWeights := context.ShouldDirectSampleLight &&
+		context.WeighingMethod == TRACER_POWER_WEIGHTS
+
+	usesDirectLightingWeights :=
+		(pv.flags & _PV_USES_DIRECT_LIGHTING_WEIGHTS) != 0
+
+	if usesDirectLightingWeights != shouldUseDirectLightingWeights {
+		panic(fmt.Sprintf(
+			"Invalid connecting light vertex %v "+
+				"(uses direct lighting weights = %t, "+
+				"expected %t)",
+			pv, usesDirectLightingWeights,
+			shouldUseDirectLightingWeights))
 	}
 }
 
