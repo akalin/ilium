@@ -252,6 +252,26 @@ func (bdpt *BidirectionalPathTracer) computeCk(k int,
 		zSubpathDirect[0] = zSubpath[0]
 	}
 
+	// Don't use direct sensor weights for k=1 paths when power
+	// weights are used and direct lighting is also used.
+	var zSubpathIndirect [3]PathVertex
+	if k == 1 && bdpt.directSampleLight &&
+		bdpt.shouldDirectSampleSensor(pathContext.Sensor) &&
+		bdpt.weighingMethod == TRACER_POWER_WEIGHTS {
+		l := minInt(3, len(zSubpath))
+		copy(zSubpathIndirect[0:l], zSubpath[0:l])
+		for i := l - 1; i >= 0; i-- {
+			var ziPrev *PathVertex
+			if i > 0 {
+				ziPrev = &zSubpathIndirect[i-1]
+			}
+			zSubpathIndirect[i].
+				RemoveDirectSampledWeightCorrection(
+				pathContext, ziPrev)
+		}
+		zSubpath = zSubpathIndirect[0:l]
+	}
+
 	var Ck Spectrum
 	for s := minS; s <= maxS; s++ {
 		t := k + 1 - s

@@ -641,6 +641,44 @@ func (pv *PathVertex) SampleNext(
 	return true
 }
 
+func (pv *PathVertex) RemoveDirectSampledWeightCorrection(
+	context *PathContext, pvPrev *PathVertex) {
+	validateSampledPathEdge(context, pvPrev, pv)
+	switch pv.vertexType {
+	case _PATH_VERTEX_SENSOR_SUPER_VERTEX:
+		if pv.flags&_PV_USES_DIRECT_SENSOR_WEIGHTS != 0 {
+			pv.flags &= ^_PV_USES_DIRECT_SENSOR_WEIGHTS
+		}
+		return
+
+	case _PATH_VERTEX_SENSOR_VERTEX:
+		if pv.flags&_PV_USES_DIRECT_SENSOR_WEIGHTS != 0 {
+			// The inverse spatial correction factor is
+			// p_A / p_D.
+			pSurface := context.Sensor.ComputeWeSpatialPdf(pv.p)
+			pv.pFromPrev = pSurface
+			pv.flags &= ^_PV_USES_DIRECT_SENSOR_WEIGHTS
+		}
+		return
+
+	case _PATH_VERTEX_SURFACE_INTERACTION_VERTEX:
+		if pv.flags&_PV_USES_DIRECT_SENSOR_WEIGHTS != 0 {
+			pA := context.Sensor.ComputeWeSpatialPdf(pvPrev.p)
+			// We know the previous vertex still has
+			// _PV_USES_DIRECT_SENSOR_WEIGHTS set.
+			pD := pvPrev.pFromPrev
+
+			// The inverse directional correction factor
+			// is just p_D / p_A.
+			pv.pFromPrev *= pD / pA
+			pv.flags &= ^_PV_USES_DIRECT_SENSOR_WEIGHTS
+		}
+		return
+	}
+
+	panic("Unexpectedly reached")
+}
+
 func (pv *PathVertex) SampleDirect(
 	context *PathContext, k int, rng *rand.Rand,
 	pvOther, pvNext *PathVertex) bool {
